@@ -57,7 +57,6 @@ export default async function Home() {
               title={cat}
               videos={vids.slice(0, 20)}
               href={`/category/${slugify(cat)}`}
-              categoryImage={landscapeImage(cat)}
             />
           );
         })}
