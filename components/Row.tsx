@@ -1,0 +1,73 @@
+// LARAPLAY — Rangée horizontale scrollable type Netflix.
+
+"use client";
+
+import { useRef } from "react";
+import type { VideoFile } from "@/lib/drive";
+import { VideoCard } from "./VideoCard";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+
+interface RowProps {
+  title: string;
+  videos: VideoFile[];
+  href?: string;
+  /** Vignette catégorie (utilisée comme thumbnail des vidéos qui en sont dépourvues) */
+  categoryImage?: string | null;
+}
+
+export function Row({ title, videos, href, categoryImage }: RowProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  if (videos.length === 0) return null;
+
+  const scroll = (dir: "left" | "right") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+  };
+
+  return (
+    <section className="relative group/row mb-10">
+      <div className="flex items-baseline justify-between px-4 md:px-8 mb-3">
+        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+        {href && (
+          <Link
+            href={href}
+            className="text-sm text-zinc-400 hover:text-white transition opacity-0 group-hover/row:opacity-100"
+          >
+            Voir tout →
+          </Link>
+        )}
+      </div>
+
+      <div className="relative">
+        <button
+          onClick={() => scroll("left")}
+          className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
+          aria-label="Précédent"
+        >
+          <ChevronLeft className="w-8 h-8 text-white" />
+        </button>
+
+        <div
+          ref={scrollRef}
+          className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-8 py-4"
+        >
+          {videos.map((v) => (
+            <VideoCard key={v.id} video={v} fallbackImage={categoryImage ?? null} />
+          ))}
+        </div>
+
+        <button
+          onClick={() => scroll("right")}
+          className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
+          aria-label="Suivant"
+        >
+          <ChevronRight className="w-8 h-8 text-white" />
+        </button>
+      </div>
+    </section>
+  );
+}
