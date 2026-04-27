@@ -78,3 +78,33 @@ html, body {
   transform: translateY(-4px);
   border-color: var(--brand);
 }
+
+/* Splash intro animations */
+@keyframes splash-zoom {
+  0%   { transform: scale(0.5); opacity: 0; letter-spacing: 0.4em; }
+  20%  { opacity: 0.4; }
+  60%  { transform: scale(1); opacity: 1; letter-spacing: 0.06em; }
+  85%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.animate-splash-zoom {
+  animation: splash-zoom 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes splash-glow {
+  0%   { transform: scale(0.6); opacity: 0; }
+  40%  { transform: scale(1); opacity: 0.6; }
+  70%  { transform: scale(1.4); opacity: 0.4; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.animate-splash-glow {
+  animation: splash-glow 2.4s ease-out forwards;
+}
+
+@keyframes splash-fade {
+  0%, 80% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+.animate-splash-fade {
+  animation: splash-fade 2.4s ease-in-out forwards;
+}
