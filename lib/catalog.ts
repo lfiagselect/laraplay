@@ -15,11 +15,13 @@ export interface Catalog {
 }
 
 let cache: { data: Catalog; ts: number } | null = null;
-const TTL_MS = 5 * 60 * 1000; // 5 min
+const TTL_MS = 10 * 60 * 1000; // 10 min — agressif pour réduire appels Drive
 
 export async function getCatalog(force = false): Promise<Catalog> {
   const now = Date.now();
-  if (!force && cache && now - cache.ts < TTL_MS) return cache.data;
+  if (!force && cache && now - cache.ts < TTL_MS) {
+    return cache.data;
+  }
 
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID missing");

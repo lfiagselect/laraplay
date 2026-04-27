@@ -7,7 +7,7 @@ import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
 
 function formatDuration(ms?: string): string | null {
   if (!ms) return null;

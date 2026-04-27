@@ -6,7 +6,7 @@ import { getCatalog, ERAS, THEMATIC_ROWS, unslugify } from "@/lib/catalog";
 import { landscapeImage } from "@/lib/category-images";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
 
 export default async function CategoryPage({
   params,

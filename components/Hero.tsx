@@ -1,30 +1,37 @@
 // LARAPLAY — Hero billboard. Vidéo featured large en haut accueil.
+// Optim perf: image poster preview, pas vidéo background lourde.
 
 import Link from "next/link";
 import type { VideoFile } from "@/lib/drive";
 import { Play, Info } from "lucide-react";
 
-export function Hero({ video }: { video: VideoFile }) {
+interface HeroProps {
+  video: VideoFile;
+  /** Image fond (PNG haute qualité catégorie associée si dispo) */
+  backgroundImage?: string | null;
+}
+
+export function Hero({ video, backgroundImage }: HeroProps) {
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
+  const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+  const bg = backgroundImage ?? thumb;
 
   return (
     <section className="relative h-[70vh] md:h-[80vh] min-h-[480px] w-full overflow-hidden -mt-[72px]">
-      {/* Background : vidéo muted autoplay */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        className="absolute inset-0 w-full h-full object-cover"
-        src={`/api/stream/${video.id}`}
-      />
+      {bg ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={bg}
+          alt={cleanName}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900 to-black" />
+      )}
 
-      {/* Overlays */}
       <div className="absolute inset-0 hero-side-gradient" />
       <div className="absolute inset-0 hero-gradient" />
 
-      {/* Content */}
       <div className="relative h-full flex items-end pb-16 md:pb-24">
         <div className="max-w-2xl px-4 md:px-12">
           <p className="text-xs uppercase tracking-widest text-red-500 font-bold mb-2">

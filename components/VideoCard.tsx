@@ -23,7 +23,9 @@ interface VideoCardProps {
 
 export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
-  const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+  // Thumbnail Drive proxy. Désactivé sur prod si fallback dispo (perf).
+  // Drive thumb = fetch supplémentaire, fallback image catégorie statique = CDN cache.
+  const thumb = !fallbackImage && video.thumbnailLink ? `/api/thumb/${video.id}` : null;
 
   return (
     <Link

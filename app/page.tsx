@@ -7,7 +7,7 @@ import { EraRow } from "@/components/EraRow";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600; // cache 10 min
 
 export default async function Home() {
   const catalog = await getCatalog();
@@ -24,7 +24,16 @@ export default async function Home() {
         <Header />
       </div>
 
-      {catalog.hero && <Hero video={catalog.hero} />}
+      {catalog.hero && (
+        <Hero
+          video={catalog.hero}
+          backgroundImage={
+            catalog.hero.category
+              ? landscapeImage(catalog.hero.category, "png")
+              : null
+          }
+        />
+      )}
 
       <main className="relative -mt-20 pb-20">
         {catalog.recents.length > 0 && (
