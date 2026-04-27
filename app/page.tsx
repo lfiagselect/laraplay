@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
+import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
 import { ERAS as ERAS_LIST } from "@/lib/catalog-meta";
@@ -21,6 +22,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-black">
+      <SplashIntro />
       <div className="absolute top-0 left-0 right-0 z-30">
         <Header />
       </div>

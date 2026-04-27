@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import "./globals.css";
-import { SplashIntro } from "@/components/SplashIntro";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,7 +26,6 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${inter.variable} ${bebas.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-black text-white">
-        <SplashIntro />
         {children}
       </body>
     </html>

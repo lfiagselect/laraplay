@@ -1,12 +1,12 @@
-// LARAPLAY — Splash intro animée (style TUDUM original)
-// Affichée 1× par session navigateur. Logo + son court + fade out.
+// LARAPLAY — Splash intro animée
+// Affichée 1× par session. Logo + son court + fade out.
 
 "use client";
 
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "laraplay-splash-shown";
-const DURATION_MS = 2400;
+const DURATION_MS = 4000;
 
 export function SplashIntro() {
   const [visible, setVisible] = useState<boolean | null>(null);
@@ -22,47 +22,69 @@ export function SplashIntro() {
     sessionStorage.setItem(STORAGE_KEY, "1");
 
     // Son synthétisé Web Audio
+    let ctx: AudioContext | null = null;
     try {
       const Ctx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext })
           .webkitAudioContext;
       if (Ctx) {
-        const ctx = new Ctx();
+        ctx = new Ctx();
 
-        // 2 oscillateurs : grave qui monte, aigu sustain
+        // Resume context si suspended (Safari/iOS strict autoplay)
+        if (ctx.state === "suspended") {
+          ctx.resume().catch(() => {});
+        }
+
         const now = ctx.currentTime;
 
+        // Sub bass — sweep grave qui monte (impact)
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = "sine";
-        osc1.frequency.setValueAtTime(60, now);
-        osc1.frequency.exponentialRampToValueAtTime(220, now + 0.6);
+        osc1.frequency.setValueAtTime(50, now);
+        osc1.frequency.exponentialRampToValueAtTime(180, now + 1.0);
         gain1.gain.setValueAtTime(0, now);
-        gain1.gain.linearRampToValueAtTime(0.35, now + 0.05);
-        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+        gain1.gain.linearRampToValueAtTime(0.45, now + 0.08);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
         osc1.connect(gain1).connect(ctx.destination);
         osc1.start(now);
-        osc1.stop(now + 1.3);
+        osc1.stop(now + 2.0);
 
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = "triangle";
-        osc2.frequency.setValueAtTime(440, now + 0.55);
-        osc2.frequency.exponentialRampToValueAtTime(660, now + 1.4);
-        gain2.gain.setValueAtTime(0, now + 0.55);
-        gain2.gain.linearRampToValueAtTime(0.18, now + 0.65);
-        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
-        osc2.connect(gain2).connect(ctx.destination);
-        osc2.start(now + 0.55);
-        osc2.stop(now + 1.9);
+        // Lead — accord qui sustain et fade
+        const lead = ctx.createOscillator();
+        const leadGain = ctx.createGain();
+        lead.type = "triangle";
+        lead.frequency.setValueAtTime(330, now + 0.9); // mi
+        lead.frequency.linearRampToValueAtTime(440, now + 1.4); // la
+        leadGain.gain.setValueAtTime(0, now + 0.9);
+        leadGain.gain.linearRampToValueAtTime(0.22, now + 1.0);
+        leadGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
+        lead.connect(leadGain).connect(ctx.destination);
+        lead.start(now + 0.9);
+        lead.stop(now + 3.6);
+
+        // Shimmer aigu finale
+        const high = ctx.createOscillator();
+        const highGain = ctx.createGain();
+        high.type = "sine";
+        high.frequency.setValueAtTime(880, now + 1.4);
+        highGain.gain.setValueAtTime(0, now + 1.4);
+        highGain.gain.linearRampToValueAtTime(0.12, now + 1.5);
+        highGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
+        high.connect(highGain).connect(ctx.destination);
+        high.start(now + 1.4);
+        high.stop(now + 3.1);
       }
     } catch {
-      // user a coupé son ou Web Audio bloqué — pas grave
+      // user a coupé son ou Web Audio bloqué
     }
 
     const timer = setTimeout(() => setVisible(false), DURATION_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (ctx && ctx.state !== "closed") ctx.close().catch(() => {});
+    };
   }, []);
 
   if (visible === null || visible === false) return null;
