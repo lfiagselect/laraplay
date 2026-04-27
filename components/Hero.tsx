@@ -17,17 +17,24 @@ export function Hero({ video, backgroundImage }: HeroProps) {
   const bg = backgroundImage ?? thumb;
 
   return (
-    <section className="relative h-[70vh] md:h-[80vh] min-h-[480px] w-full overflow-hidden -mt-[72px]">
+    <section className="relative h-[55vh] md:h-[65vh] min-h-[400px] w-full overflow-hidden -mt-[72px]">
       {bg ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={bg}
           alt={cleanName}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ imageRendering: "auto" }}
         />
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900 to-black" />
       )}
+
+      {/* Léger blur derrière pour adoucir upscale image */}
+      <div
+        className="absolute inset-0 backdrop-blur-[2px] bg-black/10"
+        aria-hidden
+      />
 
       <div className="absolute inset-0 hero-side-gradient" />
       <div className="absolute inset-0 hero-gradient" />

@@ -1,8 +1,8 @@
 // LARAPLAY — Catalogue logique métier (server-only)
-// Charge données Drive, groupe par catégorie, cache mémoire.
-// IMPORTANT: ne pas importer dans composants client → utiliser catalog-meta.ts.
+// Cache durable via unstable_cache Next (persiste entre invocations serverless).
 
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { listAllVideos, type VideoFile } from "./drive";
 
 export { THEMATIC_ROWS, ERAS, slugify, unslugify } from "./catalog-meta";
@@ -14,22 +14,35 @@ export interface Catalog {
   hero: VideoFile | null;
 }
 
-let cache: { data: Catalog; ts: number } | null = null;
-const TTL_MS = 10 * 60 * 1000; // 10 min — agressif pour réduire appels Drive
+interface CatalogSerialized {
+  all: VideoFile[];
+  recents: VideoFile[];
+  hero: VideoFile | null;
+}
 
-export async function getCatalog(force = false): Promise<Catalog> {
-  const now = Date.now();
-  if (!force && cache && now - cache.ts < TTL_MS) {
-    return cache.data;
-  }
+// Map non sérialisable JSON → on stocke `all` puis on re-construit byCategory au runtime.
+const fetchCatalogRaw = unstable_cache(
+  async (): Promise<CatalogSerialized> => {
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID missing");
 
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID missing");
+    const all = await listAllVideos(folderId);
 
-  const all = await listAllVideos(folderId);
+    const recents = [...all]
+      .sort((a, b) => (b.modifiedTime ?? "").localeCompare(a.modifiedTime ?? ""))
+      .slice(0, 16);
+
+    return { all, recents, hero: recents[0] ?? null };
+  },
+  ["catalog-v1"],
+  { revalidate: 600, tags: ["catalog"] } // 10 min cache durable Vercel
+);
+
+export async function getCatalog(): Promise<Catalog> {
+  const raw = await fetchCatalogRaw();
 
   const byCategory = new Map<string, VideoFile[]>();
-  for (const v of all) {
+  for (const v of raw.all) {
     const cat = v.category ?? "Divers";
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(v);
@@ -39,13 +52,10 @@ export async function getCatalog(force = false): Promise<Catalog> {
     list.sort((a, b) => (b.modifiedTime ?? "").localeCompare(a.modifiedTime ?? ""));
   }
 
-  const recents = [...all]
-    .sort((a, b) => (b.modifiedTime ?? "").localeCompare(a.modifiedTime ?? ""))
-    .slice(0, 16);
-
-  const hero = recents[0] ?? null;
-
-  const data: Catalog = { all, byCategory, recents, hero };
-  cache = { data, ts: now };
-  return data;
+  return {
+    all: raw.all,
+    byCategory,
+    recents: raw.recents,
+    hero: raw.hero,
+  };
 }

@@ -6,6 +6,7 @@ import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
+import { ERAS as ERAS_LIST } from "@/lib/catalog-meta";
 
 export const revalidate = 600; // cache 10 min
 
@@ -27,11 +28,14 @@ export default async function Home() {
       {catalog.hero && (
         <Hero
           video={catalog.hero}
-          backgroundImage={
-            catalog.hero.category
-              ? landscapeImage(catalog.hero.category, "png")
-              : null
-          }
+          backgroundImage={(() => {
+            const cat = catalog.hero.category;
+            if (!cat) return null;
+            // Si vidéo dans une ère → poster portrait (720×1080) plus net en hauteur
+            // Sinon landscape PNG (1280×720)
+            const isEra = ERAS_LIST.includes(cat);
+            return isEra ? posterImage(cat, "png") : landscapeImage(cat, "png");
+          })()}
         />
       )}
 
