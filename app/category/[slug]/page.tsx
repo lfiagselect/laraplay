@@ -20,8 +20,7 @@ export default async function CategoryPage({
   if (!categoryName) notFound();
 
   const videos = catalog.byCategory.get(categoryName) ?? [];
-  const heroImage = landscapeImage(categoryName, "png"); // PNG haute qualité pour bandeau
-  const fallbackThumb = landscapeImage(categoryName); // WEBP léger pour cards
+  const heroImage = landscapeImage(categoryName, "png"); // PNG haute qualité bandeau hero
 
   return (
     <div className="min-h-screen bg-black">
@@ -61,7 +60,7 @@ export default async function CategoryPage({
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {videos.map((v) => (
-              <VideoCard key={v.id} video={v} fallbackImage={fallbackThumb} />
+              <VideoCard key={v.id} video={v} />
             ))}
           </div>
         )}
