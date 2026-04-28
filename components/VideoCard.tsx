@@ -1,8 +1,10 @@
-// LARAPLAY — Carte vidéo.
+// LARAPLAY — Carte vidéo. Clic = ouvre modal info.
 
-import Link from "next/link";
+"use client";
+
 import type { VideoFile } from "@/lib/drive";
 import { Play } from "lucide-react";
+import { useVideoModal } from "./ModalProvider";
 
 function formatDuration(ms?: string): string | null {
   if (!ms) return null;
@@ -17,20 +19,19 @@ function formatDuration(ms?: string): string | null {
 
 interface VideoCardProps {
   video: VideoFile;
-  /** Image catégorie servant de fallback si Drive thumbnail manquant */
   fallbackImage?: string | null;
 }
 
 export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
-  // Thumbnail Drive proxy. Désactivé sur prod si fallback dispo (perf).
-  // Drive thumb = fetch supplémentaire, fallback image catégorie statique = CDN cache.
   const thumb = !fallbackImage && video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+  const { open } = useVideoModal();
 
   return (
-    <Link
-      href={`/watch/${video.id}`}
-      className="video-card group block w-[260px] md:w-[300px] shrink-0 rounded-md overflow-hidden bg-zinc-900 relative"
+    <button
+      type="button"
+      onClick={() => open(video.id)}
+      className="video-card group block w-[260px] md:w-[300px] shrink-0 rounded-md overflow-hidden bg-zinc-900 relative text-left"
     >
       <div className="aspect-video bg-zinc-800 relative overflow-hidden">
         {thumb ? (
@@ -71,6 +72,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           <p className="text-xs text-zinc-500 mt-1">{video.category}</p>
         )}
       </div>
-    </Link>
+    </button>
   );
 }

@@ -4,9 +4,9 @@
 "use client";
 
 import { useRef } from "react";
-import Link from "next/link";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
+import { useVideoModal } from "./ModalProvider";
 
 interface Top10RowProps {
   title: string;
@@ -26,6 +26,7 @@ function formatDuration(ms?: string): string | null {
 export function Top10Row({ title, videos }: Top10RowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const top10 = videos.slice(0, 10);
+  const { open } = useVideoModal();
 
   if (top10.length === 0) return null;
 
@@ -64,10 +65,11 @@ export function Top10Row({ title, videos }: Top10RowProps) {
             const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
 
             return (
-              <Link
+              <button
                 key={video.id}
-                href={`/watch/${video.id}`}
-                className="relative shrink-0 group/card flex items-center"
+                type="button"
+                onClick={() => open(video.id)}
+                className="relative shrink-0 group/card flex items-center text-left"
               >
                 {/* Chiffre géant en arrière-plan */}
                 <span
@@ -116,7 +118,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
                     )}
                   </div>
                 </div>
-              </Link>
+              </button>
             );
           })}
         </div>
