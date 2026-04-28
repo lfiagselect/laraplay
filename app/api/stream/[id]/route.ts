@@ -1,6 +1,7 @@
 // LARAPLAY — Stream proxy
 // GET /api/stream/[id] → pipe contenu vidéo Drive via fetch direct.
-// Support Range (seek). User jamais voit URL Drive. Auth Phase 5.
+// Support Range (seek). User jamais voit URL Drive.
+// Optim: auth + meta + driveStream lancés en parallèle.
 
 import { NextRequest } from "next/server";
 import { fetchDriveStream, getVideo } from "@/lib/drive";
@@ -13,22 +14,28 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const { id } = await params;
+  const range = req.headers.get("range") ?? undefined;
+
+  // Lance 3 opérations en parallèle au lieu séquentiel.
+  // - auth() : check session JWT
+  // - getVideo(id) : metadata Drive (vérifie type vidéo)
+  // - fetchDriveStream(id, range) : démarre déjà le stream
+  // Si auth ou meta KO, on annule en jetant la response.
+  const [session, meta, driveRes] = await Promise.all([
+    auth(),
+    getVideo(id),
+    fetchDriveStream(id, range),
+  ]);
+
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
   }
-
-  const { id } = await params;
-  const meta = await getVideo(id);
   if (!meta) {
     return new Response("Not found", { status: 404 });
   }
 
-  const range = req.headers.get("range") ?? undefined;
-
   try {
-    const driveRes = await fetchDriveStream(id, range);
-
     if (!driveRes.ok && driveRes.status !== 206) {
       const text = await driveRes.text();
       console.error("[stream] Drive error", driveRes.status, text);
@@ -37,7 +44,6 @@ export async function GET(
       });
     }
 
-    // Forward headers
     const responseHeaders = new Headers();
     const forwardable = [
       "content-type",

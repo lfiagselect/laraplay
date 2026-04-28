@@ -7,7 +7,7 @@ import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 
-export const revalidate = 600;
+export const revalidate = 3600;
 
 function formatDuration(ms?: string): string | null {
   if (!ms) return null;

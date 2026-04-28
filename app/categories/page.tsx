@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getCatalog, slugify, ERAS } from "@/lib/catalog";
 import { landscapeImage } from "@/lib/category-images";
 
-export const revalidate = 600;
+export const revalidate = 3600;
 
 export default async function CategoriesPage() {
   const catalog = await getCatalog();

@@ -35,7 +35,7 @@ const fetchCatalogRaw = unstable_cache(
     return { all, recents, hero: recents[0] ?? null };
   },
   ["catalog-v1"],
-  { revalidate: 600, tags: ["catalog"] } // 10 min cache durable Vercel
+  { revalidate: 3600, tags: ["catalog"] } // 1h cache durable Vercel
 );
 
 export async function getCatalog(): Promise<Catalog> {

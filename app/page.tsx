@@ -9,7 +9,7 @@ import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
 import { ERAS as ERAS_LIST } from "@/lib/catalog-meta";
 
-export const revalidate = 600; // cache 10 min
+export const revalidate = 3600; // cache 1h
 
 export default async function Home() {
   const catalog = await getCatalog();

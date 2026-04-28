@@ -6,7 +6,7 @@ import { VideoCard } from "@/components/VideoCard";
 import { getCatalog } from "@/lib/catalog";
 import { Search as SearchIcon } from "lucide-react";
 
-export const revalidate = 600;
+export const revalidate = 3600;
 
 function normalize(s: string): string {
   return s

@@ -120,9 +120,16 @@ export async function getVideo(fileId: string): Promise<VideoFile | null> {
 
 /**
  * Récupère token OAuth depuis service account.
- * Permet fetch direct vers Drive (plus robuste pour streaming que googleapis stream).
+ * Cache mémoire process — token Google valide 1h, on cache 50min pour buffer.
+ * Évite ~300-500ms par request stream/thumb.
  */
+let tokenCache: { token: string; expiresAt: number } | null = null;
+const TOKEN_TTL_MS = 50 * 60 * 1000; // 50 min
+
 async function getAccessToken(): Promise<string> {
+  const now = Date.now();
+  if (tokenCache && tokenCache.expiresAt > now) return tokenCache.token;
+
   const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const scopes = [
@@ -142,6 +149,8 @@ async function getAccessToken(): Promise<string> {
   const client = await auth.getClient();
   const tokenResp = await client.getAccessToken();
   if (!tokenResp.token) throw new Error("Failed to get access token");
+
+  tokenCache = { token: tokenResp.token, expiresAt: now + TOKEN_TTL_MS };
   return tokenResp.token;
 }
 
@@ -161,4 +170,34 @@ export async function fetchDriveStream(fileId: string, range?: string) {
 
   const res = await fetch(url, { headers });
   return res;
+}
+
+/**
+ * Récupère thumbnail Drive et retourne body + content-type.
+ * 2 fetches: meta pour thumbnailLink, puis image avec auth.
+ * Lance en parallèle pour gagner du temps.
+ */
+export async function fetchDriveThumb(
+  fileId: string
+): Promise<{ body: ReadableStream | null; contentType: string | null } | null> {
+  const token = await getAccessToken();
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=thumbnailLink&supportsAllDrives=true`;
+
+  const metaRes = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!metaRes.ok) return null;
+  const meta = await metaRes.json();
+  const thumbLink: string | undefined = meta.thumbnailLink;
+  if (!thumbLink) return null;
+
+  const imgRes = await fetch(thumbLink, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!imgRes.ok) return null;
+
+  return {
+    body: imgRes.body,
+    contentType: imgRes.headers.get("content-type"),
+  };
 }

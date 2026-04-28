@@ -12,7 +12,7 @@ export interface WhitelistEntry {
 }
 
 let cache: { data: WhitelistEntry[]; ts: number } | null = null;
-const TTL_MS = 60_000;
+const TTL_MS = 5 * 60_000; // 5 min — modif Sheet visible 5 min plus tard max
 
 async function fetchWhitelist(): Promise<WhitelistEntry[]> {
   const sheets = getSheets();
