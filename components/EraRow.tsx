@@ -24,9 +24,11 @@ export function EraRow({ title, eras }: EraRowProps) {
   };
 
   return (
-    <section className="relative group/row mb-10">
-      <div className="px-4 md:px-8 mb-3">
-        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+    <section className="relative group/row mb-12">
+      <div className="px-4 md:px-12 mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+          {title}
+        </h2>
       </div>
 
       <div className="relative">
@@ -40,7 +42,7 @@ export function EraRow({ title, eras }: EraRowProps) {
 
         <div
           ref={scrollRef}
-          className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth px-4 md:px-8 py-4"
+          className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
         >
           {eras.map((era) => (
             <Link

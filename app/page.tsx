@@ -1,9 +1,10 @@
-// LARAPLAY — Page accueil Netflix-clone
+// LARAPLAY — Page accueil
 
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
+import { Top10Row } from "@/components/Top10Row";
 import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
@@ -33,17 +34,18 @@ export default async function Home() {
           backgroundImage={(() => {
             const cat = catalog.hero.category;
             if (!cat) return null;
-            // Si vidéo dans une ère → poster portrait (720×1080) plus net en hauteur
-            // Sinon landscape PNG (1280×720)
             const isEra = ERAS_LIST.includes(cat);
             return isEra ? posterImage(cat, "png") : landscapeImage(cat, "png");
           })()}
         />
       )}
 
-      <main className="relative -mt-20 pb-20">
+      <main className="relative -mt-24 pb-24">
         {catalog.recents.length > 0 && (
-          <Row title="Nouveautés" videos={catalog.recents.slice(0, 12)} />
+          <Top10Row
+            title="Top 10 sur LARAPLAY aujourd'hui"
+            videos={catalog.recents}
+          />
         )}
 
         {eras.length > 0 && <EraRow title="Choisissez votre ère" eras={eras} />}

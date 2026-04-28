@@ -29,9 +29,11 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
   };
 
   return (
-    <section className="relative group/row mb-10">
-      <div className="flex items-baseline justify-between px-4 md:px-8 mb-3">
-        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+    <section className="relative group/row mb-12">
+      <div className="flex items-baseline justify-between px-4 md:px-12 mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+          {title}
+        </h2>
         {href && (
           <Link
             href={href}
@@ -53,7 +55,7 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
 
         <div
           ref={scrollRef}
-          className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-8 py-4"
+          className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
         >
           {videos.map((v) => (
             <VideoCard key={v.id} video={v} fallbackImage={categoryImage ?? null} />

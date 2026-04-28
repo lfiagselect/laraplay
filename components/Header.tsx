@@ -10,7 +10,7 @@ export async function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-gradient-to-b from-black/95 via-black/80 to-transparent backdrop-blur-sm">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-4 flex items-center gap-8">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-8">
         <Link href="/" className="shrink-0">
           <Logo size="md" />
         </Link>
