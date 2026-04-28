@@ -10,6 +10,7 @@ import { InfoModal } from "./InfoModal";
 interface ModalContextValue {
   open: (videoId: string) => void;
   close: () => void;
+  userEmail: string | null;
 }
 
 const ModalContext = createContext<ModalContextValue | null>(null);
@@ -27,7 +28,13 @@ interface State {
   error: string | null;
 }
 
-export function ModalProvider({ children }: { children: React.ReactNode }) {
+export function ModalProvider({
+  children,
+  userEmail = null,
+}: {
+  children: React.ReactNode;
+  userEmail?: string | null;
+}) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [state, setState] = useState<State>({
     loading: false,
@@ -42,7 +49,6 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
     setState({ loading: false, video: null, related: [], error: null });
   }, []);
 
-  // Fetch quand openId change
   useEffect(() => {
     if (!openId) return;
     let cancelled = false;
@@ -78,12 +84,13 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
   }, [openId]);
 
   return (
-    <ModalContext.Provider value={{ open, close }}>
+    <ModalContext.Provider value={{ open, close, userEmail }}>
       {children}
       {openId && state.video && (
         <InfoModal
           video={state.video}
           related={state.related}
+          userEmail={userEmail}
           onClose={close}
         />
       )}

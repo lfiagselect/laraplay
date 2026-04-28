@@ -7,6 +7,7 @@ import { Player } from "@/components/Player";
 import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 
 export const revalidate = 3600;
 
@@ -34,10 +35,13 @@ export default async function WatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const video = await getVideo(id);
+  const [video, catalog, session] = await Promise.all([
+    getVideo(id),
+    getCatalog(),
+    auth(),
+  ]);
   if (!video) notFound();
-
-  const catalog = await getCatalog();
+  const userEmail = session?.user?.email;
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const size = formatSize(video.size);
@@ -59,7 +63,12 @@ export default async function WatchPage({
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-6">
         <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
-          <Player src={`/api/stream/${video.id}`} className="w-full h-full" />
+          <Player
+            src={`/api/stream/${video.id}`}
+            videoId={video.id}
+            userEmail={userEmail}
+            className="w-full h-full"
+          />
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mb-12">

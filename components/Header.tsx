@@ -19,6 +19,7 @@ export async function Header() {
           <Link href="/" className="hover:text-white transition">Accueil</Link>
           <Link href="/categories" className="hover:text-white transition">Catégories</Link>
           <Link href="/eras" className="hover:text-white transition">Ères</Link>
+          <Link href="/my-list" className="hover:text-white transition">Ma liste</Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-4">

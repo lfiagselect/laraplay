@@ -5,15 +5,18 @@ import { Hero } from "@/components/Hero";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
 import { Top10Row } from "@/components/Top10Row";
+import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
 import { ERAS as ERAS_LIST } from "@/lib/catalog-meta";
+import { auth } from "@/auth";
 
-export const revalidate = 3600; // cache 1h
+export const revalidate = 3600;
 
 export default async function Home() {
-  const catalog = await getCatalog();
+  const [catalog, session] = await Promise.all([getCatalog(), auth()]);
+  const userEmail = session?.user?.email ?? null;
 
   const eras = ERAS.map((name) => ({
     name,
@@ -41,6 +44,8 @@ export default async function Home() {
       )}
 
       <main className="relative -mt-24 pb-24">
+        {userEmail && <ContinueWatchingRow userEmail={userEmail} />}
+
         {catalog.recents.length > 0 && (
           <Top10Row
             title="Top 10 sur LARAPLAY aujourd'hui"

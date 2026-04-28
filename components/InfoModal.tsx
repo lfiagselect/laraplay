@@ -5,13 +5,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Play, Plus, ThumbsUp, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { X, Play, Plus, Check, ThumbsUp, Volume2, VolumeX, Loader2 } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { VideoCard } from "./VideoCard";
+import { isFavorite, toggleFavorite } from "@/lib/favorites";
 
 interface InfoModalProps {
   video: VideoFile;
   related: VideoFile[];
+  userEmail?: string | null;
   onClose: () => void;
 }
 
@@ -33,16 +35,35 @@ function formatSize(size?: string): string | null {
   return `${(n / 1_000_000).toFixed(0)} Mo`;
 }
 
-export function InfoModal({ video, related, onClose }: InfoModalProps) {
+export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps) {
   const [muted, setMuted] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
+  const [fav, setFav] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  useEffect(() => {
+    if (!userEmail) return;
+    setFav(isFavorite(userEmail, video.id));
+  }, [userEmail, video.id]);
+
+  // Sync muted state vers element vidéo (sinon désync après render initial)
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = muted;
+  }, [muted]);
+
   const goWatch = () => {
     onClose();
     router.push(`/watch/${video.id}`);
+  };
+
+  const onToggleFav = () => {
+    if (!userEmail) return;
+    const next = toggleFavorite(userEmail, video.id);
+    setFav(next);
   };
 
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
@@ -137,11 +158,17 @@ export function InfoModal({ video, related, onClose }: InfoModalProps) {
                   Lecture
                 </button>
                 <button
-                  className="w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
-                  aria-label="Ajouter à ma liste"
-                  title="Ajouter à ma liste (bientôt)"
+                  onClick={onToggleFav}
+                  disabled={!userEmail}
+                  className="w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
+                  aria-label={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
+                  title={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
                 >
-                  <Plus className="w-5 h-5 text-white" />
+                  {fav ? (
+                    <Check className="w-5 h-5 text-white" />
+                  ) : (
+                    <Plus className="w-5 h-5 text-white" />
+                  )}
                 </button>
                 <button
                   className="w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
