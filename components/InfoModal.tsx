@@ -4,7 +4,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { X, Play, Plus, ThumbsUp, Volume2, VolumeX, Loader2 } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { VideoCard } from "./VideoCard";
@@ -38,6 +38,12 @@ export function InfoModal({ video, related, onClose }: InfoModalProps) {
   const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const goWatch = () => {
+    onClose();
+    router.push(`/watch/${video.id}`);
+  };
 
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
@@ -123,13 +129,13 @@ export function InfoModal({ video, related, onClose }: InfoModalProps) {
               </h2>
 
               <div className="flex flex-wrap gap-3 items-center">
-                <Link
-                  href={`/watch/${video.id}`}
+                <button
+                  onClick={goWatch}
                   className="flex items-center gap-2 bg-white text-black font-bold px-7 py-2.5 rounded hover:bg-zinc-200 transition"
                 >
                   <Play className="w-5 h-5" fill="currentColor" />
                   Lecture
-                </Link>
+                </button>
                 <button
                   className="w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
                   aria-label="Ajouter à ma liste"
