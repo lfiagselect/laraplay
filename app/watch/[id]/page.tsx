@@ -3,6 +3,7 @@
 
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
+import { Player } from "@/components/Player";
 import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
@@ -58,12 +59,7 @@ export default async function WatchPage({
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-6">
         <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
-          <video
-            controls
-            autoPlay
-            className="w-full h-full"
-            src={`/api/stream/${video.id}`}
-          />
+          <Player src={`/api/stream/${video.id}`} className="w-full h-full" />
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mb-12">

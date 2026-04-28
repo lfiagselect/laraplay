@@ -1,7 +1,7 @@
 // LARAPLAY — Stream proxy
 // GET /api/stream/[id] → pipe contenu vidéo Drive via fetch direct.
 // Support Range (seek). User jamais voit URL Drive.
-// Optim: auth + meta + driveStream lancés en parallèle.
+// Optim: 1ère request = full check. Sub-séquentes Range = skip getVideo (gain).
 
 import { NextRequest } from "next/server";
 import { fetchDriveStream, getVideo } from "@/lib/drive";
@@ -17,13 +17,33 @@ export async function GET(
   const { id } = await params;
   const range = req.headers.get("range") ?? undefined;
 
-  // Lance 3 opérations en parallèle au lieu séquentiel.
-  // - auth() : check session JWT
-  // - getVideo(id) : metadata Drive (vérifie type vidéo)
-  // - fetchDriveStream(id, range) : démarre déjà le stream
-  // Si auth ou meta KO, on annule en jetant la response.
+  // Détection Range avancée: si user demande à partir d'un byte > 0,
+  // c'est forcément une continuation de lecture (browser a déjà 1er chunk + meta).
+  // On peut skip getVideo (gain ~300-500ms par chunk).
+  const isContinuationRange = range
+    ? !!range.match(/bytes=([1-9]\d*)-/) // bytes=N- avec N>0
+    : false;
+
+  // Auth check obligatoire (sécurité)
+  const authPromise = auth();
+
+  if (isContinuationRange) {
+    // Path optimisé: pas de getVideo, juste auth + stream
+    const [session, driveRes] = await Promise.all([
+      authPromise,
+      fetchDriveStream(id, range),
+    ]);
+
+    if (!session?.user?.email) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    return forwardResponse(driveRes);
+  }
+
+  // Path complet: 1ère request, on vérifie meta
   const [session, meta, driveRes] = await Promise.all([
-    auth(),
+    authPromise,
     getVideo(id),
     fetchDriveStream(id, range),
   ]);
@@ -35,42 +55,39 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  try {
-    if (!driveRes.ok && driveRes.status !== 206) {
-      const text = await driveRes.text();
-      console.error("[stream] Drive error", driveRes.status, text);
-      return new Response(`Drive error ${driveRes.status}: ${text}`, {
-        status: driveRes.status,
-      });
-    }
+  return forwardResponse(driveRes, meta.mimeType);
+}
 
-    const responseHeaders = new Headers();
-    const forwardable = [
-      "content-type",
-      "content-length",
-      "content-range",
-      "accept-ranges",
-      "cache-control",
-      "etag",
-      "last-modified",
-    ];
-    for (const h of forwardable) {
-      const v = driveRes.headers.get(h);
-      if (v) responseHeaders.set(h, v);
-    }
-    if (!responseHeaders.has("accept-ranges")) {
-      responseHeaders.set("accept-ranges", "bytes");
-    }
-    if (!responseHeaders.has("content-type")) {
-      responseHeaders.set("content-type", meta.mimeType);
-    }
-
-    return new Response(driveRes.body, {
+function forwardResponse(driveRes: Response, fallbackMime?: string): Response {
+  if (!driveRes.ok && driveRes.status !== 206) {
+    return new Response(`Drive error ${driveRes.status}`, {
       status: driveRes.status,
-      headers: responseHeaders,
     });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return new Response(`Stream error: ${msg}`, { status: 500 });
   }
+
+  const responseHeaders = new Headers();
+  const forwardable = [
+    "content-type",
+    "content-length",
+    "content-range",
+    "accept-ranges",
+    "cache-control",
+    "etag",
+    "last-modified",
+  ];
+  for (const h of forwardable) {
+    const v = driveRes.headers.get(h);
+    if (v) responseHeaders.set(h, v);
+  }
+  if (!responseHeaders.has("accept-ranges")) {
+    responseHeaders.set("accept-ranges", "bytes");
+  }
+  if (!responseHeaders.has("content-type") && fallbackMime) {
+    responseHeaders.set("content-type", fallbackMime);
+  }
+
+  return new Response(driveRes.body, {
+    status: driveRes.status,
+    headers: responseHeaders,
+  });
 }
