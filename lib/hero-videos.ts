@@ -24,7 +24,7 @@ export const HERO_VIDEOS: HeroVideo[] = [
   {
     id: "leffetlara",
     src: "/hero-videos/leffetlara.mp4",
-    poster: "/hero-videos/leffetlara-poster.png",
+    poster: "/hero-videos/leffetlara-poster.jpg",
     tag: "L'EFFET LARA",
     title: "L'Effet Lara",
     subtitle: "L'événement 2026",

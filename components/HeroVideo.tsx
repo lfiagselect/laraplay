@@ -65,8 +65,18 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
   };
 
   return (
-    <section className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-black">
-      {!ended ? (
+    <section
+      className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-black bg-cover bg-center"
+      style={{ backgroundImage: `url(${hero.poster})` }}
+    >
+      {/* Image fallback toujours présente en couche dessous (visible avant + après vidéo) */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={hero.poster}
+        alt={hero.title}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      {!ended && (
         <video
           ref={videoRef}
           autoPlay
@@ -77,13 +87,6 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
           onEnded={() => setEnded(true)}
           className="absolute inset-0 w-full h-full object-cover"
           src={hero.src}
-        />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={hero.poster}
-          alt={hero.title}
-          className="absolute inset-0 w-full h-full object-cover"
         />
       )}
 
