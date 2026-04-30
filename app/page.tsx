@@ -1,15 +1,15 @@
 // LARAPLAY — Page accueil
 
 import { Header } from "@/components/Header";
-import { Hero } from "@/components/Hero";
+import { HeroVideoBlock } from "@/components/HeroVideo";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
 import { Top10Row } from "@/components/Top10Row";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
-import { landscapeImage, posterImage } from "@/lib/category-images";
-import { ERAS as ERAS_LIST } from "@/lib/catalog-meta";
+import { posterImage } from "@/lib/category-images";
+import { HERO_VIDEOS } from "@/lib/hero-videos";
 import { auth } from "@/auth";
 
 export const revalidate = 3600;
@@ -24,6 +24,17 @@ export default async function Home() {
     image: posterImage(name, "png"),
   })).filter((e) => e.count > 0);
 
+  // Sélection hero — première dispo. Q2:c (fixe) tant qu'1 seule vidéo.
+  // Si plusieurs hero ajoutées plus tard, possible faire rotation aléatoire ici.
+  const hero = HERO_VIDEOS[0];
+
+  // Bouton "Plus d'infos" → modal sur 1ère vidéo Drive de la catégorie liée
+  const heroCategory = "L'Effet Lara - 2026";
+  const heroVideoForInfo = catalog.byCategory.get(heroCategory)?.[0]?.id;
+  const heroFinal = heroVideoForInfo
+    ? { ...hero, ctaInfoVideoId: heroVideoForInfo }
+    : hero;
+
   return (
     <div className="min-h-screen bg-black">
       <SplashIntro />
@@ -31,17 +42,7 @@ export default async function Home() {
         <Header />
       </div>
 
-      {catalog.hero && (
-        <Hero
-          video={catalog.hero}
-          backgroundImage={(() => {
-            const cat = catalog.hero.category;
-            if (!cat) return null;
-            const isEra = ERAS_LIST.includes(cat);
-            return isEra ? posterImage(cat, "png") : landscapeImage(cat, "png");
-          })()}
-        />
-      )}
+      <HeroVideoBlock hero={heroFinal} />
 
       <main className="relative -mt-24 pb-24">
         {userEmail && <ContinueWatchingRow userEmail={userEmail} />}
