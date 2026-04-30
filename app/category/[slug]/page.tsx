@@ -37,11 +37,21 @@ export default async function CategoryPage({
               alt={categoryName}
               className="absolute inset-0 w-full h-full object-contain"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+            {/* Gradient sombre bas pour lisibilité titre */}
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+            {/* Titre overlay */}
+            <div className="absolute inset-x-0 bottom-0 px-4 md:px-12 pb-6 max-w-[1600px] mx-auto">
+              <h1 className="era-title text-white drop-shadow-2xl text-3xl md:text-5xl">
+                {categoryName}
+              </h1>
+              <p className="text-sm text-zinc-300 mt-2">
+                {videos.length} vidéo{videos.length > 1 ? "s" : ""}
+              </p>
+            </div>
           </div>
         ) : (
           <div className="h-[40vh] min-h-[280px] flex items-end px-4 md:px-12 pb-8 bg-gradient-to-br from-zinc-900 to-black">
-            <h1 className="text-3xl md:text-5xl font-extrabold text-white drop-shadow-lg">
+            <h1 className="era-title text-white drop-shadow-lg text-3xl md:text-5xl">
               {categoryName}
             </h1>
           </div>
