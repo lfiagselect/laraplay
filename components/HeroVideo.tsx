@@ -1,5 +1,7 @@
-// LARAPLAY — Hero billboard avec vidéo background autoplay muet loop.
-// Codes UX streaming premium: tag rouge, titre bold, CTA Lecture + Plus d'infos, mute toggle.
+// LARAPLAY — Hero billboard avec vidéo background.
+// Autoplay obligatoirement muet (politique navigateur).
+// Active son auto dès 1ère interaction user (clic/scroll/touch).
+// Toggle mute manuel disponible.
 
 "use client";
 
@@ -16,7 +18,7 @@ interface HeroVideoProps {
 export function HeroVideoBlock({ hero }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
-  const [ended, setEnded] = useState(false); // Q3:c → vidéo finit, fallback image
+  const [ended, setEnded] = useState(false);
   const router = useRouter();
   const { open } = useVideoModal();
 
@@ -25,17 +27,45 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
     const v = videoRef.current;
     if (!v) return;
     v.muted = muted;
+    // Tente lecture après changement (au cas où autoplay refusé avec son)
+    if (!muted) {
+      v.play().catch(() => {
+        // Browser refuse — on remet en muet
+        setMuted(true);
+      });
+    }
   }, [muted]);
+
+  // Active son auto à 1ère interaction user (autoplay policy contournée)
+  useEffect(() => {
+    let activated = false;
+    const activate = () => {
+      if (activated) return;
+      activated = true;
+      setMuted(false);
+      cleanup();
+    };
+    const cleanup = () => {
+      window.removeEventListener("click", activate);
+      window.removeEventListener("keydown", activate);
+      window.removeEventListener("scroll", activate);
+      window.removeEventListener("touchstart", activate);
+    };
+    window.addEventListener("click", activate, { once: false });
+    window.addEventListener("keydown", activate, { once: false });
+    window.addEventListener("scroll", activate, { once: false });
+    window.addEventListener("touchstart", activate, { once: false });
+    return cleanup;
+  }, []);
 
   const goLecture = () => router.push(hero.ctaLecture);
   const onInfo = () => {
     if (hero.ctaInfoVideoId) open(hero.ctaInfoVideoId);
-    else router.push(hero.ctaLecture); // fallback
+    else router.push(hero.ctaLecture);
   };
 
   return (
     <section className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-black">
-      {/* Vidéo ou poster fallback */}
       {!ended ? (
         <video
           ref={videoRef}
@@ -57,17 +87,18 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
         />
       )}
 
-      {/* Gradient bas — transition vers rangées */}
+      {/* Gradient bas */}
       <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
-
-      {/* Gradient gauche subtil — lisibilité texte */}
       <div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
 
-      {/* Bouton mute — coin droit milieu */}
+      {/* Bouton mute */}
       {!ended && (
         <button
-          onClick={() => setMuted((m) => !m)}
-          className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMuted((m) => !m);
+          }}
+          className="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-20"
           aria-label={muted ? "Activer son" : "Couper son"}
         >
           {muted ? (
