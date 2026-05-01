@@ -31,7 +31,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
     <button
       type="button"
       onClick={() => open(video.id)}
-      className="video-card group block w-[260px] md:w-[300px] shrink-0 rounded-md overflow-hidden bg-zinc-900 relative text-left"
+      className="video-card group block w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] shrink-0 rounded-md overflow-hidden bg-zinc-900 relative text-left"
     >
       <div className="aspect-video bg-zinc-800 relative overflow-hidden">
         {thumb ? (

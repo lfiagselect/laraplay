@@ -1,16 +1,20 @@
-// LARAPLAY — Header global. Logo + nav + recherche + profil.
+// LARAPLAY — Header global. Logo + nav desktop + menu burger mobile + recherche + profil.
 
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
 import { Search, LogOut } from "lucide-react";
+import { MobileMenu } from "./MobileMenu";
 
 export async function Header() {
   const session = await auth();
 
   return (
     <header className="sticky top-0 z-40 bg-gradient-to-b from-black/95 via-black/80 to-transparent backdrop-blur-sm">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-8">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
+        {/* Burger menu mobile */}
+        <MobileMenu userName={session?.user?.name ?? null} />
+
         <Link href="/" className="shrink-0">
           <Logo size="md" />
         </Link>
@@ -22,7 +26,7 @@ export async function Header() {
           <Link href="/my-list" className="hover:text-white transition">Ma liste</Link>
         </nav>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-2 md:gap-4">
           <Link
             href="/search"
             className="p-2 rounded hover:bg-zinc-800/60 transition"
@@ -32,7 +36,7 @@ export async function Header() {
           </Link>
 
           {session?.user && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <span className="hidden md:inline text-sm text-zinc-300">
                 {session.user.name}
               </span>

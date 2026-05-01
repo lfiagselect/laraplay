@@ -31,3 +31,36 @@ export const HERO_VIDEOS: HeroVideo[] = [
     ctaLecture: "/category/leffet-lara-2026",
   },
 ];
+
+/**
+ * Slides carrousel mobile (remplace vidéo hero sur smartphone — économie data).
+ * Image landscape 16:9. Clic → page catégorie associée.
+ */
+export interface HeroCarouselSlideConfig {
+  image: string;
+  alt: string;
+  href: string;
+}
+
+export const HERO_CAROUSEL_SLIDES: HeroCarouselSlideConfig[] = [
+  {
+    image: "/hero-fallback/leffet-lara.webp",
+    alt: "L'Effet Lara - 2026",
+    href: "/category/leffet-lara-2026",
+  },
+  {
+    image: "/hero-fallback/concerts.webp",
+    alt: "Lara Fabian - Concerts",
+    href: "/category/lara-fabian-concerts",
+  },
+  {
+    image: "/hero-fallback/documentaires.webp",
+    alt: "Lara Fabian Documentaires",
+    href: "/category/lara-fabian-documentaires",
+  },
+  {
+    image: "/hero-fallback/the-voice.webp",
+    alt: "The Voice 2026",
+    href: "/category/the-voice-2026",
+  },
+];

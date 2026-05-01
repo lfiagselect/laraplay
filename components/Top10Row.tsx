@@ -73,7 +73,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
               >
                 {/* Chiffre géant en arrière-plan */}
                 <span
-                  className="text-[200px] md:text-[260px] font-black leading-none select-none"
+                  className="text-[140px] sm:text-[180px] md:text-[260px] font-black leading-none select-none"
                   style={{
                     fontFamily: "var(--font-bebas), Impact, sans-serif",
                     color: "transparent",
@@ -88,7 +88,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
                 </span>
 
                 {/* Card vidéo */}
-                <div className="relative w-[180px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-300 group-hover/card:scale-105 group-hover/card:z-10">
+                <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-300 group-hover/card:scale-105 group-hover/card:z-10">
                   {thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

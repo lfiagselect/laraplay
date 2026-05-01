@@ -48,7 +48,7 @@ export function EraRow({ title, eras }: EraRowProps) {
             <Link
               key={era.name}
               href={`/category/${slugify(era.name)}`}
-              className="era-card relative shrink-0 w-[220px] md:w-[260px] aspect-[2/3] rounded-lg overflow-hidden border-2 border-zinc-800 bg-zinc-900"
+              className="era-card relative shrink-0 w-[150px] sm:w-[180px] md:w-[260px] aspect-[2/3] rounded-lg overflow-hidden border-2 border-zinc-800 bg-zinc-900"
               aria-label={era.name}
             >
               {era.image ? (

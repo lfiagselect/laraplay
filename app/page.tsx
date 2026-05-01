@@ -1,7 +1,7 @@
 // LARAPLAY — Page accueil
 
 import { Header } from "@/components/Header";
-import { HeroVideoBlock } from "@/components/HeroVideo";
+import { HeroResponsive } from "@/components/HeroResponsive";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
 import { Top10Row } from "@/components/Top10Row";
@@ -9,7 +9,7 @@ import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { posterImage } from "@/lib/category-images";
-import { HERO_VIDEOS } from "@/lib/hero-videos";
+import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
 import { auth } from "@/auth";
 
 export const revalidate = 3600;
@@ -42,7 +42,10 @@ export default async function Home() {
         <Header />
       </div>
 
-      <HeroVideoBlock hero={heroFinal} />
+      <HeroResponsive
+        hero={heroFinal}
+        carouselSlides={HERO_CAROUSEL_SLIDES}
+      />
 
       <main className="relative -mt-24 pb-24">
         {userEmail && <ContinueWatchingRow userEmail={userEmail} />}

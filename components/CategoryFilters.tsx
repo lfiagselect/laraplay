@@ -72,10 +72,10 @@ export function CategoryFilters({ videos }: CategoryFiltersProps) {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-3 mb-6">
         {/* Tri */}
         <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs uppercase tracking-wide text-zinc-500 mr-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-500 mr-1 w-12">
             Tri
           </span>
           {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => {
@@ -99,8 +99,8 @@ export function CategoryFilters({ videos }: CategoryFiltersProps) {
         </div>
 
         {/* Filtre durée */}
-        <div className="flex flex-wrap gap-2 items-center sm:ml-auto">
-          <span className="text-xs uppercase tracking-wide text-zinc-500 mr-1">
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs uppercase tracking-wide text-zinc-500 mr-1 w-12">
             Durée
           </span>
           {(Object.keys(DURATION_LABELS) as DurationFilter[]).map((k) => {
