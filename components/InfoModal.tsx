@@ -95,7 +95,10 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      <div className="min-h-screen flex items-start justify-center py-4 md:py-8 px-2 md:px-4">
+      <div
+        className="min-h-screen flex items-start justify-center py-4 md:py-8 px-2 md:px-4"
+        style={{ paddingTop: "max(env(safe-area-inset-top), 4rem)" }}
+      >
         <div className="relative w-full max-w-4xl bg-zinc-950 rounded-lg overflow-hidden shadow-2xl animate-modal-enter">
           {/* Header vidéo preview */}
           <div className="relative aspect-video bg-black overflow-hidden">
