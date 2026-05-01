@@ -38,7 +38,8 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-black">
       <SplashIntro />
-      <div className="absolute top-0 left-0 right-0 z-30">
+      {/* Header: absolute desktop (overlay sur hero vidéo), sticky mobile (au-dessus du carrousel) */}
+      <div className="md:absolute md:top-0 md:left-0 md:right-0 md:z-30 sticky top-0 z-40">
         <Header />
       </div>
 
