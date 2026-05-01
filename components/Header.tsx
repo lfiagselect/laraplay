@@ -10,7 +10,10 @@ export async function Header() {
   const session = await auth();
 
   return (
-    <header className="sticky top-0 z-40 bg-gradient-to-b from-black/95 via-black/80 to-transparent backdrop-blur-sm">
+    <header
+      className="sticky top-0 z-40 bg-gradient-to-b from-black/95 via-black/80 to-transparent backdrop-blur-sm"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
         {/* Burger menu mobile */}
         <MobileMenu userName={session?.user?.name ?? null} />
