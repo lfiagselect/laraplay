@@ -69,18 +69,17 @@ export function Top10Row({ title, videos }: Top10RowProps) {
                 key={video.id}
                 type="button"
                 onClick={() => open(video.id)}
-                className="relative shrink-0 group/card flex items-center text-left"
+                className="relative shrink-0 group/card flex items-center text-left -mr-4 md:-mr-10"
               >
                 {/* Chiffre géant en arrière-plan */}
                 <span
-                  className="text-[140px] sm:text-[180px] md:text-[260px] font-black leading-none select-none"
+                  className="top10-rank text-[120px] sm:text-[160px] md:text-[240px] font-black leading-none select-none"
                   style={{
                     fontFamily: "var(--font-bebas), Impact, sans-serif",
                     color: "transparent",
                     WebkitTextStroke: "2px #3f3f46",
                     textShadow:
                       "0 0 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.8)",
-                    marginRight: "-40px",
                     lineHeight: "0.8",
                   }}
                 >
