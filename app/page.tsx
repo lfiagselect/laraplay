@@ -38,17 +38,15 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-black">
       <SplashIntro />
-      {/* Header: absolute desktop (overlay sur hero vidéo), sticky mobile (au-dessus du carrousel) */}
-      <div className="md:absolute md:top-0 md:left-0 md:right-0 md:z-30 sticky top-0 z-40">
-        <Header />
-      </div>
+      {/* Header sticky pour les 2 viewports — hero démarre dessous */}
+      <Header />
 
       <HeroResponsive
         hero={heroFinal}
         carouselSlides={HERO_CAROUSEL_SLIDES}
       />
 
-      <main className="relative -mt-24 pb-24">
+      <main className="relative pt-8 pb-24">
         {userEmail && <ContinueWatchingRow userEmail={userEmail} />}
 
         {catalog.recents.length > 0 && (

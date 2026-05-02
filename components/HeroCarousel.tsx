@@ -1,11 +1,13 @@
-// LARAPLAY — Hero carrousel mobile.
-// Image landscape 16:9 visible entièrement. Pas de texte — vignettes en dessous portent l'info.
-// Clic image = navigate. Auto-advance + swipe touch. Indicateurs barres fines.
+// LARAPLAY — Hero carrousel.
+// Image landscape 16:9 visible entièrement. Ken-burns lent.
+// Mobile : swipe touch + indicateurs barres.
+// Desktop : flèches gauche/droite hover + indicateurs.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface HeroCarouselSlide {
   image: string;
@@ -44,6 +46,9 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
     }
   };
 
+  const next = () => goto((index + 1) % slides.length);
+  const prev = () => goto((index - 1 + slides.length) % slides.length);
+
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -51,8 +56,8 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     if (Math.abs(dx) > 50) {
-      if (dx < 0) goto((index + 1) % slides.length);
-      else goto((index - 1 + slides.length) % slides.length);
+      if (dx < 0) next();
+      else prev();
     }
     touchStartX.current = null;
   };
@@ -62,7 +67,7 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
 
   return (
     <section
-      className="relative w-full md:-mt-[72px] bg-[var(--bg-main)] overflow-hidden aspect-video md:aspect-auto md:h-[68vh] md:min-h-[400px] md:max-h-[640px]"
+      className="relative group w-full bg-[var(--bg-main)] overflow-hidden aspect-video md:aspect-auto md:h-[68vh] md:min-h-[420px] md:max-h-[640px]"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
@@ -93,16 +98,44 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
       {/* Gradient bas léger pour transition vers rows */}
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0b0b0b] via-black/30 to-transparent pointer-events-none z-20" />
 
+      {/* Flèches navigation desktop — visibles au hover du carousel */}
+      {slides.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              prev();
+            }}
+            aria-label="Précédent"
+            className="hidden md:flex absolute left-0 top-0 bottom-0 z-30 w-16 items-center justify-center bg-gradient-to-r from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <ChevronLeft className="w-10 h-10 text-white drop-shadow-lg" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              next();
+            }}
+            aria-label="Suivant"
+            className="hidden md:flex absolute right-0 top-0 bottom-0 z-30 w-16 items-center justify-center bg-gradient-to-l from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <ChevronRight className="w-10 h-10 text-white drop-shadow-lg" />
+          </button>
+        </>
+      )}
+
       {/* Indicateurs barres fines */}
-      <div className="absolute bottom-3 left-5 right-5 flex gap-1 z-30 pointer-events-auto">
+      <div className="absolute bottom-3 left-5 right-5 md:left-12 md:right-12 flex gap-1 z-30 pointer-events-auto">
         {slides.map((_, i) => (
           <button
             key={i}
             type="button"
             onClick={() => goto(i)}
             aria-label={`Aller à la diapositive ${i + 1}`}
-            className={`flex-1 h-0.5 rounded-full transition-all ${
-              i === index ? "bg-white" : "bg-white/30"
+            className={`flex-1 h-0.5 md:h-1 rounded-full transition-all ${
+              i === index ? "bg-white" : "bg-white/30 hover:bg-white/50"
             }`}
           />
         ))}

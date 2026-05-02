@@ -42,7 +42,7 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   }, []);
 
   return (
-    <section className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-[var(--bg-main)]">
+    <section className="relative w-full overflow-hidden aspect-video max-h-[78vh] min-h-[420px] bg-[var(--bg-main)]">
       {/* Vidéo background avec zoom lent — poster natif HTML5, pas d'img superposée */}
       <div className="absolute inset-0 animate-hero-zoom origin-center">
         <video
