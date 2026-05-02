@@ -46,13 +46,14 @@ export default async function RootLayout({
 }>) {
   const session = await auth();
   const userEmail = session?.user?.email ?? null;
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <html lang="fr" className={`${inter.variable} ${bebas.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[var(--bg-main)] text-white">
         <ModalProvider userEmail={userEmail}>
           <div className="flex-1 pb-16 md:pb-0">{children}</div>
-          <BottomTabBar />
+          <BottomTabBar isAdmin={isAdmin} />
         </ModalProvider>
       </body>
     </html>

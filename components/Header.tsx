@@ -1,21 +1,22 @@
 // LARAPLAY — Header global. Logo + nav desktop + menu burger mobile + recherche + profil.
-// Wrapper scroll state via HeaderShell (client).
+// Lien Admin desktop visible si role=admin.
 
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
-import { Search, LogOut } from "lucide-react";
+import { Search, LogOut, ShieldCheck } from "lucide-react";
 import { MobileMenu } from "./MobileMenu";
 import { HeaderShell } from "./HeaderShell";
 
 export async function Header() {
   const session = await auth();
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <HeaderShell>
       <header className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
         {/* Burger menu mobile */}
-        <MobileMenu userName={session?.user?.name ?? null} />
+        <MobileMenu userName={session?.user?.name ?? null} isAdmin={isAdmin} />
 
         <Link href="/" className="shrink-0">
           <Logo size="md" />
@@ -26,6 +27,16 @@ export async function Header() {
           <Link href="/categories" className="hover:text-white transition">Catégories</Link>
           <Link href="/eras" className="hover:text-white transition">Ères</Link>
           <Link href="/my-list" className="hover:text-white transition">Ma liste</Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-1.5 text-[var(--accent)] hover:text-white transition"
+              title="Administration"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Admin
+            </Link>
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:gap-4">

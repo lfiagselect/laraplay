@@ -5,11 +5,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X, Home, Folder, Disc3, Heart, Search } from "lucide-react";
+import { Menu, X, Home, Folder, Disc3, Heart, Search, ShieldCheck } from "lucide-react";
 import { Logo } from "./Logo";
 
 interface MobileMenuProps {
   userName?: string | null;
+  isAdmin?: boolean;
 }
 
 const NAV_ITEMS = [
@@ -20,7 +21,7 @@ const NAV_ITEMS = [
   { href: "/search", label: "Rechercher", Icon: Search },
 ];
 
-export function MobileMenu({ userName }: MobileMenuProps) {
+export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -86,6 +87,16 @@ export function MobileMenu({ userName }: MobileMenuProps) {
                   <span className="text-base">{label}</span>
                 </Link>
               ))}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--accent)] hover:bg-zinc-800 hover:text-white transition mt-2 border-t border-zinc-800/50 pt-4"
+                >
+                  <ShieldCheck className="w-5 h-5" />
+                  <span className="text-base font-semibold">Administration</span>
+                </Link>
+              )}
             </nav>
 
             <div className="p-4 border-t border-zinc-800 text-xs text-zinc-500">
