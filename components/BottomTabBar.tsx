@@ -1,11 +1,11 @@
 // LARAPLAY — Bottom tab bar mobile (V2 §9)
-// Navigation principale mobile. 4 onglets + 5e Admin si role=admin.
+// Navigation principale mobile. 5 onglets standards + 6e Admin si role=admin.
 
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, List, User, ShieldCheck } from "lucide-react";
+import { Home, Search, List, Folder, Disc3, ShieldCheck } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 interface TabItem {
@@ -19,7 +19,8 @@ const BASE_TABS: TabItem[] = [
   { href: "/", label: "Accueil", Icon: Home, match: (p) => p === "/" },
   { href: "/search", label: "Recherche", Icon: Search, match: (p) => p.startsWith("/search") },
   { href: "/my-list", label: "Ma liste", Icon: List, match: (p) => p.startsWith("/my-list") },
-  { href: "/categories", label: "Catégories", Icon: User, match: (p) => p.startsWith("/categories") || p.startsWith("/category") || p.startsWith("/eras") },
+  { href: "/categories", label: "Catégories", Icon: Folder, match: (p) => p.startsWith("/categories") || p.startsWith("/category") },
+  { href: "/eras", label: "Ères", Icon: Disc3, match: (p) => p.startsWith("/eras") },
 ];
 
 const ADMIN_TAB: TabItem = {
@@ -38,7 +39,7 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   if (pathname.startsWith("/watch/")) return null;
 
   const tabs = isAdmin ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
-  const cols = tabs.length === 5 ? "grid-cols-5" : "grid-cols-4";
+  const cols = tabs.length === 6 ? "grid-cols-6" : "grid-cols-5";
 
   return (
     <nav
@@ -55,7 +56,7 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
               <Link
                 href={href}
                 className={[
-                  "flex-1 flex flex-col items-center justify-center gap-0.5 transition",
+                  "flex-1 flex flex-col items-center justify-center gap-0.5 transition px-1",
                   active
                     ? isAdminTab
                       ? "text-[var(--accent)]"
@@ -70,7 +71,7 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                   fill={active && !isAdminTab ? "currentColor" : "none"}
                   strokeWidth={active ? 2.2 : 1.8}
                 />
-                <span className={`text-[10px] ${active ? "font-semibold" : ""}`}>
+                <span className={`text-[10px] leading-tight ${active ? "font-semibold" : ""}`}>
                   {label}
                 </span>
               </Link>
