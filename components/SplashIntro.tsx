@@ -1,5 +1,6 @@
-// LARAPLAY — Splash intro animée
-// Affichée 1× par session. Logo + son court + fade out.
+// LARAPLAY — Splash intro animée Netflix-style TUDUM
+// "Tu" : impact percussif court grave. "DUM" : note longue avec harmoniques + decay.
+// Affichée 1× par session.
 
 "use client";
 
@@ -21,61 +22,120 @@ export function SplashIntro() {
     setVisible(true);
     sessionStorage.setItem(STORAGE_KEY, "1");
 
-    // Son synthétisé Web Audio
     let ctx: AudioContext | null = null;
     try {
       const Ctx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext })
           .webkitAudioContext;
-      if (Ctx) {
-        ctx = new Ctx();
+      if (!Ctx) return;
 
-        // Resume context si suspended (Safari/iOS strict autoplay)
-        if (ctx.state === "suspended") {
-          ctx.resume().catch(() => {});
-        }
-
-        const now = ctx.currentTime;
-
-        // Sub bass — sweep grave qui monte (impact)
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = "sine";
-        osc1.frequency.setValueAtTime(50, now);
-        osc1.frequency.exponentialRampToValueAtTime(180, now + 1.0);
-        gain1.gain.setValueAtTime(0, now);
-        gain1.gain.linearRampToValueAtTime(0.45, now + 0.08);
-        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
-        osc1.connect(gain1).connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 2.0);
-
-        // Lead — accord qui sustain et fade
-        const lead = ctx.createOscillator();
-        const leadGain = ctx.createGain();
-        lead.type = "triangle";
-        lead.frequency.setValueAtTime(330, now + 0.9); // mi
-        lead.frequency.linearRampToValueAtTime(440, now + 1.4); // la
-        leadGain.gain.setValueAtTime(0, now + 0.9);
-        leadGain.gain.linearRampToValueAtTime(0.22, now + 1.0);
-        leadGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
-        lead.connect(leadGain).connect(ctx.destination);
-        lead.start(now + 0.9);
-        lead.stop(now + 3.6);
-
-        // Shimmer aigu finale
-        const high = ctx.createOscillator();
-        const highGain = ctx.createGain();
-        high.type = "sine";
-        high.frequency.setValueAtTime(880, now + 1.4);
-        highGain.gain.setValueAtTime(0, now + 1.4);
-        highGain.gain.linearRampToValueAtTime(0.12, now + 1.5);
-        highGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
-        high.connect(highGain).connect(ctx.destination);
-        high.start(now + 1.4);
-        high.stop(now + 3.1);
+      ctx = new Ctx();
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(() => {});
       }
+
+      const now = ctx.currentTime;
+      const dest = ctx.destination;
+
+      // Master compressor pour cohésion + impact
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.setValueAtTime(-18, now);
+      comp.knee.setValueAtTime(8, now);
+      comp.ratio.setValueAtTime(4, now);
+      comp.attack.setValueAtTime(0.005, now);
+      comp.release.setValueAtTime(0.2, now);
+      comp.connect(dest);
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.85, now);
+      masterGain.connect(comp);
+
+      // ============ "TU" — impact percussif court (t=0.0 à 0.25s) ============
+      const tuStart = now;
+
+      // Kick sub : sine 80Hz → 40Hz très court, percussif
+      const kick = ctx.createOscillator();
+      const kickGain = ctx.createGain();
+      kick.type = "sine";
+      kick.frequency.setValueAtTime(120, tuStart);
+      kick.frequency.exponentialRampToValueAtTime(35, tuStart + 0.18);
+      kickGain.gain.setValueAtTime(0, tuStart);
+      kickGain.gain.linearRampToValueAtTime(0.9, tuStart + 0.005);
+      kickGain.gain.exponentialRampToValueAtTime(0.001, tuStart + 0.25);
+      kick.connect(kickGain).connect(masterGain);
+      kick.start(tuStart);
+      kick.stop(tuStart + 0.3);
+
+      // Click attaque : burst de bruit haute fréquence très court
+      const noiseBuf = ctx.createBuffer(1, 2048, ctx.sampleRate);
+      const noiseData = noiseBuf.getChannelData(0);
+      for (let i = 0; i < noiseData.length; i++) {
+        noiseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / noiseData.length, 3);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf;
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = "highpass";
+      noiseFilter.frequency.setValueAtTime(2000, tuStart);
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.18, tuStart);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, tuStart + 0.08);
+      noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
+      noise.start(tuStart);
+
+      // ============ "DUM" — note longue + harmoniques (t=0.5 à 3.5s) ============
+      const dumStart = now + 0.5;
+      const dumEnd = dumStart + 3.0;
+
+      // Fondamentale grave : 55Hz (La1)
+      const fundFreq = 55;
+      const partials = [
+        { freq: fundFreq, gain: 0.55, type: "sine" as OscillatorType },        // fondamentale
+        { freq: fundFreq * 2, gain: 0.35, type: "sine" as OscillatorType },    // octave
+        { freq: fundFreq * 3, gain: 0.15, type: "sine" as OscillatorType },    // quinte aiguë
+        { freq: fundFreq * 4, gain: 0.10, type: "triangle" as OscillatorType },// brillance
+      ];
+
+      partials.forEach(({ freq, gain, type }) => {
+        const osc = ctx!.createOscillator();
+        const g = ctx!.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, dumStart);
+
+        g.gain.setValueAtTime(0, dumStart);
+        g.gain.linearRampToValueAtTime(gain, dumStart + 0.04); // attaque rapide
+        g.gain.exponentialRampToValueAtTime(gain * 0.5, dumStart + 0.8);
+        g.gain.exponentialRampToValueAtTime(0.001, dumEnd);
+
+        osc.connect(g).connect(masterGain);
+        osc.start(dumStart);
+        osc.stop(dumEnd + 0.1);
+      });
+
+      // Sub renfort grave : sine 27Hz feel (vibration)
+      const subFund = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      subFund.type = "sine";
+      subFund.frequency.setValueAtTime(27.5, dumStart);
+      subGain.gain.setValueAtTime(0, dumStart);
+      subGain.gain.linearRampToValueAtTime(0.4, dumStart + 0.06);
+      subGain.gain.exponentialRampToValueAtTime(0.001, dumEnd);
+      subFund.connect(subGain).connect(masterGain);
+      subFund.start(dumStart);
+      subFund.stop(dumEnd + 0.1);
+
+      // Reverb tail simulé : delay feedback léger pour effet "salle"
+      const delay = ctx.createDelay(1.5);
+      delay.delayTime.setValueAtTime(0.3, now);
+      const delayGain = ctx.createGain();
+      delayGain.gain.setValueAtTime(0.18, now);
+      const delayFilter = ctx.createBiquadFilter();
+      delayFilter.type = "lowpass";
+      delayFilter.frequency.setValueAtTime(1500, now);
+      masterGain.connect(delayFilter).connect(delay).connect(delayGain).connect(comp);
+      delayGain.connect(delay); // feedback
+
     } catch {
       // user a coupé son ou Web Audio bloqué
     }
@@ -96,9 +156,7 @@ export function SplashIntro() {
       aria-hidden
     >
       <div className="relative">
-        {/* Glow */}
         <div className="absolute inset-0 blur-3xl opacity-60 bg-red-600 animate-splash-glow rounded-full" />
-        {/* Logo */}
         <h1 className="logo-wordmark relative text-7xl md:text-9xl uppercase animate-splash-zoom">
           LARAPLAY
         </h1>
