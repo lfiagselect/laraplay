@@ -1,13 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000;
-  --foreground: #fff;
-  --brand: #e50914;
-  --brand-hover: #f6121d;
-  --surface: #141414;
-  --surface-2: #1f1f1f;
-  --muted: #8a8a8a;
+  /* Design tokens V2 - centralisés pour cohérence cross-components */
+  --bg-main: #0b0b0b;
+  --bg-netflix: #141414;
+  --bg-elevated: #181818;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --text-muted: #777777;
+  --accent: #e50914;
+  --accent-hover: #f6121d;
+  --hover-soft: rgba(255, 255, 255, 0.08);
+  --overlay-dark: rgba(0, 0, 0, 0.72);
+
+  /* Legacy aliases pour code existant */
+  --background: var(--bg-main);
+  --foreground: var(--text-primary);
+  --brand: var(--accent);
+  --brand-hover: var(--accent-hover);
+  --surface: var(--bg-netflix);
+  --surface-2: var(--bg-elevated);
+  --muted: var(--text-muted);
 }
 
 @theme inline {
@@ -18,8 +31,8 @@
 }
 
 html, body {
-  background: #000;
-  color: #fff;
+  background: var(--bg-main);
+  color: var(--text-primary);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -47,7 +60,7 @@ html, body {
     transparent 0%,
     transparent 40%,
     rgba(0, 0, 0, 0.6) 70%,
-    #000 100%
+    var(--bg-main) 100%
   );
 }
 
@@ -60,14 +73,9 @@ html, body {
   );
 }
 
-/* Card hover */
+/* Card hover - V2 spec: scale 1.12, delay 200ms easing naturel */
 .video-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.video-card:hover {
-  transform: scale(1.08);
-  z-index: 10;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  transition: transform 0.22s ease-out, box-shadow 0.22s ease-out;
 }
 
 /* Era card */
@@ -76,10 +84,10 @@ html, body {
 }
 .era-card:hover {
   transform: translateY(-4px);
-  border-color: var(--brand);
+  border-color: var(--accent);
 }
 
-/* Era title — police bold condensée style streaming premium */
+/* Era title */
 .era-title {
   font-family: var(--font-bebas), "Bebas Neue", "Oswald", "Arial Narrow", "Impact", sans-serif;
   font-weight: 400;
@@ -143,4 +151,20 @@ html, body {
 }
 .animate-modal-enter {
   animation: modal-enter 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Skeleton shimmer V2 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-elevated) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    var(--bg-elevated) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
 }

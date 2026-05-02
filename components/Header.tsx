@@ -1,20 +1,19 @@
 // LARAPLAY — Header global. Logo + nav desktop + menu burger mobile + recherche + profil.
+// Wrapper scroll state via HeaderShell (client).
 
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
 import { Search, LogOut } from "lucide-react";
 import { MobileMenu } from "./MobileMenu";
+import { HeaderShell } from "./HeaderShell";
 
 export async function Header() {
   const session = await auth();
 
   return (
-    <header
-      className="sticky top-0 z-40 bg-gradient-to-b from-black/95 via-black/80 to-transparent backdrop-blur-sm"
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
-    >
-      <div className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
+    <HeaderShell>
+      <header className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
         {/* Burger menu mobile */}
         <MobileMenu userName={session?.user?.name ?? null} />
 
@@ -32,7 +31,7 @@ export async function Header() {
         <div className="ml-auto flex items-center gap-2 md:gap-4">
           <Link
             href="/search"
-            className="p-2 rounded hover:bg-zinc-800/60 transition"
+            className="p-2 rounded hover:bg-white/10 transition"
             aria-label="Rechercher"
           >
             <Search className="w-5 h-5" />
@@ -51,7 +50,7 @@ export async function Header() {
               >
                 <button
                   type="submit"
-                  className="p-2 rounded hover:bg-zinc-800/60 transition"
+                  className="p-2 rounded hover:bg-white/10 transition"
                   aria-label="Déconnexion"
                 >
                   <LogOut className="w-5 h-5" />
@@ -60,7 +59,7 @@ export async function Header() {
             </div>
           )}
         </div>
-      </div>
-    </header>
+      </header>
+    </HeaderShell>
   );
 }
