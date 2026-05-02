@@ -46,7 +46,7 @@ export default async function Home() {
         carouselSlides={HERO_CAROUSEL_SLIDES}
       />
 
-      <main className="relative pt-8 pb-24">
+      <main className="relative pt-10 md:pt-8 pb-24">
         {userEmail && <ContinueWatchingRow userEmail={userEmail} />}
 
         {catalog.recents.length > 0 && (

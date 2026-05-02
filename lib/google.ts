@@ -4,8 +4,6 @@
 import { google } from "googleapis";
 import type { drive_v3, sheets_v4 } from "googleapis";
 
-let cachedAuth: ReturnType<typeof google.auth.GoogleAuth.prototype.getClient> extends Promise<infer T> ? T : never | null = null;
-
 /**
  * Auth Google. Deux modes:
  * - Local dev: GOOGLE_APPLICATION_CREDENTIALS = chemin fichier JSON
@@ -15,9 +13,11 @@ function getAuth() {
   const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
+  // Scope spreadsheets read+write requis pour panneau admin (ajout/suppression users).
+  // Le service account doit être partagé en éditeur sur le Sheet whitelist.
   const scopes = [
     "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "https://www.googleapis.com/auth/spreadsheets",
   ];
 
   if (inlineJson) {
