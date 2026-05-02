@@ -168,3 +168,41 @@ html, body {
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
+
+/* Hero zoom lent (V2 §4.2) */
+@keyframes hero-zoom {
+  0%   { transform: scale(1); }
+  100% { transform: scale(1.04); }
+}
+.animate-hero-zoom {
+  animation: hero-zoom 14s ease-out forwards;
+}
+
+/* Hero contenu fade-in (V2 §4.2) */
+@keyframes hero-fade-up {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-hero-fade-up {
+  animation: hero-fade-up 600ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms forwards;
+  opacity: 0;
+}
+
+/* Ken Burns mobile hero */
+@keyframes ken-burns {
+  0%   { transform: scale(1) translate(0, 0); }
+  50%  { transform: scale(1.06) translate(-1%, -1%); }
+  100% { transform: scale(1.04) translate(1%, 1%); }
+}
+.animate-ken-burns {
+  animation: ken-burns 18s ease-in-out infinite alternate;
+}
+
+/* Bottom sheet slide-up */
+@keyframes sheet-slide-up {
+  0%   { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+.animate-sheet-slide-up {
+  animation: sheet-slide-up 280ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}

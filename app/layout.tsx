@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import "./globals.css";
 import { ModalProvider } from "@/components/ModalProvider";
+import { BottomTabBar } from "@/components/BottomTabBar";
 import { auth } from "@/auth";
 
 const inter = Inter({
@@ -48,8 +49,11 @@ export default async function RootLayout({
 
   return (
     <html lang="fr" className={`${inter.variable} ${bebas.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-black text-white">
-        <ModalProvider userEmail={userEmail}>{children}</ModalProvider>
+      <body className="min-h-full flex flex-col bg-[var(--bg-main)] text-white">
+        <ModalProvider userEmail={userEmail}>
+          <div className="flex-1 pb-16 md:pb-0">{children}</div>
+          <BottomTabBar />
+        </ModalProvider>
       </body>
     </html>
   );

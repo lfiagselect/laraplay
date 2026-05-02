@@ -1,5 +1,5 @@
 // LARAPLAY — Modal "Plus d'infos" type Netflix
-// Affiche détails vidéo + boutons + similaires sans quitter la page.
+// Desktop: modal centré max-w-4xl. Mobile: bottom sheet avec drag handle (V2 §8.1).
 // Préview vidéo monté après 600ms — économise bandwidth si user ferme vite.
 
 "use client";
@@ -36,13 +36,18 @@ function formatSize(size?: string): string | null {
   return `${(n / 1_000_000).toFixed(0)} Mo`;
 }
 
+const DRAG_CLOSE_THRESHOLD = 120; // px swipe down to close
+
 export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps) {
   const [muted, setMuted] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
   const [shouldMountVideo, setShouldMountVideo] = useState(false);
   const [fav, setFav] = useState(false);
+  const [dragY, setDragY] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragStartY = useRef<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -92,19 +97,61 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     };
   }, [onClose]);
 
+  // Drag handle mobile - bottom sheet
+  const onTouchStart = (e: React.TouchEvent) => {
+    // Seulement actif sur mobile (drag handle visible)
+    if (window.innerWidth >= 768) return;
+    dragStartY.current = e.touches[0].clientY;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    if (dy > 0) setDragY(dy);
+  };
+  const onTouchEnd = () => {
+    if (dragStartY.current === null) return;
+    if (dragY > DRAG_CLOSE_THRESHOLD) {
+      onClose();
+    } else {
+      setDragY(0);
+    }
+    dragStartY.current = null;
+  };
+
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm overflow-y-auto md:overflow-y-auto"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
     >
       <div
-        className="min-h-screen flex items-start justify-center py-4 md:py-8 px-2 md:px-4"
-        style={{ paddingTop: "max(env(safe-area-inset-top), 4rem)" }}
+        ref={sheetRef}
+        className={[
+          "relative w-full max-w-4xl bg-zinc-950 overflow-hidden shadow-2xl",
+          // Desktop : centré avec margin auto
+          "md:mx-auto md:my-8 md:rounded-lg md:animate-modal-enter",
+          // Mobile : sheet en bas, prend bottom 90vh, slide-up animation
+          "fixed md:relative bottom-0 left-0 right-0 rounded-t-2xl md:rounded-t-lg max-h-[92vh] md:max-h-none animate-sheet-slide-up md:animate-modal-enter",
+        ].join(" ")}
+        style={{
+          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+          transition: dragY === 0 ? "transform 200ms ease-out" : "none",
+          paddingTop: "env(safe-area-inset-top, 0)",
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative w-full max-w-4xl bg-zinc-950 rounded-lg overflow-hidden shadow-2xl animate-modal-enter">
+        {/* Drag handle mobile only */}
+        <div className="md:hidden flex justify-center py-2 cursor-grab touch-none">
+          <span className="block w-10 h-1 rounded-full bg-white/30" />
+        </div>
+
+        {/* Scroll container — assure le scroll interne mobile */}
+        <div className="overflow-y-auto max-h-[88vh] md:max-h-none">
           <div className="relative aspect-video bg-black overflow-hidden">
             {video.thumbnailLink && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -131,7 +178,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
 
             {!videoReady && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
+                <Loader2 className="w-12 h-12 text-[var(--accent)] animate-spin" />
               </div>
             )}
 
@@ -165,7 +212,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <div className="flex flex-wrap gap-3 items-center">
                 <button
                   onClick={goWatch}
-                  className="flex items-center gap-2 bg-white text-black font-bold px-7 py-2.5 rounded hover:bg-zinc-200 transition"
+                  className="flex items-center gap-2 bg-white text-black font-bold px-7 py-2.5 rounded hover:bg-zinc-200 transition active:scale-[0.98]"
                 >
                   <Play className="w-5 h-5" fill="currentColor" />
                   Lecture
@@ -173,7 +220,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 <button
                   onClick={onToggleFav}
                   disabled={!userEmail}
-                  className="w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
+                  className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
                   aria-label={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
                   title={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
                 >
@@ -184,7 +231,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   )}
                 </button>
                 <button
-                  className="w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
+                  className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
                   aria-label="J'aime"
                   title="J'aime (bientôt)"
                 >
