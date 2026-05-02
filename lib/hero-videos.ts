@@ -28,7 +28,7 @@ export const HERO_VIDEOS: HeroVideo[] = [
     tag: "L'EFFET LARA",
     title: "L'Effet Lara",
     subtitle: "L'événement 2026",
-    ctaLecture: "/category/leffet-lara-2026",
+    ctaLecture: "/category/l-effet-lara-2026",
   },
 ];
 
@@ -46,7 +46,7 @@ export const HERO_CAROUSEL_SLIDES: HeroCarouselSlideConfig[] = [
   {
     image: "/hero-fallback/leffet-lara.webp",
     alt: "L'Effet Lara - 2026",
-    href: "/category/leffet-lara-2026",
+    href: "/category/l-effet-lara-2026",
   },
   {
     image: "/hero-fallback/concerts.webp",
