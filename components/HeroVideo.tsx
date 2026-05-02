@@ -1,5 +1,6 @@
 // LARAPLAY — Hero billboard avec vidéo background.
-// Image/vidéo + gradient. Pas de texte/CTA — vignettes en dessous portent l'info.
+// Pas de poster image superposé — la vidéo gère son propre poster natif.
+// Callback onEnded → HeroResponsive bascule vers carousel après lecture.
 
 "use client";
 
@@ -9,12 +10,12 @@ import type { HeroVideo } from "@/lib/hero-videos";
 
 interface HeroVideoProps {
   hero: HeroVideo;
+  onEnded?: () => void;
 }
 
-export function HeroVideoBlock({ hero }: HeroVideoProps) {
+export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
-  const [ended, setEnded] = useState(false);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -42,49 +43,39 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
 
   return (
     <section className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-[var(--bg-main)]">
-      {/* Background avec zoom lent */}
+      {/* Vidéo background avec zoom lent — poster natif HTML5, pas d'img superposée */}
       <div className="absolute inset-0 animate-hero-zoom origin-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={hero.poster}
-          alt={hero.title}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          poster={hero.poster}
+          onEnded={() => onEnded?.()}
           className="absolute inset-0 w-full h-full object-cover"
+          src={hero.src}
         />
-        {!ended && (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            preload="metadata"
-            poster={hero.poster}
-            onEnded={() => setEnded(true)}
-            className="absolute inset-0 w-full h-full object-cover"
-            src={hero.src}
-          />
-        )}
       </div>
 
       {/* Gradient bas pour fondu vers rows */}
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0b0b0b] via-black/40 to-transparent pointer-events-none" />
 
       {/* Bouton mute */}
-      {!ended && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setMuted((m) => !m);
-          }}
-          className="absolute right-6 md:right-12 bottom-12 md:top-1/2 md:bottom-auto md:-translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-20"
-          aria-label={muted ? "Activer son" : "Couper son"}
-        >
-          {muted ? (
-            <VolumeX className="w-5 h-5 text-white" />
-          ) : (
-            <Volume2 className="w-5 h-5 text-white" />
-          )}
-        </button>
-      )}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setMuted((m) => !m);
+        }}
+        className="absolute right-6 md:right-12 bottom-12 md:top-1/2 md:bottom-auto md:-translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-20"
+        aria-label={muted ? "Activer son" : "Couper son"}
+      >
+        {muted ? (
+          <VolumeX className="w-5 h-5 text-white" />
+        ) : (
+          <Volume2 className="w-5 h-5 text-white" />
+        )}
+      </button>
     </section>
   );
 }

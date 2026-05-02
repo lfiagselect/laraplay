@@ -1,6 +1,6 @@
 // LARAPLAY — Hero responsive
-// Desktop: vidéo background HeroVideoBlock. Mobile: carrousel images.
-// Détection client-side via media query (évite SSR mismatch).
+// Mobile : carousel direct.
+// Desktop : vidéo immersive, fade-cross vers carousel quand vidéo terminée.
 
 "use client";
 
@@ -16,6 +16,7 @@ interface HeroResponsiveProps {
 
 export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [videoEnded, setVideoEnded] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -27,15 +28,34 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // Pendant SSR / 1er render → carrousel par défaut (plus léger).
-  // Évite charger 56 MB vidéo si user mobile.
+  // SSR / 1er render : carousel par défaut (léger, pas de gros download mobile)
   if (isMobile === null) {
     return <HeroCarousel slides={carouselSlides} />;
   }
 
-  return isMobile ? (
-    <HeroCarousel slides={carouselSlides} />
-  ) : (
-    <HeroVideoBlock hero={hero} />
+  // Mobile : carousel direct
+  if (isMobile) {
+    return <HeroCarousel slides={carouselSlides} />;
+  }
+
+  // Desktop : vidéo + carousel empilés, fade-cross via opacity à la fin de la vidéo
+  return (
+    <div className="relative">
+      {/* Vidéo : reste montée tant que pas finie pour permettre le fade */}
+      <div
+        className={`transition-opacity duration-700 ${
+          videoEnded ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"
+        }`}
+      >
+        <HeroVideoBlock hero={hero} onEnded={() => setVideoEnded(true)} />
+      </div>
+
+      {/* Carousel : caché jusqu'à fin vidéo, puis fade-in */}
+      {videoEnded && (
+        <div className="animate-hero-fade-up">
+          <HeroCarousel slides={carouselSlides} />
+        </div>
+      )}
+    </div>
   );
 }

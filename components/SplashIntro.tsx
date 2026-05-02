@@ -1,26 +1,18 @@
 // LARAPLAY — Splash intro animée Netflix-style TUDUM
 // "Tu" : impact percussif court grave. "DUM" : note longue avec harmoniques + decay.
-// Affichée 1× par session.
+// Affichée à chaque visite (pas de flag session).
 
 "use client";
 
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "laraplay-splash-shown";
 const DURATION_MS = 4000;
 
 export function SplashIntro() {
-  const [visible, setVisible] = useState<boolean | null>(null);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const shown = sessionStorage.getItem(STORAGE_KEY);
-    if (shown) {
-      setVisible(false);
-      return;
-    }
-    setVisible(true);
-    sessionStorage.setItem(STORAGE_KEY, "1");
 
     let ctx: AudioContext | null = null;
     try {
@@ -38,7 +30,6 @@ export function SplashIntro() {
       const now = ctx.currentTime;
       const dest = ctx.destination;
 
-      // Master compressor pour cohésion + impact
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.setValueAtTime(-18, now);
       comp.knee.setValueAtTime(8, now);
@@ -51,10 +42,9 @@ export function SplashIntro() {
       masterGain.gain.setValueAtTime(0.85, now);
       masterGain.connect(comp);
 
-      // ============ "TU" — impact percussif court (t=0.0 à 0.25s) ============
+      // ============ "TU" — impact percussif court ============
       const tuStart = now;
 
-      // Kick sub : sine 80Hz → 40Hz très court, percussif
       const kick = ctx.createOscillator();
       const kickGain = ctx.createGain();
       kick.type = "sine";
@@ -67,7 +57,6 @@ export function SplashIntro() {
       kick.start(tuStart);
       kick.stop(tuStart + 0.3);
 
-      // Click attaque : burst de bruit haute fréquence très court
       const noiseBuf = ctx.createBuffer(1, 2048, ctx.sampleRate);
       const noiseData = noiseBuf.getChannelData(0);
       for (let i = 0; i < noiseData.length; i++) {
@@ -84,17 +73,16 @@ export function SplashIntro() {
       noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
       noise.start(tuStart);
 
-      // ============ "DUM" — note longue + harmoniques (t=0.5 à 3.5s) ============
+      // ============ "DUM" — note longue + harmoniques ============
       const dumStart = now + 0.5;
       const dumEnd = dumStart + 3.0;
 
-      // Fondamentale grave : 55Hz (La1)
       const fundFreq = 55;
       const partials = [
-        { freq: fundFreq, gain: 0.55, type: "sine" as OscillatorType },        // fondamentale
-        { freq: fundFreq * 2, gain: 0.35, type: "sine" as OscillatorType },    // octave
-        { freq: fundFreq * 3, gain: 0.15, type: "sine" as OscillatorType },    // quinte aiguë
-        { freq: fundFreq * 4, gain: 0.10, type: "triangle" as OscillatorType },// brillance
+        { freq: fundFreq, gain: 0.55, type: "sine" as OscillatorType },
+        { freq: fundFreq * 2, gain: 0.35, type: "sine" as OscillatorType },
+        { freq: fundFreq * 3, gain: 0.15, type: "sine" as OscillatorType },
+        { freq: fundFreq * 4, gain: 0.10, type: "triangle" as OscillatorType },
       ];
 
       partials.forEach(({ freq, gain, type }) => {
@@ -102,18 +90,15 @@ export function SplashIntro() {
         const g = ctx!.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, dumStart);
-
         g.gain.setValueAtTime(0, dumStart);
-        g.gain.linearRampToValueAtTime(gain, dumStart + 0.04); // attaque rapide
+        g.gain.linearRampToValueAtTime(gain, dumStart + 0.04);
         g.gain.exponentialRampToValueAtTime(gain * 0.5, dumStart + 0.8);
         g.gain.exponentialRampToValueAtTime(0.001, dumEnd);
-
         osc.connect(g).connect(masterGain);
         osc.start(dumStart);
         osc.stop(dumEnd + 0.1);
       });
 
-      // Sub renfort grave : sine 27Hz feel (vibration)
       const subFund = ctx.createOscillator();
       const subGain = ctx.createGain();
       subFund.type = "sine";
@@ -125,7 +110,6 @@ export function SplashIntro() {
       subFund.start(dumStart);
       subFund.stop(dumEnd + 0.1);
 
-      // Reverb tail simulé : delay feedback léger pour effet "salle"
       const delay = ctx.createDelay(1.5);
       delay.delayTime.setValueAtTime(0.3, now);
       const delayGain = ctx.createGain();
@@ -134,8 +118,7 @@ export function SplashIntro() {
       delayFilter.type = "lowpass";
       delayFilter.frequency.setValueAtTime(1500, now);
       masterGain.connect(delayFilter).connect(delay).connect(delayGain).connect(comp);
-      delayGain.connect(delay); // feedback
-
+      delayGain.connect(delay);
     } catch {
       // user a coupé son ou Web Audio bloqué
     }
@@ -147,7 +130,7 @@ export function SplashIntro() {
     };
   }, []);
 
-  if (visible === null || visible === false) return null;
+  if (!visible) return null;
 
   return (
     <div
