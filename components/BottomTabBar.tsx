@@ -1,6 +1,6 @@
 // LARAPLAY — Bottom tab bar mobile (V2 §9)
 // Navigation principale mobile. Burger relégué aux paramètres.
-// 4 onglets : Accueil, Recherche, Ma liste, Profil.
+// 4 onglets : Accueil, Recherche, Ma liste, Catégories.
 
 "use client";
 
@@ -23,10 +23,13 @@ const TABS: TabItem[] = [
   { href: "/categories", label: "Catégories", Icon: User, match: (p) => p.startsWith("/categories") || p.startsWith("/category") || p.startsWith("/eras") },
 ];
 
+const HIDDEN_PATHS = new Set(["/login", "/unauthorized"]);
+
 export function BottomTabBar() {
   const pathname = usePathname() ?? "/";
 
-  // Cache barre sur pages watch (lecture immersive)
+  // Cache barre sur pages auth + watch (lecture immersive)
+  if (HIDDEN_PATHS.has(pathname)) return null;
   if (pathname.startsWith("/watch/")) return null;
 
   return (
@@ -48,7 +51,7 @@ export function BottomTabBar() {
                 ].join(" ")}
               >
                 <Icon
-                  className={`w-5 h-5 ${active ? "" : ""}`}
+                  className="w-5 h-5"
                   fill={active ? "currentColor" : "none"}
                   strokeWidth={active ? 2.2 : 1.8}
                 />

@@ -1,12 +1,11 @@
-// LARAPLAY — Hero carrousel mobile cinématographique (V2 §4.3)
-// Image landscape 16:9 visible entièrement (pas de crop). Ken-burns lent + gradient + CTA.
-// Auto-advance + swipe touch.
+// LARAPLAY — Hero carrousel mobile.
+// Image landscape 16:9 visible entièrement. Pas de texte — vignettes en dessous portent l'info.
+// Clic image = navigate. Auto-advance + swipe touch. Indicateurs barres fines.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play } from "lucide-react";
 
 export interface HeroCarouselSlide {
   image: string;
@@ -67,12 +66,16 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Stack d'images cross-fade — image entière visible (object-cover sur ratio identique = pas de crop) */}
+      {/* Stack d'images cross-fade */}
       {slides.map((slide, i) => (
-        <div
+        <button
           key={slide.href}
+          type="button"
+          onClick={() => router.push(slide.href)}
+          aria-label={slide.alt}
+          tabIndex={i === index ? 0 : -1}
           className={`absolute inset-0 transition-opacity duration-1000 ${
-            i === index ? "opacity-100 z-10" : "opacity-0 z-0"
+            i === index ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
           }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -84,29 +87,11 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
             }`}
             loading={i === 0 ? "eager" : "lazy"}
           />
-        </div>
+        </button>
       ))}
 
-      {/* Gradient bas seulement (pas latéral) — préserve image visible entière */}
-      <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#0b0b0b] via-[#0b0b0b]/55 to-transparent pointer-events-none z-20" />
-
-      {/* Contenu : titre + CTA — superposé sur le gradient bas */}
-      <button
-        type="button"
-        onClick={() => router.push(current.href)}
-        className="absolute inset-x-0 bottom-0 z-30 px-5 pb-9 text-left animate-hero-fade-up active:scale-[0.99] transition"
-      >
-        <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--accent)] font-bold mb-1.5">
-          À découvrir
-        </p>
-        <h2 className="text-xl sm:text-2xl font-extrabold text-white mb-3 leading-tight drop-shadow-2xl line-clamp-2">
-          {current.alt}
-        </h2>
-        <span className="inline-flex items-center gap-2 bg-white text-black font-bold px-5 py-2 rounded shadow-lg text-sm">
-          <Play className="w-4 h-4" fill="currentColor" />
-          Lecture
-        </span>
-      </button>
+      {/* Gradient bas léger pour transition vers rows */}
+      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0b0b0b] via-black/30 to-transparent pointer-events-none z-20" />
 
       {/* Indicateurs barres fines */}
       <div className="absolute bottom-3 left-5 right-5 flex gap-1 z-30 pointer-events-auto">
@@ -122,6 +107,9 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
           />
         ))}
       </div>
+
+      {/* Pour SR */}
+      <span className="sr-only">{current.alt}</span>
     </section>
   );
 }
