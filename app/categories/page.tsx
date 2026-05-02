@@ -1,4 +1,5 @@
-// LARAPLAY — Page index catégories thématiques. Titre incrusté dans landscape.
+// LARAPLAY — Page index catégories thématiques.
+// Titre incrusté sur vignette, police Bebas Neue style streaming premium.
 
 import { Header } from "@/components/Header";
 import Link from "next/link";
@@ -21,7 +22,7 @@ export default async function CategoriesPage() {
     .sort((a, b) => b.count - a.count);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-[var(--bg-main)]">
       <Header />
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
@@ -34,25 +35,36 @@ export default async function CategoriesPage() {
             <Link
               key={c.name}
               href={`/category/${slugify(c.name)}`}
-              className="era-card relative aspect-video rounded-lg overflow-hidden border-2 border-zinc-800 bg-zinc-900"
+              className="era-card group relative aspect-video rounded-lg overflow-hidden bg-[var(--bg-elevated)] shadow-lg"
               aria-label={c.name}
             >
               {c.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={c.image}
-                  alt={c.name}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  loading="lazy"
-                />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={c.image}
+                    alt={c.name}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    loading="lazy"
+                  />
+                  {/* Gradient bas pour lisibilité titre */}
+                  <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 via-black/55 to-transparent pointer-events-none" />
+                  {/* Gradient haut subtle pour le badge count */}
+                  <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+                </>
               ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black flex items-center justify-center text-white font-bold p-4 text-center">
-                  {c.name}
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black" />
               )}
-              <span className="absolute top-2 right-2 z-10 text-[10px] text-white bg-black/70 backdrop-blur px-2 py-0.5 rounded">
-                {c.count} vidéo{c.count > 1 ? "s" : ""}
-              </span>
+
+              {/* Titre incrusté style premium */}
+              <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 z-10">
+                <h2 className="era-title text-white drop-shadow-2xl">
+                  {c.name}
+                </h2>
+                <p className="text-xs md:text-sm text-zinc-300 mt-1 font-medium">
+                  {c.count} vidéo{c.count > 1 ? "s" : ""}
+                </p>
+              </div>
             </Link>
           ))}
         </div>
