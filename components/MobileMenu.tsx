@@ -1,9 +1,10 @@
 // LARAPLAY — Menu burger mobile (visible < md breakpoint).
 // Slide-in depuis gauche, fermeture overlay/escape.
+// Lock scroll body sans perdre la position (fix iOS Safari).
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X, Home, Folder, Disc3, Heart, Search, ShieldCheck } from "lucide-react";
 import { Logo } from "./Logo";
@@ -23,17 +24,36 @@ const NAV_ITEMS = [
 
 export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
+  const savedScrollY = useRef(0);
 
   useEffect(() => {
     if (!open) return;
+
+    // Lock scroll body en préservant la position (fix iOS Safari qui remonte sinon)
+    savedScrollY.current = window.scrollY;
+    const body = document.body;
+    body.style.position = "fixed";
+    body.style.top = `-${savedScrollY.current}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      // Restore scroll
+      body.style.position = "";
+      body.style.top = "";
+      body.style.left = "";
+      body.style.right = "";
+      body.style.width = "";
+      body.style.overflow = "";
+      window.scrollTo(0, savedScrollY.current);
     };
   }, [open]);
 
@@ -56,6 +76,10 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
           <aside
             className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-zinc-950 border-r border-zinc-800 shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            style={{
+              paddingTop: "env(safe-area-inset-top)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
           >
             <div className="flex items-center justify-between p-4 border-b border-zinc-800">
               <Logo size="md" />
