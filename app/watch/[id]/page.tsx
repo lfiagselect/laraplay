@@ -1,5 +1,6 @@
 // LARAPLAY — Page lecture vidéo
 // Player + métadonnées + vidéos similaires (même catégorie).
+// Lookup catalog.byId (cache 1h) — drop getVideo cold call.
 
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
@@ -8,6 +9,7 @@ import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import type { VideoFile } from "@/lib/drive";
 
 export const revalidate = 3600;
 
@@ -35,12 +37,14 @@ export default async function WatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [video, catalog, session] = await Promise.all([
-    getVideo(id),
-    getCatalog(),
-    auth(),
-  ]);
+  const [catalog, session] = await Promise.all([getCatalog(), auth()]);
+
+  let video: VideoFile | null = catalog.byId.get(id) ?? null;
+  if (!video) {
+    video = await getVideo(id);
+  }
   if (!video) notFound();
+
   const userEmail = session?.user?.email;
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
@@ -50,7 +54,6 @@ export default async function WatchPage({
       ? `${video.videoMediaMetadata.width}×${video.videoMediaMetadata.height}`
       : null;
 
-  // Vidéos similaires : même catégorie, hors vidéo actuelle
   const related = video.category
     ? (catalog.byCategory.get(video.category) ?? [])
         .filter((v) => v.id !== video.id)
@@ -65,6 +68,7 @@ export default async function WatchPage({
         <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
           <Player
             src={`/api/stream/${video.id}`}
+            poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
             videoId={video.id}
             userEmail={userEmail}
             className="w-full h-full"

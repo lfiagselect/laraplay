@@ -1,10 +1,12 @@
 // LARAPLAY — Carte vidéo. Clic = ouvre modal info.
+// Préload stream au hover desktop (200ms debounce) + viewport mobile.
 
 "use client";
 
 import type { VideoFile } from "@/lib/drive";
 import { Play } from "lucide-react";
 import { useVideoModal } from "./ModalProvider";
+import { useHoverPreload, useViewportPreload } from "@/lib/preload";
 
 function formatDuration(ms?: string): string | null {
   if (!ms) return null;
@@ -26,11 +28,16 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const thumb = !fallbackImage && video.thumbnailLink ? `/api/thumb/${video.id}` : null;
   const { open } = useVideoModal();
+  const hover = useHoverPreload(video.id);
+  const viewportRef = useViewportPreload(video.id);
 
   return (
     <button
+      ref={viewportRef as React.RefObject<HTMLButtonElement>}
       type="button"
       onClick={() => open(video.id)}
+      onMouseEnter={hover.onMouseEnter}
+      onMouseLeave={hover.onMouseLeave}
       className="video-card group block w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] shrink-0 rounded-md overflow-hidden bg-zinc-900 relative text-left"
     >
       <div className="aspect-video bg-zinc-800 relative overflow-hidden">

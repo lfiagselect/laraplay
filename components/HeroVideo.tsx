@@ -36,26 +36,21 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
     }
   }, [muted]);
 
-  // Active son auto à 1ère interaction user (autoplay policy contournée)
+  // Active son auto à 1ère interaction user (autoplay policy contournée).
+  // {once:true} → fire 1 fois max, browser cleanup auto. Pas de listeners qui spam.
   useEffect(() => {
-    let activated = false;
-    const activate = () => {
-      if (activated) return;
-      activated = true;
-      setMuted(false);
-      cleanup();
-    };
-    const cleanup = () => {
+    const activate = () => setMuted(false);
+    const opts = { once: true } as const;
+    window.addEventListener("click", activate, opts);
+    window.addEventListener("keydown", activate, opts);
+    window.addEventListener("scroll", activate, opts);
+    window.addEventListener("touchstart", activate, opts);
+    return () => {
       window.removeEventListener("click", activate);
       window.removeEventListener("keydown", activate);
       window.removeEventListener("scroll", activate);
       window.removeEventListener("touchstart", activate);
     };
-    window.addEventListener("click", activate, { once: false });
-    window.addEventListener("keydown", activate, { once: false });
-    window.addEventListener("scroll", activate, { once: false });
-    window.addEventListener("touchstart", activate, { once: false });
-    return cleanup;
   }, []);
 
   const goLecture = () => router.push(hero.ctaLecture);
@@ -65,11 +60,8 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
   };
 
   return (
-    <section
-      className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-black bg-cover bg-center"
-      style={{ backgroundImage: `url(${hero.poster})` }}
-    >
-      {/* Image fallback toujours présente en couche dessous (visible avant + après vidéo) */}
+    <section className="relative w-full overflow-hidden -mt-[72px] aspect-video max-h-[85vh] min-h-[480px] bg-black">
+      {/* Poster image unique (élément réel = better LCP qu'un background-image) */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={hero.poster}
@@ -82,7 +74,7 @@ export function HeroVideoBlock({ hero }: HeroVideoProps) {
           autoPlay
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           poster={hero.poster}
           onEnded={() => setEnded(true)}
           className="absolute inset-0 w-full h-full object-cover"

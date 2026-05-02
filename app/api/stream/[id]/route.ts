@@ -1,10 +1,13 @@
 // LARAPLAY — Stream proxy
 // GET /api/stream/[id] → pipe contenu vidéo Drive via fetch direct.
 // Support Range (seek). User jamais voit URL Drive.
-// Optim: 1ère request = full check. Sub-séquentes Range = skip getVideo (gain).
+// Optim: meta lookup via catalog cache (byId Map) → 0ms vs 300-500ms getVideo.
+// Fallback Drive direct si miss catalog.
+// Logs timing: TTFB Drive + total request → Vercel logs.
 
 import { NextRequest } from "next/server";
 import { fetchDriveStream, getVideo } from "@/lib/drive";
+import { getCatalog } from "@/lib/catalog";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -14,21 +17,18 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const t0 = performance.now();
   const { id } = await params;
   const range = req.headers.get("range") ?? undefined;
 
-  // Détection Range avancée: si user demande à partir d'un byte > 0,
-  // c'est forcément une continuation de lecture (browser a déjà 1er chunk + meta).
-  // On peut skip getVideo (gain ~300-500ms par chunk).
   const isContinuationRange = range
-    ? !!range.match(/bytes=([1-9]\d*)-/) // bytes=N- avec N>0
+    ? !!range.match(/bytes=([1-9]\d*)-/)
     : false;
 
-  // Auth check obligatoire (sécurité)
   const authPromise = auth();
+  const tDrive0 = performance.now();
 
   if (isContinuationRange) {
-    // Path optimisé: pas de getVideo, juste auth + stream
     const [session, driveRes] = await Promise.all([
       authPromise,
       fetchDriveStream(id, range),
@@ -38,22 +38,37 @@ export async function GET(
       return new Response("Unauthorized", { status: 401 });
     }
 
+    const total = Math.round(performance.now() - t0);
+    const driveMs = Math.round(performance.now() - tDrive0);
+    console.log(`[stream] id=${id} kind=range total=${total}ms drive=${driveMs}ms status=${driveRes.status}`);
+
     return forwardResponse(driveRes);
   }
 
-  // Path complet: 1ère request, on vérifie meta
-  const [session, meta, driveRes] = await Promise.all([
+  const [session, catalog, driveRes] = await Promise.all([
     authPromise,
-    getVideo(id),
+    getCatalog(),
     fetchDriveStream(id, range),
   ]);
+  const driveMs = Math.round(performance.now() - tDrive0);
 
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  let meta = catalog.byId.get(id);
+  let metaSource: "cache" | "drive" = "cache";
   if (!meta) {
-    return new Response("Not found", { status: 404 });
+    metaSource = "drive";
+    const fresh = await getVideo(id);
+    if (!fresh) return new Response("Not found", { status: 404 });
+    meta = fresh;
   }
+
+  const total = Math.round(performance.now() - t0);
+  console.log(
+    `[stream] id=${id} kind=initial total=${total}ms drive=${driveMs}ms metaSource=${metaSource} status=${driveRes.status}`
+  );
 
   return forwardResponse(driveRes, meta.mimeType);
 }

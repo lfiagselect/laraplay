@@ -1,6 +1,7 @@
 // LARAPLAY — Endpoint vidéo metadata + similaires
 // GET /api/video/[id] → { video, related[] }
 // Utilisé par modal info au clic card.
+// Lookup via catalog.byId (cache 1h) — 0ms vs getVideo Drive cold.
 
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
@@ -20,8 +21,13 @@ export async function GET(
   }
 
   const { id } = await params;
-  const [video, catalog] = await Promise.all([getVideo(id), getCatalog()]);
+  const catalog = await getCatalog();
 
+  let video = catalog.byId.get(id) ?? null;
+  // Fallback: vidéo récente pas encore en cache catalog
+  if (!video) {
+    video = await getVideo(id);
+  }
   if (!video) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

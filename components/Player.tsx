@@ -1,12 +1,21 @@
-// LARAPLAY — Player vidéo. Track watch progress (localStorage par user).
+// LARAPLAY — Player vidéo.
+// State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
+// Affiche poster immédiat + loader pendant chargement (perception <100ms).
+// Track watch progress (localStorage par user).
+// Perf marks: loadstart/canplay/playing latency → /api/log via beacon.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { getEntry, saveProgress } from "@/lib/watch-progress";
+import { track, startTimer } from "@/lib/perf";
+
+type PlayerState = "idle" | "loading" | "ready" | "playing" | "buffering" | "error";
 
 interface PlayerProps {
   src: string;
+  poster?: string;
   videoId?: string;
   userEmail?: string;
   className?: string;
@@ -15,13 +24,67 @@ interface PlayerProps {
 
 export function Player({
   src,
+  poster,
   videoId,
   userEmail,
   className = "",
   autoPlay = true,
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<PlayerState>("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // State machine + perf marks
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const elapsed = startTimer();
+
+    const onLoadStart = () => {
+      setState("loading");
+      track({ type: "player.loadstart", videoId, ms: elapsed() });
+    };
+    const onCanPlay = () => {
+      setState((s) => (s === "playing" ? s : "ready"));
+      track({ type: "player.canplay", videoId, ms: elapsed() });
+    };
+    const onPlaying = () => {
+      setState("playing");
+      track({ type: "player.playing", videoId, ms: elapsed() });
+    };
+    const onWaiting = () => {
+      setState("buffering");
+      track({ type: "player.waiting", videoId, ms: elapsed() });
+    };
+    const onError = () => {
+      setState("error");
+      setErrorMsg("Erreur de lecture. Réessaie.");
+      const err = v.error;
+      track({
+        type: "player.error",
+        videoId,
+        ms: elapsed(),
+        meta: { code: err?.code ?? -1, message: err?.message ?? "unknown" },
+      });
+    };
+    const onStalled = () => setState("buffering");
+
+    v.addEventListener("loadstart", onLoadStart);
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("playing", onPlaying);
+    v.addEventListener("waiting", onWaiting);
+    v.addEventListener("stalled", onStalled);
+    v.addEventListener("error", onError);
+
+    return () => {
+      v.removeEventListener("loadstart", onLoadStart);
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("waiting", onWaiting);
+      v.removeEventListener("stalled", onStalled);
+      v.removeEventListener("error", onError);
+    };
+  }, [videoId]);
 
   // Resume position au load si entry existe
   useEffect(() => {
@@ -95,14 +158,7 @@ export function Player({
     };
   }, [videoId, userEmail]);
 
-  // Erreur lecture seulement
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    const onError = () => setError("Erreur de lecture. Recharge la page.");
-    v.addEventListener("error", onError);
-    return () => v.removeEventListener("error", onError);
-  }, []);
+  const showLoader = state === "loading" || state === "buffering" || state === "idle";
 
   return (
     <div className={`relative bg-black ${className}`}>
@@ -111,17 +167,36 @@ export function Player({
         controls
         autoPlay={autoPlay}
         playsInline
+        preload="metadata"
+        poster={poster}
         className="w-full h-full"
         src={src}
       />
 
-      {error && (
+      {poster && state === "idle" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={poster}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        />
+      )}
+
+      {showLoader && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
+          <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
+        </div>
+      )}
+
+      {state === "error" && errorMsg && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-center p-6">
           <div>
-            <p className="text-red-400 mb-2">{error}</p>
+            <p className="text-red-400 mb-2">{errorMsg}</p>
             <button
               onClick={() => {
-                setError(null);
+                setErrorMsg(null);
+                setState("loading");
                 videoRef.current?.load();
               }}
               className="text-sm text-white bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded"

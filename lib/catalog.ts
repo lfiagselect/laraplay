@@ -10,6 +10,7 @@ export { THEMATIC_ROWS, ERAS, slugify, unslugify } from "./catalog-meta";
 export interface Catalog {
   all: VideoFile[];
   byCategory: Map<string, VideoFile[]>;
+  byId: Map<string, VideoFile>;
   recents: VideoFile[];
   hero: VideoFile | null;
 }
@@ -42,10 +43,12 @@ export async function getCatalog(): Promise<Catalog> {
   const raw = await fetchCatalogRaw();
 
   const byCategory = new Map<string, VideoFile[]>();
+  const byId = new Map<string, VideoFile>();
   for (const v of raw.all) {
     const cat = v.category ?? "Divers";
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(v);
+    byId.set(v.id, v);
   }
 
   for (const list of byCategory.values()) {
@@ -55,6 +58,7 @@ export async function getCatalog(): Promise<Catalog> {
   return {
     all: raw.all,
     byCategory,
+    byId,
     recents: raw.recents,
     hero: raw.hero,
   };

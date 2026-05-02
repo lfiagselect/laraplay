@@ -34,9 +34,8 @@ export async function POST(req: Request) {
   }
 
   const catalog = await getCatalog();
-  const map = new Map(catalog.all.map((v) => [v.id, v]));
   const videos = (ids as string[])
-    .map((id) => map.get(id))
+    .map((id) => catalog.byId.get(id))
     .filter((v): v is NonNullable<typeof v> => !!v);
 
   return NextResponse.json({ videos });

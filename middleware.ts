@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
 
 const PUBLIC_PATHS = ["/login", "/unauthorized"];
-const PUBLIC_API_PREFIX = "/api/auth";
+const PUBLIC_API_PREFIXES = ["/api/auth", "/api/ping"];
 
 const { auth } = NextAuth(authConfig);
 
@@ -14,7 +14,7 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   if (PUBLIC_PATHS.includes(pathname)) return NextResponse.next();
-  if (pathname.startsWith(PUBLIC_API_PREFIX)) return NextResponse.next();
+  if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   if (!req.auth) {
     const loginUrl = new URL("/login", req.url);

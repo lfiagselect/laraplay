@@ -1,5 +1,6 @@
 // LARAPLAY — Modal "Plus d'infos" type Netflix
 // Affiche détails vidéo + boutons + similaires sans quitter la page.
+// Préview vidéo monté après 600ms — économise bandwidth si user ferme vite.
 
 "use client";
 
@@ -38,17 +39,22 @@ function formatSize(size?: string): string | null {
 export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps) {
   const [muted, setMuted] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
+  const [shouldMountVideo, setShouldMountVideo] = useState(false);
   const [fav, setFav] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
+    const t = setTimeout(() => setShouldMountVideo(true), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     if (!userEmail) return;
     setFav(isFavorite(userEmail, video.id));
   }, [userEmail, video.id]);
 
-  // Sync muted state vers element vidéo (sinon désync après render initial)
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -74,7 +80,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
       ? `${video.videoMediaMetadata.width}×${video.videoMediaMetadata.height}`
       : null;
 
-  // Escape ferme modal
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -100,31 +105,38 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         style={{ paddingTop: "max(env(safe-area-inset-top), 4rem)" }}
       >
         <div className="relative w-full max-w-4xl bg-zinc-950 rounded-lg overflow-hidden shadow-2xl animate-modal-enter">
-          {/* Header vidéo preview */}
           <div className="relative aspect-video bg-black overflow-hidden">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted={muted}
-              loop
-              playsInline
-              preload="metadata"
-              className="absolute inset-0 w-full h-full object-cover"
-              src={`/api/stream/${video.id}`}
-              onCanPlay={() => setVideoReady(true)}
-            />
+            {video.thumbnailLink && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`/api/thumb/${video.id}`}
+                alt={cleanName}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+            {shouldMountVideo && (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted={muted}
+                loop
+                playsInline
+                preload="metadata"
+                poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
+                className="absolute inset-0 w-full h-full object-cover"
+                src={`/api/stream/${video.id}`}
+                onCanPlay={() => setVideoReady(true)}
+              />
+            )}
 
-            {/* Loader pendant chargement */}
             {!videoReady && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
               </div>
             )}
 
-            {/* Gradient bas */}
             <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent pointer-events-none" />
 
-            {/* Bouton fermer */}
             <button
               onClick={onClose}
               className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-zinc-900/90 hover:bg-zinc-800 flex items-center justify-center transition"
@@ -133,7 +145,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <X className="w-5 h-5 text-white" />
             </button>
 
-            {/* Bouton mute */}
             <button
               onClick={() => setMuted((m) => !m)}
               className="absolute bottom-6 right-6 z-20 w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
@@ -146,7 +157,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               )}
             </button>
 
-            {/* Titre + actions */}
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10">
               <h2 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
                 {cleanName}
@@ -184,7 +194,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
             </div>
           </div>
 
-          {/* Métadonnées + description */}
           <div className="p-6 md:p-8">
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <div className="md:col-span-2">
