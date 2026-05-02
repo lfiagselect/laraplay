@@ -1,9 +1,7 @@
-// LARAPLAY — Page login premium
-// Background poster fullscreen + gradient cinématographique
-// Card centrée avec backdrop-blur, logo monumental, animations entrée
+// LARAPLAY — Page login minimaliste
+// Logo LARAPLAY rouge style Netflix monumental + bouton Google. Fond noir.
 
 import { signIn } from "@/auth";
-import Link from "next/link";
 
 export default function LoginPage({
   searchParams,
@@ -11,63 +9,21 @@ export default function LoginPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black">
-      {/* Background poster — image hero blurrée pour ambiance */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/hero-fallback/leffet-lara.webp"
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover scale-110 blur-[2px] opacity-40"
-      />
+    <div className="min-h-screen bg-black flex items-center justify-center px-6 py-8">
+      <div className="w-full max-w-sm flex flex-col items-center">
+        {/* Logo LARAPLAY style Netflix monumental */}
+        <h1 className="logo-wordmark text-6xl md:text-7xl mb-12 select-none">
+          LARAPLAY
+        </h1>
 
-      {/* Vignette gradients cinématographiques */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.7)_60%,_#000_100%)]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/90" />
-
-      {/* Header minimal — logo seul */}
-      <header className="relative z-20 px-6 md:px-12 pt-8 pb-4">
-        <Link href="/login" aria-label="LARAPLAY">
-          <span className="logo-wordmark text-3xl md:text-4xl select-none">
-            LARAPLAY
-          </span>
-        </Link>
-      </header>
-
-      {/* Card login centrée */}
-      <main className="relative z-10 flex min-h-[calc(100vh-100px)] items-center justify-center px-6 py-8">
-        <div className="w-full max-w-md animate-modal-enter">
-          <div className="rounded-2xl bg-black/75 backdrop-blur-2xl border border-white/10 shadow-[0_20px_80px_rgba(0,0,0,0.8)] p-8 md:p-10">
-            {/* Branding monumental */}
-            <div className="text-center mb-8">
-              <p className="text-[10px] uppercase tracking-[0.4em] text-[var(--accent)] font-bold mb-3">
-                Streaming privé
-              </p>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-3 tracking-tight">
-                Bienvenue
-              </h1>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Plateforme exclusive · Accès sur invitation
-              </p>
-            </div>
-
-            <LoginForm searchParamsPromise={searchParams} />
-
-            <div className="mt-8 pt-6 border-t border-white/10">
-              <p className="text-[11px] text-zinc-500 text-center leading-relaxed">
-                En continuant, vous acceptez les conditions d&apos;utilisation
-                de cette plateforme privée. Votre compte Google est utilisé
-                uniquement pour authentification.
-              </p>
-            </div>
-          </div>
-
-          {/* Hint sous la card */}
-          <p className="mt-6 text-center text-xs text-zinc-600">
-            Tu n&apos;as pas accès ? Contacte l&apos;administrateur.
-          </p>
+        <div className="w-full">
+          <LoginForm searchParamsPromise={searchParams} />
         </div>
-      </main>
+
+        <p className="mt-10 text-[11px] text-zinc-600 text-center leading-relaxed">
+          Plateforme privée · Accès uniquement sur invitation
+        </p>
+      </div>
     </div>
   );
 }
@@ -89,7 +45,7 @@ async function LoginForm({
       }}
     >
       {error && (
-        <div className="mb-5 p-3 bg-red-950/60 border border-red-800/60 text-red-300 text-sm rounded-lg backdrop-blur">
+        <div className="mb-5 p-3 bg-red-950/60 border border-red-800/60 text-red-300 text-sm rounded-lg text-center">
           {error === "AccessDenied"
             ? "Accès refusé. Cet email n'est pas autorisé."
             : `Erreur : ${error}`}
