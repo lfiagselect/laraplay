@@ -16,7 +16,8 @@ export interface VideoFile {
     durationMillis?: string;
   };
   parents?: string[];
-  modifiedTime?: string;
+  modifiedTime?: string;  // dernière modification (change si replace version)
+  createdTime?: string;   // création initiale (stable, ne change jamais)
   description?: string;
   category?: string;
 }
@@ -25,7 +26,7 @@ const VIDEO_MIME_PREFIX = "video/";
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
 const FIELDS =
-  "files(id,name,mimeType,size,thumbnailLink,videoMediaMetadata,parents,modifiedTime,description),nextPageToken";
+  "files(id,name,mimeType,size,thumbnailLink,videoMediaMetadata,parents,modifiedTime,createdTime,description),nextPageToken";
 
 export async function listAllVideos(rootFolderId: string): Promise<VideoFile[]> {
   const drive = getDrive();
@@ -73,6 +74,7 @@ export async function listAllVideos(rootFolderId: string): Promise<VideoFile[]> 
               : undefined,
             parents: f.parents ?? undefined,
             modifiedTime: f.modifiedTime ?? undefined,
+            createdTime: f.createdTime ?? undefined,
             description: f.description ?? undefined,
             category: folderNames.get(f.parents?.[0] ?? "") ?? "Racine",
           });
@@ -91,7 +93,7 @@ export async function getVideo(fileId: string): Promise<VideoFile | null> {
   try {
     const res = await drive.files.get({
       fileId,
-      fields: "id,name,mimeType,size,thumbnailLink,videoMediaMetadata,parents,modifiedTime,description",
+      fields: "id,name,mimeType,size,thumbnailLink,videoMediaMetadata,parents,modifiedTime,createdTime,description",
       supportsAllDrives: true,
     });
     const f = res.data;
@@ -111,6 +113,7 @@ export async function getVideo(fileId: string): Promise<VideoFile | null> {
         : undefined,
       parents: f.parents ?? undefined,
       modifiedTime: f.modifiedTime ?? undefined,
+      createdTime: f.createdTime ?? undefined,
       description: f.description ?? undefined,
     };
   } catch {
@@ -121,10 +124,9 @@ export async function getVideo(fileId: string): Promise<VideoFile | null> {
 /**
  * Récupère token OAuth depuis service account.
  * Cache mémoire process — token Google valide 1h, on cache 50min pour buffer.
- * Évite ~300-500ms par request stream/thumb.
  */
 let tokenCache: { token: string; expiresAt: number } | null = null;
-const TOKEN_TTL_MS = 50 * 60 * 1000; // 50 min
+const TOKEN_TTL_MS = 50 * 60 * 1000;
 
 async function getAccessToken(): Promise<string> {
   const now = Date.now();
@@ -154,11 +156,6 @@ async function getAccessToken(): Promise<string> {
   return tokenResp.token;
 }
 
-/**
- * Stream vidéo via fetch direct vers Drive.
- * Plus robuste que googleapis stream pour gros fichiers.
- * Pipe response brute (Web ReadableStream natif).
- */
 export async function fetchDriveStream(fileId: string, range?: string) {
   const token = await getAccessToken();
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true`;
@@ -172,11 +169,6 @@ export async function fetchDriveStream(fileId: string, range?: string) {
   return res;
 }
 
-/**
- * Récupère thumbnail Drive et retourne body + content-type.
- * 2 fetches: meta pour thumbnailLink, puis image avec auth.
- * Lance en parallèle pour gagner du temps.
- */
 export async function fetchDriveThumb(
   fileId: string
 ): Promise<{ body: ReadableStream | null; contentType: string | null } | null> {

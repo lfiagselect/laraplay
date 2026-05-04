@@ -1,5 +1,6 @@
 // LARAPLAY — Catalogue logique métier (server-only)
 // Cache durable via unstable_cache Next (persiste entre invocations serverless).
+// Sort par createdTime (stable) — replace version Drive ne fait PAS remonter en Top.
 
 import "server-only";
 import { unstable_cache } from "next/cache";
@@ -21,7 +22,12 @@ interface CatalogSerialized {
   hero: VideoFile | null;
 }
 
-// Map non sérialisable JSON → on stocke `all` puis on re-construit byCategory au runtime.
+// Tri "récent" basé sur createdTime (vraie date d'ajout initial).
+// Fallback modifiedTime si createdTime absent (anciens fichiers).
+function sortKey(v: VideoFile): string {
+  return v.createdTime ?? v.modifiedTime ?? "";
+}
+
 const fetchCatalogRaw = unstable_cache(
   async (): Promise<CatalogSerialized> => {
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
@@ -30,13 +36,13 @@ const fetchCatalogRaw = unstable_cache(
     const all = await listAllVideos(folderId);
 
     const recents = [...all]
-      .sort((a, b) => (b.modifiedTime ?? "").localeCompare(a.modifiedTime ?? ""))
+      .sort((a, b) => sortKey(b).localeCompare(sortKey(a)))
       .slice(0, 16);
 
     return { all, recents, hero: recents[0] ?? null };
   },
-  ["catalog-v1"],
-  { revalidate: 3600, tags: ["catalog"] } // 1h cache durable Vercel
+  ["catalog-v2-createdTime"],
+  { revalidate: 3600, tags: ["catalog"] }
 );
 
 export async function getCatalog(): Promise<Catalog> {
@@ -52,7 +58,7 @@ export async function getCatalog(): Promise<Catalog> {
   }
 
   for (const list of byCategory.values()) {
-    list.sort((a, b) => (b.modifiedTime ?? "").localeCompare(a.modifiedTime ?? ""));
+    list.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
   }
 
   return {
