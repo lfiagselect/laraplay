@@ -1,12 +1,11 @@
 // LARAPLAY — Menu burger mobile (visible < md breakpoint).
-// Slide-in depuis gauche, fermeture overlay/escape.
-// Lock scroll body sans perdre la position (fix iOS Safari).
+// Slide-in depuis gauche. Lien Admin (rouge) si admin, sinon Paramètres.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Menu, X, Home, Folder, Disc3, Heart, Search, ShieldCheck } from "lucide-react";
+import { Menu, X, Home, Folder, Disc3, Heart, Search, ShieldCheck, Settings } from "lucide-react";
 import { Logo } from "./Logo";
 
 interface MobileMenuProps {
@@ -28,8 +27,6 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
 
   useEffect(() => {
     if (!open) return;
-
-    // Lock scroll body en préservant la position (fix iOS Safari qui remonte sinon)
     savedScrollY.current = window.scrollY;
     const body = document.body;
     body.style.position = "fixed";
@@ -46,7 +43,6 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
 
     return () => {
       document.removeEventListener("keydown", onKey);
-      // Restore scroll
       body.style.position = "";
       body.style.top = "";
       body.style.left = "";
@@ -111,7 +107,7 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
                   <span className="text-base">{label}</span>
                 </Link>
               ))}
-              {isAdmin && (
+              {isAdmin ? (
                 <Link
                   href="/admin"
                   onClick={() => setOpen(false)}
@@ -119,6 +115,15 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
                 >
                   <ShieldCheck className="w-5 h-5" />
                   <span className="text-base font-semibold">Administration</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/settings"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition mt-2 border-t border-zinc-800/50 pt-4"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="text-base">Paramètres</span>
                 </Link>
               )}
             </nav>

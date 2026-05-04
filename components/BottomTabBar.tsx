@@ -1,11 +1,12 @@
 // LARAPLAY — Bottom tab bar mobile (V2 §9)
-// Navigation principale mobile. 5 onglets standards + 6e Admin si role=admin.
+// Navigation principale mobile.
+// 5 onglets standards + 6e onglet : Admin si role=admin, Paramètres sinon.
 
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, List, Folder, Disc3, ShieldCheck } from "lucide-react";
+import { Home, Search, List, Folder, Disc3, ShieldCheck, Settings } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 interface TabItem {
@@ -13,6 +14,7 @@ interface TabItem {
   label: string;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   match: (path: string) => boolean;
+  accent?: boolean;
 }
 
 const BASE_TABS: TabItem[] = [
@@ -28,6 +30,14 @@ const ADMIN_TAB: TabItem = {
   label: "Admin",
   Icon: ShieldCheck,
   match: (p) => p.startsWith("/admin"),
+  accent: true,
+};
+
+const SETTINGS_TAB: TabItem = {
+  href: "/settings",
+  label: "Paramètres",
+  Icon: Settings,
+  match: (p) => p.startsWith("/settings"),
 };
 
 const HIDDEN_PATHS = new Set(["/login", "/unauthorized"]);
@@ -38,8 +48,8 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   if (HIDDEN_PATHS.has(pathname)) return null;
   if (pathname.startsWith("/watch/")) return null;
 
-  const tabs = isAdmin ? [...BASE_TABS, ADMIN_TAB] : BASE_TABS;
-  const cols = tabs.length === 6 ? "grid-cols-6" : "grid-cols-5";
+  const tabs = [...BASE_TABS, isAdmin ? ADMIN_TAB : SETTINGS_TAB];
+  const cols = "grid-cols-6";
 
   return (
     <nav
@@ -48,9 +58,8 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
       aria-label="Navigation principale"
     >
       <ul className={`grid ${cols} h-16`}>
-        {tabs.map(({ href, label, Icon, match }) => {
+        {tabs.map(({ href, label, Icon, match, accent }) => {
           const active = match(pathname);
-          const isAdminTab = href === "/admin";
           return (
             <li key={href} className="flex">
               <Link
@@ -58,17 +67,17 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                 className={[
                   "flex-1 flex flex-col items-center justify-center gap-0.5 transition px-1",
                   active
-                    ? isAdminTab
+                    ? accent
                       ? "text-[var(--accent)]"
                       : "text-white"
-                    : isAdminTab
+                    : accent
                       ? "text-[var(--accent)]/70 hover:text-[var(--accent)]"
                       : "text-[var(--text-muted)] hover:text-white",
                 ].join(" ")}
               >
                 <Icon
                   className="w-5 h-5"
-                  fill={active && !isAdminTab ? "currentColor" : "none"}
+                  fill={active && !accent ? "currentColor" : "none"}
                   strokeWidth={active ? 2.2 : 1.8}
                 />
                 <span className={`text-[10px] leading-tight ${active ? "font-semibold" : ""}`}>
