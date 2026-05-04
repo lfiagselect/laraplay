@@ -4,6 +4,7 @@
 // Optim: meta lookup via catalog cache (byId Map) → 0ms vs 300-500ms getVideo.
 // Fallback Drive direct si miss catalog.
 // Logs timing: TTFB Drive + total request → Vercel logs.
+// I5: Cache-Control public 1h sur Range chunks → TV browsers cache aide buffer.
 
 import { NextRequest } from "next/server";
 import { fetchDriveStream, getVideo } from "@/lib/drive";
@@ -86,7 +87,6 @@ function forwardResponse(driveRes: Response, fallbackMime?: string): Response {
     "content-length",
     "content-range",
     "accept-ranges",
-    "cache-control",
     "etag",
     "last-modified",
   ];
@@ -100,6 +100,9 @@ function forwardResponse(driveRes: Response, fallbackMime?: string): Response {
   if (!responseHeaders.has("content-type") && fallbackMime) {
     responseHeaders.set("content-type", fallbackMime);
   }
+  // I5: Cache-Control private 1h — TV browsers cache Range chunks (aide buffer + seek)
+  // private = pas de CDN cache (auth required), max-age 1h = TV peut réutiliser
+  responseHeaders.set("cache-control", "private, max-age=3600");
 
   return new Response(driveRes.body, {
     status: driveRes.status,

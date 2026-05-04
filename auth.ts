@@ -1,9 +1,12 @@
 // LARAPLAY — NextAuth full config (Node runtime)
 // Utilisé par routes serveur. Whitelist check via Sheet.
+// + Credentials provider "device" pour TV via Device Flow OAuth.
 
 import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { isAuthorized } from "@/lib/whitelist";
+import { getByDeviceCode } from "@/lib/device-flow";
 
 declare module "next-auth" {
   interface Session {
@@ -18,8 +21,36 @@ declare module "next-auth" {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  providers: [
+    ...authConfig.providers,
+    Credentials({
+      id: "device",
+      name: "TV Device Flow",
+      credentials: {
+        device_code: { label: "Device Code", type: "text" },
+      },
+      async authorize(credentials) {
+        const deviceCode = credentials?.device_code;
+        if (!deviceCode || typeof deviceCode !== "string") return null;
+        const session = getByDeviceCode(deviceCode);
+        if (!session) return null;
+        if (session.status !== "approved") return null;
+        if (!session.email) return null;
+        const wl = await isAuthorized(session.email);
+        if (!wl) return null;
+        return {
+          id: session.email,
+          email: session.email,
+          name: wl.name || session.email,
+        };
+      },
+    }),
+  ],
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
+      // Device flow: déjà validé dans authorize() via whitelist
+      if (account?.provider === "device") return true;
+      // Google OAuth standard
       if (!user.email) return false;
       const entry = await isAuthorized(user.email);
       if (!entry) return "/unauthorized";
