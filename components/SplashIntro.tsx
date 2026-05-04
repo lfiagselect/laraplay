@@ -1,18 +1,28 @@
-// LARAPLAY — Splash intro animée Netflix-style TUDUM
-// "Tu" : impact percussif court grave. "DUM" : note longue avec harmoniques + decay.
-// Affichée à chaque visite (pas de flag session).
+// LARAPLAY — Splash 1×/jour. TUDUM Web Audio.
 
 "use client";
 
 import { useEffect, useState } from "react";
 
+const KEY = "laraplay-splash-day";
 const DURATION_MS = 4000;
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function SplashIntro() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const last = localStorage.getItem(KEY);
+    if (last === today()) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+    localStorage.setItem(KEY, today());
 
     let ctx: AudioContext | null = null;
     try {
@@ -21,41 +31,33 @@ export function SplashIntro() {
         (window as unknown as { webkitAudioContext?: typeof AudioContext })
           .webkitAudioContext;
       if (!Ctx) return;
-
       ctx = new Ctx();
-      if (ctx.state === "suspended") {
-        ctx.resume().catch(() => {});
-      }
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
 
       const now = ctx.currentTime;
-      const dest = ctx.destination;
-
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.setValueAtTime(-18, now);
       comp.knee.setValueAtTime(8, now);
       comp.ratio.setValueAtTime(4, now);
       comp.attack.setValueAtTime(0.005, now);
       comp.release.setValueAtTime(0.2, now);
-      comp.connect(dest);
-
+      comp.connect(ctx.destination);
       const masterGain = ctx.createGain();
       masterGain.gain.setValueAtTime(0.85, now);
       masterGain.connect(comp);
 
-      // ============ "TU" — impact percussif court ============
-      const tuStart = now;
-
+      const tu = now;
       const kick = ctx.createOscillator();
       const kickGain = ctx.createGain();
       kick.type = "sine";
-      kick.frequency.setValueAtTime(120, tuStart);
-      kick.frequency.exponentialRampToValueAtTime(35, tuStart + 0.18);
-      kickGain.gain.setValueAtTime(0, tuStart);
-      kickGain.gain.linearRampToValueAtTime(0.9, tuStart + 0.005);
-      kickGain.gain.exponentialRampToValueAtTime(0.001, tuStart + 0.25);
+      kick.frequency.setValueAtTime(120, tu);
+      kick.frequency.exponentialRampToValueAtTime(35, tu + 0.18);
+      kickGain.gain.setValueAtTime(0, tu);
+      kickGain.gain.linearRampToValueAtTime(0.9, tu + 0.005);
+      kickGain.gain.exponentialRampToValueAtTime(0.001, tu + 0.25);
       kick.connect(kickGain).connect(masterGain);
-      kick.start(tuStart);
-      kick.stop(tuStart + 0.3);
+      kick.start(tu);
+      kick.stop(tu + 0.3);
 
       const noiseBuf = ctx.createBuffer(1, 2048, ctx.sampleRate);
       const noiseData = noiseBuf.getChannelData(0);
@@ -66,49 +68,46 @@ export function SplashIntro() {
       noise.buffer = noiseBuf;
       const noiseFilter = ctx.createBiquadFilter();
       noiseFilter.type = "highpass";
-      noiseFilter.frequency.setValueAtTime(2000, tuStart);
+      noiseFilter.frequency.setValueAtTime(2000, tu);
       const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.18, tuStart);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, tuStart + 0.08);
+      noiseGain.gain.setValueAtTime(0.18, tu);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, tu + 0.08);
       noise.connect(noiseFilter).connect(noiseGain).connect(masterGain);
-      noise.start(tuStart);
+      noise.start(tu);
 
-      // ============ "DUM" — note longue + harmoniques ============
-      const dumStart = now + 0.5;
-      const dumEnd = dumStart + 3.0;
-
-      const fundFreq = 55;
+      const dum = now + 0.5;
+      const dumEnd = dum + 3.0;
+      const f = 55;
       const partials = [
-        { freq: fundFreq, gain: 0.55, type: "sine" as OscillatorType },
-        { freq: fundFreq * 2, gain: 0.35, type: "sine" as OscillatorType },
-        { freq: fundFreq * 3, gain: 0.15, type: "sine" as OscillatorType },
-        { freq: fundFreq * 4, gain: 0.10, type: "triangle" as OscillatorType },
+        { freq: f, gain: 0.55, type: "sine" as OscillatorType },
+        { freq: f * 2, gain: 0.35, type: "sine" as OscillatorType },
+        { freq: f * 3, gain: 0.15, type: "sine" as OscillatorType },
+        { freq: f * 4, gain: 0.10, type: "triangle" as OscillatorType },
       ];
-
       partials.forEach(({ freq, gain, type }) => {
         const osc = ctx!.createOscillator();
         const g = ctx!.createGain();
         osc.type = type;
-        osc.frequency.setValueAtTime(freq, dumStart);
-        g.gain.setValueAtTime(0, dumStart);
-        g.gain.linearRampToValueAtTime(gain, dumStart + 0.04);
-        g.gain.exponentialRampToValueAtTime(gain * 0.5, dumStart + 0.8);
+        osc.frequency.setValueAtTime(freq, dum);
+        g.gain.setValueAtTime(0, dum);
+        g.gain.linearRampToValueAtTime(gain, dum + 0.04);
+        g.gain.exponentialRampToValueAtTime(gain * 0.5, dum + 0.8);
         g.gain.exponentialRampToValueAtTime(0.001, dumEnd);
         osc.connect(g).connect(masterGain);
-        osc.start(dumStart);
+        osc.start(dum);
         osc.stop(dumEnd + 0.1);
       });
 
-      const subFund = ctx.createOscillator();
-      const subGain = ctx.createGain();
-      subFund.type = "sine";
-      subFund.frequency.setValueAtTime(27.5, dumStart);
-      subGain.gain.setValueAtTime(0, dumStart);
-      subGain.gain.linearRampToValueAtTime(0.4, dumStart + 0.06);
-      subGain.gain.exponentialRampToValueAtTime(0.001, dumEnd);
-      subFund.connect(subGain).connect(masterGain);
-      subFund.start(dumStart);
-      subFund.stop(dumEnd + 0.1);
+      const sub = ctx.createOscillator();
+      const subG = ctx.createGain();
+      sub.type = "sine";
+      sub.frequency.setValueAtTime(27.5, dum);
+      subG.gain.setValueAtTime(0, dum);
+      subG.gain.linearRampToValueAtTime(0.4, dum + 0.06);
+      subG.gain.exponentialRampToValueAtTime(0.001, dumEnd);
+      sub.connect(subG).connect(masterGain);
+      sub.start(dum);
+      sub.stop(dumEnd + 0.1);
 
       const delay = ctx.createDelay(1.5);
       delay.delayTime.setValueAtTime(0.3, now);
@@ -119,18 +118,16 @@ export function SplashIntro() {
       delayFilter.frequency.setValueAtTime(1500, now);
       masterGain.connect(delayFilter).connect(delay).connect(delayGain).connect(comp);
       delayGain.connect(delay);
-    } catch {
-      // user a coupé son ou Web Audio bloqué
-    }
+    } catch {}
 
-    const timer = setTimeout(() => setVisible(false), DURATION_MS);
+    const t = setTimeout(() => setVisible(false), DURATION_MS);
     return () => {
-      clearTimeout(timer);
+      clearTimeout(t);
       if (ctx && ctx.state !== "closed") ctx.close().catch(() => {});
     };
   }, []);
 
-  if (!visible) return null;
+  if (visible === null || visible === false) return null;
 
   return (
     <div

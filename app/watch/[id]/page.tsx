@@ -1,6 +1,5 @@
 // LARAPLAY — Page lecture vidéo
-// Player + métadonnées + vidéos similaires (même catégorie).
-// Lookup catalog.byId (cache 1h) — drop getVideo cold call.
+// Player + bouton fermer (croix retour accueil) + métadonnées + similaires.
 
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
@@ -9,6 +8,8 @@ import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import Link from "next/link";
+import { X } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 
 export const revalidate = 3600;
@@ -65,7 +66,7 @@ export default async function WatchPage({
       <Header />
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-6">
-        <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
+        <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
           <Player
             src={`/api/stream/${video.id}`}
             poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
@@ -73,6 +74,14 @@ export default async function WatchPage({
             userEmail={userEmail}
             className="w-full h-full"
           />
+          {/* Bouton fermer — retour accueil */}
+          <Link
+            href="/"
+            aria-label="Fermer et retour à l'accueil"
+            className="absolute top-3 right-3 z-30 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-sm flex items-center justify-center transition active:scale-[0.95]"
+          >
+            <X className="w-5 h-5 text-white" />
+          </Link>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mb-12">
