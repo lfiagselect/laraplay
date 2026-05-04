@@ -1,12 +1,11 @@
-// LARAPLAY — Stream signed URL
-// GET /api/stream/[id] → retourne { url, expiresAt } JSON
-// Le browser streame directement depuis Drive (zéro bandwidth Render).
-// Range/seek géré nativement par Drive côté browser.
-// Logs timing conservés sur la génération d'URL.
+// LARAPLAY — Stream redirect
+// GET /api/stream/[id] → redirect 302 vers URL Drive signée.
+// Le browser suit nativement (pas de CORS sur media).
+// Render ne transporte aucun byte vidéo — zéro bandwidth.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getStreamUrl } from "@/lib/drive";
-import { getCatalog } from "@/lib/catalog";
+import { getCatalog, } from "@/lib/catalog";
 import { getVideo } from "@/lib/drive";
 import { auth } from "@/auth";
 
@@ -29,8 +28,6 @@ export async function GET(
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Vérification existence vidéo via catalog cache (byId Map) → 0ms
-  // Fallback Drive direct si miss catalog
   let meta = catalog.byId.get(id);
   let metaSource: "cache" | "drive" = "cache";
   if (!meta) {
@@ -40,17 +37,10 @@ export async function GET(
     meta = fresh;
   }
 
-  const { url, expiresAt } = await getStreamUrl(id);
+  const { url } = await getStreamUrl(id);
 
   const total = Math.round(performance.now() - t0);
-  console.log(
-    `[stream] id=${id} kind=signed total=${total}ms metaSource=${metaSource} expiresAt=${new Date(expiresAt).toISOString()}`
-  );
+  console.log(`[stream] id=${id} kind=redirect total=${total}ms metaSource=${metaSource}`);
 
-  return NextResponse.json({ url, expiresAt }, {
-    headers: {
-      // Private : auth requise pour obtenir l'URL, browser peut garder 40min
-      "Cache-Control": "private, max-age=2400",
-    },
-  });
+  return NextResponse.redirect(url, { status: 302 });
 }

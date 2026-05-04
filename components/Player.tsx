@@ -3,11 +3,11 @@
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
 // Perf marks: loadstart/canplay/playing latency → /api/log via beacon.
-// V2: src résolu via /api/stream/[id] (JSON) — zéro bandwidth Render.
+// V2: src=/api/stream/[id] → redirect 302 Drive (zéro bandwidth Render, pas de CORS).
 
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { getEntry, saveProgress } from "@/lib/watch-progress";
 import { track, startTimer } from "@/lib/perf";
@@ -15,7 +15,7 @@ import { track, startTimer } from "@/lib/perf";
 type PlayerState = "idle" | "loading" | "ready" | "playing" | "buffering" | "error";
 
 interface PlayerProps {
-  src: string; // conservé pour compatibilité appelants — ignoré, on fetch via videoId
+  src: string;
   poster?: string;
   videoId?: string;
   userEmail?: string;
@@ -24,7 +24,7 @@ interface PlayerProps {
 }
 
 export function Player({
-  src: _src, // ignoré — l'URL est résolue via /api/stream/[videoId]
+  src,
   poster,
   videoId,
   userEmail,
@@ -34,41 +34,6 @@ export function Player({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<PlayerState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const urlExpiresAt = useRef<number>(0);
-  const fetchingUrl = useRef(false);
-
-  // ── Fetch URL signée Drive ─────────────────────────────────────────────────
-  const fetchVideoUrl = useCallback(async () => {
-    if (!videoId || fetchingUrl.current) return;
-    fetchingUrl.current = true;
-    try {
-      const res = await fetch(`/api/stream/${videoId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { url, expiresAt } = await res.json();
-      urlExpiresAt.current = expiresAt;
-      setVideoUrl(url);
-    } catch (err) {
-      console.error("[player] fetch url error", err);
-      setState("error");
-      setErrorMsg("Erreur de lecture. Réessaie.");
-    } finally {
-      fetchingUrl.current = false;
-    }
-  }, [videoId]);
-
-  // Fetch initial
-  useEffect(() => {
-    fetchVideoUrl();
-  }, [fetchVideoUrl]);
-
-  // Assigner src dès que l'URL est prête
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!videoUrl || !v) return;
-    v.src = videoUrl;
-    v.load();
-  }, [videoUrl]);
 
   // ── State machine + perf marks ─────────────────────────────────────────────
   useEffect(() => {
@@ -93,12 +58,6 @@ export function Player({
       track({ type: "player.waiting", videoId, ms: elapsed() });
     };
     const onError = () => {
-      // Si le token a expiré (ou est proche) → refetch silencieux
-      if (Date.now() >= urlExpiresAt.current - 60_000) {
-        console.log("[player] token expired, refetching url");
-        fetchVideoUrl();
-        return;
-      }
       setState("error");
       setErrorMsg("Erreur de lecture. Réessaie.");
       const err = v.error;
@@ -126,7 +85,7 @@ export function Player({
       v.removeEventListener("stalled", onStalled);
       v.removeEventListener("error", onError);
     };
-  }, [videoId, fetchVideoUrl]);
+  }, [videoId]);
 
   // ── Resume position ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -203,7 +162,6 @@ export function Player({
 
   return (
     <div className={`relative bg-black ${className}`}>
-      {/* src non assigné ici — géré via useEffect + videoRef.current.src */}
       <video
         ref={videoRef}
         controls
@@ -212,6 +170,7 @@ export function Player({
         preload="metadata"
         poster={poster}
         className="w-full h-full"
+        src={src}
       />
 
       {poster && state === "idle" && (
@@ -237,8 +196,8 @@ export function Player({
             <button
               onClick={() => {
                 setErrorMsg(null);
-                setState("idle");
-                fetchVideoUrl();
+                setState("loading");
+                videoRef.current?.load();
               }}
               className="text-sm text-white bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded"
             >
