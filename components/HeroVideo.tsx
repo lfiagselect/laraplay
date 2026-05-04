@@ -1,5 +1,5 @@
 // LARAPLAY — Hero billboard avec vidéo background.
-// Pas de poster image superposé — la vidéo gère son propre poster natif.
+// Aucun poster — fond noir avant 1ère frame vidéo (pas de fallback image).
 // Callback onEnded → HeroResponsive bascule vers carousel après lecture.
 
 "use client";
@@ -42,16 +42,15 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   }, []);
 
   return (
-    <section className="relative w-full overflow-hidden aspect-video max-h-[78vh] min-h-[420px] bg-[var(--bg-main)]">
-      {/* Vidéo background avec zoom lent — poster natif HTML5, pas d'img superposée */}
-      <div className="absolute inset-0 animate-hero-zoom origin-center">
+    <section className="relative w-full overflow-hidden aspect-video max-h-[78vh] min-h-[420px] bg-black">
+      {/* Vidéo background avec zoom lent — pas de poster, fond noir avant 1ère frame */}
+      <div className="absolute inset-0 animate-hero-zoom origin-center bg-black">
         <video
           ref={videoRef}
           autoPlay
           muted
           playsInline
           preload="auto"
-          poster={hero.poster}
           onEnded={() => onEnded?.()}
           className="absolute inset-0 w-full h-full object-cover"
           src={hero.src}
