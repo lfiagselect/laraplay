@@ -1,4 +1,4 @@
-// LARAPLAY — Page accueil
+// LARAPLAY — Page accueil. Séparateurs rouges entre rows.
 
 import { Header } from "@/components/Header";
 import { HeroResponsive } from "@/components/HeroResponsive";
@@ -14,6 +14,10 @@ import { auth } from "@/auth";
 
 export const revalidate = 3600;
 
+function Divider() {
+  return <hr className="row-divider" aria-hidden="true" />;
+}
+
 export default async function Home() {
   const [catalog, session] = await Promise.all([getCatalog(), auth()]);
   const userEmail = session?.user?.email ?? null;
@@ -24,52 +28,53 @@ export default async function Home() {
     image: posterImage(name, "png"),
   })).filter((e) => e.count > 0);
 
-  // Sélection hero — première dispo. Q2:c (fixe) tant qu'1 seule vidéo.
-  // Si plusieurs hero ajoutées plus tard, possible faire rotation aléatoire ici.
   const hero = HERO_VIDEOS[0];
-
-  // Bouton "Plus d'infos" → modal sur 1ère vidéo Drive de la catégorie liée
   const heroCategory = "L'Effet Lara - 2026";
   const heroVideoForInfo = catalog.byCategory.get(heroCategory)?.[0]?.id;
   const heroFinal = heroVideoForInfo
     ? { ...hero, ctaInfoVideoId: heroVideoForInfo }
     : hero;
 
+  // Construit liste sections affichées (filtre vides) pour insérer dividers entre uniquement
+  const sections: React.ReactNode[] = [];
+  if (userEmail) {
+    sections.push(<ContinueWatchingRow key="continue" userEmail={userEmail} />);
+  }
+  if (catalog.recents.length > 0) {
+    sections.push(
+      <Top10Row key="top10" title="Top 10 sur LARAPLAY aujourd'hui" videos={catalog.recents} />
+    );
+  }
+  if (eras.length > 0) {
+    sections.push(<EraRow key="eras" title="Choisissez votre ère" eras={eras} />);
+  }
+  for (const cat of THEMATIC_ROWS) {
+    const vids = catalog.byCategory.get(cat) ?? [];
+    if (vids.length === 0) continue;
+    sections.push(
+      <Row
+        key={cat}
+        title={cat}
+        videos={vids.slice(0, 20)}
+        href={`/category/${slugify(cat)}`}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black">
       <SplashIntro />
-      {/* Header sticky pour les 2 viewports — hero démarre dessous */}
       <Header />
 
-      <HeroResponsive
-        hero={heroFinal}
-        carouselSlides={HERO_CAROUSEL_SLIDES}
-      />
+      <HeroResponsive hero={heroFinal} carouselSlides={HERO_CAROUSEL_SLIDES} />
 
       <main className="relative pt-10 md:pt-8 pb-24">
-        {userEmail && <ContinueWatchingRow userEmail={userEmail} />}
-
-        {catalog.recents.length > 0 && (
-          <Top10Row
-            title="Top 10 sur LARAPLAY aujourd'hui"
-            videos={catalog.recents}
-          />
-        )}
-
-        {eras.length > 0 && <EraRow title="Choisissez votre ère" eras={eras} />}
-
-        {THEMATIC_ROWS.map((cat) => {
-          const vids = catalog.byCategory.get(cat) ?? [];
-          if (vids.length === 0) return null;
-          return (
-            <Row
-              key={cat}
-              title={cat}
-              videos={vids.slice(0, 20)}
-              href={`/category/${slugify(cat)}`}
-            />
-          );
-        })}
+        {sections.map((section, i) => (
+          <div key={i}>
+            {section}
+            {i < sections.length - 1 && <Divider />}
+          </div>
+        ))}
       </main>
     </div>
   );

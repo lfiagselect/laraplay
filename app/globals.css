@@ -206,3 +206,24 @@ html, body {
 .animate-sheet-slide-up {
   animation: sheet-slide-up 280ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
+
+/* Row separator premium - dégradé rouge fade côtés */
+.row-divider {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(229, 9, 20, 0.55) 50%,
+    transparent 100%
+  );
+  margin: 1.25rem auto;
+  max-width: calc(100% - 3rem);
+  box-shadow: 0 0 8px rgba(229, 9, 20, 0.25);
+}
+@media (min-width: 768px) {
+  .row-divider {
+    max-width: calc(100% - 6rem);
+    margin: 1.5rem auto;
+  }
+}
