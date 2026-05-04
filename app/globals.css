@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* I1 — Bebas Neue self-host (TV-friendly: pas de DNS lookup fonts.googleapis) */
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("/fonts/bebas-neue-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Design tokens V2 - centralisés pour cohérence cross-components */
   --bg-main: #0b0b0b;
@@ -12,6 +21,9 @@
   --accent-hover: #f6121d;
   --hover-soft: rgba(255, 255, 255, 0.08);
   --overlay-dark: rgba(0, 0, 0, 0.72);
+
+  /* Bebas Neue var (replace next/font/google plus loaded) */
+  --font-bebas: "Bebas Neue";
 
   /* Legacy aliases pour code existant */
   --background: var(--bg-main);
@@ -225,5 +237,116 @@ html, body {
   .row-divider {
     max-width: calc(100% - 6rem);
     margin: 1.5rem auto;
+  }
+}
+
+/* ============================================================
+   I2 — Backdrop-filter fallback (Tizen 2017-2018, vieux WebKit)
+   Active fallback solid si support absent.
+   ============================================================ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg {
+    background-color: rgba(20, 20, 20, 0.95) !important;
+  }
+}
+
+/* ============================================================
+   TV / 10-foot UI — couche CSS additive (gated par html.tv)
+   Aucun impact desktop/mobile sans cette classe.
+   ============================================================ */
+
+html.tv {
+  font-size: 18px;
+  --tv-safe-x: 3vw;
+  --tv-safe-y: 3vh;
+  --tv-target: 64px;
+}
+
+html.tv body {
+  padding-inline: var(--tv-safe-x);
+}
+
+/* Désactive backdrop-filter (perf killer Chromecast + Tizen ancien) */
+html.tv .backdrop-blur-sm,
+html.tv .backdrop-blur-md,
+html.tv .backdrop-blur-lg {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(20, 20, 20, 0.95) !important;
+}
+
+/* Désactive scale hover VideoCard (pas de pointer hover sur TV) */
+html.tv .video-card,
+html.tv [data-tv-no-hover-scale] {
+  transition: outline 0.15s ease-out, box-shadow 0.15s ease-out !important;
+}
+html.tv .video-card:hover,
+html.tv [data-tv-no-hover-scale]:hover {
+  transform: none !important;
+}
+
+/* Focus visible ring rouge épais — feedback D-pad universel */
+html.tv *:focus,
+html.tv *:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+  box-shadow:
+    0 0 0 6px rgba(229, 9, 20, 0.35),
+    0 0 24px rgba(229, 9, 20, 0.55);
+  border-radius: 6px;
+  z-index: 50;
+  position: relative;
+}
+
+html.tv :focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+html.tv button,
+html.tv a[role="button"],
+html.tv [role="button"],
+html.tv [tabindex="0"] {
+  min-height: var(--tv-target);
+  min-width: var(--tv-target);
+}
+
+html.tv .text-xs { font-size: 0.95rem !important; }
+html.tv .text-sm { font-size: 1.05rem !important; }
+html.tv .text-base { font-size: 1.15rem !important; }
+html.tv .text-lg { font-size: 1.3rem !important; }
+
+html.tv [data-row-scroller] {
+  scroll-behavior: smooth;
+  scroll-padding-inline: 10vw;
+}
+
+html.tv [data-mobile-tabbar] { display: none !important; }
+html.tv [data-mobile-menu] { display: none !important; }
+html.tv [data-mobile-drag-handle] { display: none !important; }
+html.tv [data-card-hover-only] { display: none !important; }
+
+html.tv [data-header-shell] {
+  position: sticky;
+  top: 0;
+}
+
+html.tv .animate-ken-burns,
+html.tv .animate-hero-zoom {
+  animation-duration: 30s !important;
+}
+
+html.tv .skeleton-shimmer {
+  animation-duration: 2.5s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.tv .animate-ken-burns,
+  html.tv .animate-hero-zoom,
+  html.tv .animate-hero-fade-up,
+  html.tv .skeleton-shimmer {
+    animation: none !important;
   }
 }

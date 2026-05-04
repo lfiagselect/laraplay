@@ -1,6 +1,8 @@
 ﻿// LARAPLAY â€” Modal "Plus d'infos" type Netflix
 // Desktop: modal centrÃ© max-w-4xl. Mobile: bottom sheet avec drag handle (V2 Â§8.1).
 // PrÃ©view vidÃ©o montÃ© aprÃ¨s 600ms â€” Ã©conomise bandwidth si user ferme vite.
+// TV (I3): skip preview vidÃ©o entirement (Ã©conomise bandwidth Drive + perf TV ARM)
+//          + focus initial sur bouton Lecture aprÃ¨s mount.
 
 "use client";
 
@@ -10,6 +12,7 @@ import { X, Play, Plus, Check, ThumbsUp, Volume2, VolumeX, Loader2 } from "lucid
 import type { VideoFile } from "@/lib/drive";
 import { VideoCard } from "./VideoCard";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
+import { useTV } from "@/lib/tv-client";
 
 interface InfoModalProps {
   video: VideoFile;
@@ -36,9 +39,10 @@ function formatSize(size?: string): string | null {
   return `${(n / 1_000_000).toFixed(0)} Mo`;
 }
 
-const DRAG_CLOSE_THRESHOLD = 120; // px swipe down to close
+const DRAG_CLOSE_THRESHOLD = 120;
 
 export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps) {
+  const isTV = useTV();
   const [muted, setMuted] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
   const [shouldMountVideo, setShouldMountVideo] = useState(false);
@@ -47,13 +51,26 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const playBtnRef = useRef<HTMLButtonElement>(null);
   const dragStartY = useRef<number | null>(null);
   const router = useRouter();
 
+  // Skip preview vidÃ©o TV (Ã©conomise bandwidth + perf)
   useEffect(() => {
+    if (isTV) {
+      setVideoReady(true); // hide loader (poster suffit)
+      return;
+    }
     const t = setTimeout(() => setShouldMountVideo(true), 600);
     return () => clearTimeout(t);
-  }, []);
+  }, [isTV]);
+
+  // Focus initial Play button TV
+  useEffect(() => {
+    if (!isTV) return;
+    const t = setTimeout(() => playBtnRef.current?.focus(), 200);
+    return () => clearTimeout(t);
+  }, [isTV]);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -97,9 +114,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     };
   }, [onClose]);
 
-  // Drag handle mobile - bottom sheet
   const onTouchStart = (e: React.TouchEvent) => {
-    // Seulement actif sur mobile (drag handle visible)
     if (window.innerWidth >= 768) return;
     dragStartY.current = e.touches[0].clientY;
   };
@@ -128,11 +143,10 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     >
       <div
         ref={sheetRef}
+        data-tv-trap="modal"
         className={[
           "relative w-full max-w-4xl bg-zinc-950 overflow-hidden shadow-2xl",
-          // Desktop : centrÃ© avec margin auto
           "md:mx-auto md:my-8 md:rounded-lg md:animate-modal-enter",
-          // Mobile : sheet en bas, prend bottom 90vh, slide-up animation
           "fixed md:relative bottom-0 left-0 right-0 rounded-t-2xl md:rounded-t-lg max-h-[92vh] md:max-h-none animate-sheet-slide-up md:animate-modal-enter",
         ].join(" ")}
         style={{
@@ -145,12 +159,10 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         onTouchEnd={onTouchEnd}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle mobile only */}
-        <div className="md:hidden flex justify-center py-2 cursor-grab touch-none">
+        <div data-mobile-drag-handle className="md:hidden flex justify-center py-2 cursor-grab touch-none">
           <span className="block w-10 h-1 rounded-full bg-white/30" />
         </div>
 
-        {/* Scroll container â€” assure le scroll interne mobile */}
         <div className="overflow-y-auto max-h-[88vh] md:max-h-none">
           <div className="relative aspect-video bg-black overflow-hidden">
             {video.thumbnailLink && (
@@ -161,7 +173,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 className="absolute inset-0 w-full h-full object-cover"
               />
             )}
-            {shouldMountVideo && (
+            {shouldMountVideo && !isTV && (
               <video
                 ref={videoRef}
                 autoPlay
@@ -176,7 +188,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               />
             )}
 
-            {!videoReady && (
+            {!videoReady && !isTV && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <Loader2 className="w-12 h-12 text-[var(--accent)] animate-spin" />
               </div>
@@ -186,23 +198,27 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
 
             <button
               onClick={onClose}
+              data-tv-close
+              data-focusable
               className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-zinc-900/90 hover:bg-zinc-800 flex items-center justify-center transition"
               aria-label="Fermer"
             >
               <X className="w-5 h-5 text-white" />
             </button>
 
-            <button
-              onClick={() => setMuted((m) => !m)}
-              className="absolute bottom-6 right-6 z-20 w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
-              aria-label={muted ? "Activer son" : "Couper son"}
-            >
-              {muted ? (
-                <VolumeX className="w-4 h-4 text-white" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-white" />
-              )}
-            </button>
+            {!isTV && (
+              <button
+                onClick={() => setMuted((m) => !m)}
+                className="absolute bottom-6 right-6 z-20 w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
+                aria-label={muted ? "Activer son" : "Couper son"}
+              >
+                {muted ? (
+                  <VolumeX className="w-4 h-4 text-white" />
+                ) : (
+                  <Volume2 className="w-4 h-4 text-white" />
+                )}
+              </button>
+            )}
 
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10">
               <h2 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
@@ -211,6 +227,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
 
               <div className="flex flex-wrap gap-3 items-center">
                 <button
+                  ref={playBtnRef}
+                  data-focusable
                   onClick={goWatch}
                   className="flex items-center gap-2 bg-white text-black font-bold px-7 py-2.5 rounded hover:bg-zinc-200 transition active:scale-[0.98]"
                 >
@@ -218,6 +236,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   Lecture
                 </button>
                 <button
+                  data-focusable
                   onClick={onToggleFav}
                   disabled={!userEmail}
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
@@ -231,6 +250,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   )}
                 </button>
                 <button
+                  data-focusable
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
                   aria-label="J'aime"
                   title="J'aime (bientÃ´t)"

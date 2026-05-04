@@ -70,7 +70,16 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
     >
       <button
         type="button"
+        data-focusable
         onClick={() => open(video.id)}
+        onFocus={(e) => {
+          // Sur TV: scroll le card focusé au centre du row scroller (D-pad UX)
+          if (typeof document !== "undefined" && document.documentElement.classList.contains("tv")) {
+            try {
+              e.currentTarget.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+            } catch {}
+          }
+        }}
         className={[
           "relative block aspect-video w-full overflow-hidden rounded-md bg-[var(--bg-elevated)] text-left",
           "transition-transform duration-200 ease-out",
@@ -101,6 +110,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
 
         {/* Gradient overlay desktop hover - apparaît avec la card étendue */}
         <div
+          data-card-hover-only
           className={[
             "pointer-events-none absolute inset-0 transition-opacity duration-200",
             "bg-gradient-to-t from-black/95 via-black/40 to-transparent",
@@ -123,6 +133,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
 
         {/* Hover actions desktop only — apparaît dans gradient bas */}
         <div
+          data-card-hover-only
           className={[
             "hidden md:flex absolute bottom-3 left-3 right-3 items-center gap-2 transition-opacity duration-200",
             isHover ? "opacity-100" : "opacity-0",
@@ -150,6 +161,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
 
         {/* Hover metadata desktop only - titre + année + catégorie */}
         <div
+          data-card-hover-only
           className={[
             "hidden md:block absolute left-3 right-3 transition-opacity duration-200",
             "bottom-12",

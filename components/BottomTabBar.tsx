@@ -53,6 +53,7 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <nav
+      data-mobile-tabbar
       className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0b0b0b]/95 backdrop-blur-lg md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigation principale"
