@@ -99,7 +99,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const size = formatSize(video.size);
   const resolution =
     video.videoMediaMetadata?.width && video.videoMediaMetadata?.height
-      ? `${video.videoMediaMetadata.width}Ã—${video.videoMediaMetadata.height}`
+      ? `${video.videoMediaMetadata.width}×${video.videoMediaMetadata.height}`
       : null;
 
   useEffect(() => {
