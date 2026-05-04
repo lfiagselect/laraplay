@@ -9,9 +9,33 @@ import { createDeviceSession, DEVICE_FLOW_CONFIG } from "@/lib/device-flow";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/**
+ * Détermine l'origine publique du site, en respectant les proxys (Render, Vercel, etc.).
+ * Ordre de priorité :
+ * 1. NEXTAUTH_URL (config explicite)
+ * 2. Headers x-forwarded-* (proxy)
+ * 3. host header
+ * 4. Fallback req.url
+ */
+function getPublicOrigin(req: Request): string {
+  if (process.env.NEXTAUTH_URL) {
+    try {
+      return new URL(process.env.NEXTAUTH_URL).origin;
+    } catch {
+      // ignore, fallback
+    }
+  }
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host =
+    req.headers.get("x-forwarded-host") ??
+    req.headers.get("host") ??
+    new URL(req.url).host;
+  return `${proto}://${host}`;
+}
+
 export async function POST(req: Request) {
   const session = createDeviceSession();
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
 
   return NextResponse.json({
     device_code: session.deviceCode,
