@@ -1,4 +1,4 @@
-// LARAPLAY — Page catégorie unique. Bandeau hero + grille vidéos filtrées.
+// LARAPLAY — Page catégorie unique. Header sticky + bandeau hero sous + grille filtrée.
 
 import { Header } from "@/components/Header";
 import { CategoryFilters } from "@/components/CategoryFilters";
@@ -24,9 +24,7 @@ export default async function CategoryPage({
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="absolute top-0 left-0 right-0 z-30">
-        <Header />
-      </div>
+      <Header />
 
       <section className="relative w-full overflow-hidden bg-black">
         {heroImage ? (
