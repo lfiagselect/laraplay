@@ -4,7 +4,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2, UserPlus, ShieldCheck, Power, RefreshCw } from "lucide-react";
+import { Loader2, Trash2, UserPlus, ShieldCheck, Power, RefreshCw, Database } from "lucide-react";
 
 interface WhitelistEntry {
   email: string;
@@ -25,6 +25,29 @@ export function AdminClient() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<"user" | "admin">("user");
   const [adding, setAdding] = useState(false);
+
+  // Refresh catalog
+  const [refreshingCatalog, setRefreshingCatalog] = useState(false);
+  const [catalogMsg, setCatalogMsg] = useState<string | null>(null);
+
+  const refreshCatalog = async () => {
+    setRefreshingCatalog(true);
+    setCatalogMsg(null);
+    try {
+      const res = await fetch("/api/admin/refresh-catalog", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setCatalogMsg(`Catalogue rafraîchi : ${data.videos} vidéos en ${data.ms}ms`);
+      setTimeout(() => setCatalogMsg(null), 5000);
+    } catch (e) {
+      setCatalogMsg(`Erreur : ${e instanceof Error ? e.message : "unknown"}`);
+    } finally {
+      setRefreshingCatalog(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -162,6 +185,39 @@ export function AdminClient() {
 
   return (
     <div className="space-y-8">
+      {/* Refresh catalogue Drive */}
+      <section className="bg-[var(--bg-elevated)] rounded-xl p-5 md:p-6 border border-white/5">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Database className="w-5 h-5 text-[var(--accent)]" />
+              Catalogue vidéos
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              Force le rafraîchissement du cache (1h par défaut). À utiliser après ajout/suppression d&apos;une vidéo dans Drive.
+            </p>
+            {catalogMsg && (
+              <p className={`text-sm mt-2 ${catalogMsg.startsWith("Erreur") ? "text-red-400" : "text-green-400"}`}>
+                {catalogMsg}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={refreshCatalog}
+            disabled={refreshingCatalog}
+            className="bg-white text-black font-bold px-5 py-2.5 rounded-lg hover:bg-zinc-200 active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center gap-2 shrink-0"
+          >
+            {refreshingCatalog ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            Rafraîchir Drive
+          </button>
+        </div>
+      </section>
+
       {/* Form ajout */}
       <section className="bg-[var(--bg-elevated)] rounded-xl p-5 md:p-6 border border-white/5">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
