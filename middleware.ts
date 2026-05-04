@@ -1,14 +1,12 @@
-// LARAPLAY — Middleware protection routes (edge-safe)
+﻿// LARAPLAY — Middleware protection routes (edge-safe)
 // Utilise authConfig léger, pas auth.ts (qui charge googleapis).
 
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
 
-const PUBLIC_PATHS = ["/login", "/login-tv", "/unauthorized"];
+const PUBLIC_PATHS = ["/login", "/login-tv", "/unauthorized", "/manifest.webmanifest"];
 const PUBLIC_API_PREFIXES = ["/api/auth", "/api/ping"];
-// /d nécessite auth Google standard donc géré normalement (pas public)
-// /api/auth/device/* est inclus dans /api/auth bypass
 
 const { auth } = NextAuth(authConfig);
 
