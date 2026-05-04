@@ -1,6 +1,6 @@
-// LARAPLAY — Modal "Plus d'infos" type Netflix
-// Desktop: modal centré max-w-4xl. Mobile: bottom sheet avec drag handle (V2 §8.1).
-// Préview vidéo monté après 600ms — économise bandwidth si user ferme vite.
+﻿// LARAPLAY â€” Modal "Plus d'infos" type Netflix
+// Desktop: modal centrÃ© max-w-4xl. Mobile: bottom sheet avec drag handle (V2 Â§8.1).
+// PrÃ©view vidÃ©o montÃ© aprÃ¨s 600ms â€” Ã©conomise bandwidth si user ferme vite.
 
 "use client";
 
@@ -82,7 +82,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const size = formatSize(video.size);
   const resolution =
     video.videoMediaMetadata?.width && video.videoMediaMetadata?.height
-      ? `${video.videoMediaMetadata.width}×${video.videoMediaMetadata.height}`
+      ? `${video.videoMediaMetadata.width}Ã—${video.videoMediaMetadata.height}`
       : null;
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         ref={sheetRef}
         className={[
           "relative w-full max-w-4xl bg-zinc-950 overflow-hidden shadow-2xl",
-          // Desktop : centré avec margin auto
+          // Desktop : centrÃ© avec margin auto
           "md:mx-auto md:my-8 md:rounded-lg md:animate-modal-enter",
           // Mobile : sheet en bas, prend bottom 90vh, slide-up animation
           "fixed md:relative bottom-0 left-0 right-0 rounded-t-2xl md:rounded-t-lg max-h-[92vh] md:max-h-none animate-sheet-slide-up md:animate-modal-enter",
@@ -150,7 +150,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
           <span className="block w-10 h-1 rounded-full bg-white/30" />
         </div>
 
-        {/* Scroll container — assure le scroll interne mobile */}
+        {/* Scroll container â€” assure le scroll interne mobile */}
         <div className="overflow-y-auto max-h-[88vh] md:max-h-none">
           <div className="relative aspect-video bg-black overflow-hidden">
             {video.thumbnailLink && (
@@ -221,8 +221,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   onClick={onToggleFav}
                   disabled={!userEmail}
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
-                  aria-label={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
-                  title={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
+                  aria-label={fav ? "Retirer de ma liste" : "Ajouter Ã  ma liste"}
+                  title={fav ? "Retirer de ma liste" : "Ajouter Ã  ma liste"}
                 >
                   {fav ? (
                     <Check className="w-5 h-5 text-white" />
@@ -233,7 +233,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 <button
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
                   aria-label="J'aime"
-                  title="J'aime (bientôt)"
+                  title="J'aime (bientÃ´t)"
                 >
                   <ThumbsUp className="w-5 h-5 text-white" />
                 </button>
@@ -266,13 +266,13 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <aside className="text-sm space-y-2">
                 {video.category && (
                   <p>
-                    <span className="text-zinc-500">Catégorie : </span>
+                    <span className="text-zinc-500">CatÃ©gorie : </span>
                     <span className="text-zinc-200">{video.category}</span>
                   </p>
                 )}
                 {video.modifiedTime && (
                   <p>
-                    <span className="text-zinc-500">Ajouté le : </span>
+                    <span className="text-zinc-500">AjoutÃ© le : </span>
                     <span className="text-zinc-200">
                       {new Date(video.modifiedTime).toLocaleDateString("fr-FR", {
                         day: "numeric",
@@ -294,7 +294,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
             {related.length > 0 && (
               <div>
                 <h3 className="text-xl font-bold text-white mb-4">
-                  Autres vidéos similaires
+                  Autres vidÃ©os similaires
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {related.slice(0, 6).map((v) => (
@@ -309,3 +309,4 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     </div>
   );
 }
+
