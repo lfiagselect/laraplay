@@ -38,7 +38,8 @@ interface VideoCardProps {
 export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const year = formatYear(video.modifiedTime);
-  const thumb = !fallbackImage && video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+  // V2: thumbnailLink Drive utilisé directement — plus de proxy /api/thumb
+  const thumb = !fallbackImage && video.thumbnailLink ? video.thumbnailLink : null;
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const { open } = useVideoModal();
   const hover = useHoverPreload(video.id);
@@ -73,7 +74,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         data-focusable
         onClick={() => open(video.id)}
         onFocus={(e) => {
-          // Sur TV: scroll le card focusé au centre du row scroller (D-pad UX)
           if (typeof document !== "undefined" && document.documentElement.classList.contains("tv")) {
             try {
               e.currentTarget.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
@@ -108,7 +108,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           </div>
         )}
 
-        {/* Gradient overlay desktop hover - apparaît avec la card étendue */}
         <div
           data-card-hover-only
           className={[
@@ -119,19 +118,16 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           ].join(" ")}
         />
 
-        {/* Mobile/touch overlay simple Play */}
         <div className="absolute inset-0 bg-black/30 opacity-0 group-active:opacity-100 md:hidden flex items-center justify-center transition-opacity">
           <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
         </div>
 
-        {/* Duration badge — toujours visible */}
         {duration && (
           <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded">
             {duration}
           </span>
         )}
 
-        {/* Hover actions desktop only — apparaît dans gradient bas */}
         <div
           data-card-hover-only
           className={[
@@ -139,27 +135,17 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
             isHover ? "opacity-100" : "opacity-0",
           ].join(" ")}
         >
-          <span
-            className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shadow-lg"
-            title="Lecture"
-          >
+          <span className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shadow-lg" title="Lecture">
             <Play className="w-4 h-4" fill="currentColor" />
           </span>
-          <span
-            className="w-8 h-8 rounded-full border border-white/60 bg-black/50 text-white flex items-center justify-center"
-            title="Ma liste"
-          >
+          <span className="w-8 h-8 rounded-full border border-white/60 bg-black/50 text-white flex items-center justify-center" title="Ma liste">
             <Plus className="w-4 h-4" />
           </span>
-          <span
-            className="ml-auto w-8 h-8 rounded-full border border-white/60 bg-black/50 text-white flex items-center justify-center"
-            title="Plus d'infos"
-          >
+          <span className="ml-auto w-8 h-8 rounded-full border border-white/60 bg-black/50 text-white flex items-center justify-center" title="Plus d'infos">
             <Info className="w-4 h-4" />
           </span>
         </div>
 
-        {/* Hover metadata desktop only - titre + année + catégorie */}
         <div
           data-card-hover-only
           className={[
@@ -168,16 +154,13 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
             isHover ? "opacity-100" : "opacity-0",
           ].join(" ")}
         >
-          <h3 className="text-white text-sm font-semibold line-clamp-1 drop-shadow-lg">
-            {cleanName}
-          </h3>
+          <h3 className="text-white text-sm font-semibold line-clamp-1 drop-shadow-lg">{cleanName}</h3>
           <p className="text-[var(--text-secondary)] text-xs mt-0.5 line-clamp-1">
             {[year, video.category].filter(Boolean).join(" · ")}
           </p>
         </div>
       </button>
 
-      {/* Texte sous la card (mobile + état non-hover desktop) */}
       <div
         className={[
           "p-2.5 transition-opacity duration-200",
@@ -185,9 +168,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           isHover ? "md:opacity-0" : "",
         ].join(" ")}
       >
-        <h3 className="text-sm font-medium text-zinc-100 line-clamp-2 leading-tight">
-          {cleanName}
-        </h3>
+        <h3 className="text-sm font-medium text-zinc-100 line-clamp-2 leading-tight">{cleanName}</h3>
         {video.category && (
           <p className="text-xs text-[var(--text-muted)] mt-1">{video.category}</p>
         )}

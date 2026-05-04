@@ -58,7 +58,7 @@ export default async function WatchPage({
       <div className="fixed inset-0 bg-black">
         <PlayerTV
           src={`/api/stream/${video.id}`}
-          poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
+          poster={video.thumbnailLink ?? undefined}
           videoId={video.id}
           userEmail={userEmail}
           className="w-full h-full"
@@ -89,9 +89,9 @@ export default async function WatchPage({
         <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
           <Player
             src={`/api/stream/${video.id}`}
-            poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
+            poster={video.thumbnailLink ?? undefined}
             videoId={video.id}
-            userEmail={userEmail}
+            userEmail={userEmail ?? undefined}
             className="w-full h-full"
           />
           <Link
