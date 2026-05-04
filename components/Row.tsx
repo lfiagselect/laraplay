@@ -55,7 +55,6 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
 
         <div
           ref={scrollRef}
-          data-row-scroller
           className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
         >
           {videos.map((v) => (

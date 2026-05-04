@@ -57,7 +57,6 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
     <>
       <button
         type="button"
-        data-mobile-menu
         onClick={() => setOpen(true)}
         className="md:hidden p-2 -ml-2 rounded hover:bg-zinc-800/60 transition"
         aria-label="Ouvrir le menu"

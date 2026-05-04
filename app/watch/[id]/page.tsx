@@ -1,17 +1,13 @@
 // LARAPLAY — Page lecture vidéo
-// Player + bouton fermer + métadonnées + similaires.
-// TV: render PlayerTV plein écran (D-pad + preload auto).
+// Player + bouton fermer (croix retour accueil) + métadonnées + similaires.
 
 import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
 import { Player } from "@/components/Player";
-import { PlayerTV } from "@/components/PlayerTV";
 import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { headers } from "next/headers";
-import { detectTVServer } from "@/lib/tv";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
@@ -42,7 +38,7 @@ export default async function WatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [catalog, session, hdrs] = await Promise.all([getCatalog(), auth(), headers()]);
+  const [catalog, session] = await Promise.all([getCatalog(), auth()]);
 
   let video: VideoFile | null = catalog.byId.get(id) ?? null;
   if (!video) {
@@ -51,23 +47,6 @@ export default async function WatchPage({
   if (!video) notFound();
 
   const userEmail = session?.user?.email;
-  const isTV = detectTVServer(hdrs.get("user-agent"));
-
-  if (isTV) {
-    return (
-      <div className="fixed inset-0 bg-black">
-        <PlayerTV
-          src={`/api/stream/${video.id}`}
-          poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
-          videoId={video.id}
-          userEmail={userEmail}
-          className="w-full h-full"
-          backHref="/"
-        />
-      </div>
-    );
-  }
-
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const size = formatSize(video.size);
@@ -85,6 +64,7 @@ export default async function WatchPage({
   return (
     <div className="min-h-screen bg-black">
       <Header />
+
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-6">
         <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
           <Player
@@ -94,6 +74,7 @@ export default async function WatchPage({
             userEmail={userEmail}
             className="w-full h-full"
           />
+          {/* Bouton fermer — retour accueil */}
           <Link
             href="/"
             aria-label="Fermer et retour à l'accueil"
@@ -102,12 +83,17 @@ export default async function WatchPage({
             <X className="w-5 h-5 text-white" />
           </Link>
         </div>
+
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           <div className="md:col-span-2">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">{cleanName}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+              {cleanName}
+            </h1>
             <div className="flex flex-wrap gap-3 text-sm text-zinc-400 mb-4">
               {video.category && (
-                <span className="px-3 py-1 bg-zinc-800 rounded-full">{video.category}</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full">
+                  {video.category}
+                </span>
               )}
               {duration && <span>· {duration}</span>}
               {resolution && <span>· {resolution}</span>}
@@ -119,6 +105,7 @@ export default async function WatchPage({
               </p>
             )}
           </div>
+
           <aside className="text-sm text-zinc-400 space-y-2">
             {video.modifiedTime && (
               <p>
@@ -136,6 +123,7 @@ export default async function WatchPage({
             </p>
           </aside>
         </div>
+
         {related.length > 0 && (
           <Row title={`Autres vidéos · ${video.category}`} videos={related} />
         )}

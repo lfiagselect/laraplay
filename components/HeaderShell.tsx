@@ -20,7 +20,6 @@ export function HeaderShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      data-header-shell
       className={[
         "sticky top-0 z-40 w-full transition-all duration-300",
         scrolled
