@@ -1,9 +1,10 @@
-// LARAPLAY — Thumbnail proxy
-// Drive thumbnailLink expire — on proxify pour servir image stable cache CDN.
+// LARAPLAY — Thumbnail signed URL
+// Drive thumbnailLink → retourne { url } JSON
+// Le browser charge l'image directement depuis Drive (zéro bandwidth Render).
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { fetchDriveThumb } from "@/lib/drive";
+import { getThumbUrl } from "@/lib/drive";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,19 +15,19 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Auth + thumb en parallèle.
-  const [session, thumbRes] = await Promise.all([auth(), fetchDriveThumb(id)]);
+  const [session, url] = await Promise.all([auth(), getThumbUrl(id)]);
 
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
   }
-  if (!thumbRes) {
+  if (!url) {
     return new Response("Not found", { status: 404 });
   }
 
-  const headers = new Headers();
-  headers.set("content-type", thumbRes.contentType ?? "image/jpeg");
-  // Cache CDN long: thumbs Drive changent rarement
-  headers.set("cache-control", "public, max-age=86400, s-maxage=86400, immutable");
-  return new Response(thumbRes.body, { status: 200, headers });
+  return NextResponse.json({ url }, {
+    headers: {
+      // Thumbnails Drive changent rarement — browser cache 24h
+      "Cache-Control": "private, max-age=86400",
+    },
+  });
 }

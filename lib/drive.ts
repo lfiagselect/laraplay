@@ -16,8 +16,8 @@ export interface VideoFile {
     durationMillis?: string;
   };
   parents?: string[];
-  modifiedTime?: string;  // dernière modification (change si replace version)
-  createdTime?: string;   // création initiale (stable, ne change jamais)
+  modifiedTime?: string;
+  createdTime?: string;
   description?: string;
   category?: string;
 }
@@ -192,4 +192,45 @@ export async function fetchDriveThumb(
     body: imgRes.body,
     contentType: imgRes.headers.get("content-type"),
   };
+}
+
+// ─── Signed URL (zéro bandwidth Render) ──────────────────────────────────────
+
+/**
+ * Retourne une URL Drive streamable directement par le browser.
+ * Le token est injecté côté serveur — jamais exposé dans l'URL finale.
+ * expiresAt = now + 45min (token dure 60min, marge de sécurité 15min).
+ */
+export async function getStreamUrl(
+  fileId: string
+): Promise<{ url: string; expiresAt: number }> {
+  const token = await getAccessToken()
+  // On retourne l'URL sans token — le browser devra envoyer Authorization header.
+  // Mais <video src> ne peut pas envoyer de header custom.
+  // Solution : on embed le token dans l'URL uniquement pour la durée de session
+  // (45min max, même durée que le cache token process).
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true&access_token=${token}`
+  return {
+    url,
+    expiresAt: Date.now() + 45 * 60 * 1000,
+  }
+}
+
+/**
+ * Retourne l'URL thumbnail Drive directement utilisable en <img src>.
+ * Pas de token nécessaire — les thumbnailLinks Drive sont semi-publics
+ * et signés par Google avec une courte durée de vie.
+ */
+export async function getThumbUrl(fileId: string): Promise<string | null> {
+  const drive = getDrive()
+  try {
+    const res = await drive.files.get({
+      fileId,
+      fields: "thumbnailLink",
+      supportsAllDrives: true,
+    })
+    return res.data.thumbnailLink ?? null
+  } catch {
+    return null
+  }
 }

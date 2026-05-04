@@ -1,7 +1,8 @@
 // LARAPLAY — Preload hooks pour stream vidéo.
-// useHoverPreload: desktop hover → fetch HEAD partiel pour warmer Drive cache.
+// useHoverPreload: desktop hover → fetch URL signée puis Range partiel Drive.
 // useViewportPreload: mobile/scroll → IntersectionObserver, 1 stream actif max.
 // I5: TV bypass useViewportPreload (D-pad cycle naturel, évite saturer pipe Drive).
+// V2: warmStream résout d'abord l'URL via /api/stream/[id] (JSON) puis Range Drive direct.
 
 "use client";
 
@@ -27,12 +28,18 @@ async function warmStream(id: string, signal: AbortSignal): Promise<void> {
   if (!shouldPreload(id)) return;
   ACTIVE_PRELOADS.add(id);
   try {
-    const res = await fetch(`/api/stream/${id}`, {
+    // Étape 1 : récupérer l'URL signée (auth vérifiée côté serveur)
+    const jsonRes = await fetch(`/api/stream/${id}`, { signal });
+    if (!jsonRes.ok || signal.aborted) return;
+    const { url } = await jsonRes.json();
+
+    // Étape 2 : Range request sur Drive directement — zéro bandwidth Render
+    const rangeRes = await fetch(url, {
       headers: { Range: "bytes=0-65535" },
       signal,
     });
-    if (res.body) {
-      const reader = res.body.getReader();
+    if (rangeRes.body) {
+      const reader = rangeRes.body.getReader();
       while (!signal.aborted) {
         const { done } = await reader.read();
         if (done) break;
@@ -97,7 +104,7 @@ export function useViewportPreload(id: string) {
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") return;
     if (PRELOADED.has(id)) return;
-    if (isTVRuntime()) return; // I5: skip viewport preload sur TV
+    if (isTVRuntime()) return;
 
     const ctrl = new AbortController();
     const obs = new IntersectionObserver(
