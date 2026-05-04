@@ -53,27 +53,17 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const sheetRef = useRef<HTMLDivElement>(null);
   const playBtnRef = useRef<HTMLButtonElement>(null);
   const dragStartY = useRef<number | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const router = useRouter();
 
   // Skip preview vidéo TV (économise bandwidth + perf)
   useEffect(() => {
     if (isTV) {
-      setVideoReady(true);
+      setVideoReady(true); // hide loader (poster suffit)
       return;
     }
     const t = setTimeout(() => setShouldMountVideo(true), 600);
     return () => clearTimeout(t);
   }, [isTV]);
-
-  // Fetch URL signée pour la preview inline (après le délai 600ms)
-  useEffect(() => {
-    if (!shouldMountVideo || isTV) return;
-    fetch(`/api/stream/${video.id}`)
-      .then((r) => r.json())
-      .then(({ url }) => setPreviewUrl(url))
-      .catch(() => setVideoReady(true)); // échec silencieux — on cache juste le loader
-  }, [shouldMountVideo, isTV, video.id]);
 
   // Focus initial Play button TV
   useEffect(() => {
@@ -178,13 +168,12 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
             {video.thumbnailLink && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={video.thumbnailLink}
+                src={`/api/thumb/${video.id}`}
                 alt={cleanName}
                 className="absolute inset-0 w-full h-full object-cover"
               />
             )}
-            {/* Preview inline : montée après 600ms, URL résolue via /api/stream (JSON) */}
-            {shouldMountVideo && !isTV && previewUrl && (
+            {shouldMountVideo && !isTV && (
               <video
                 ref={videoRef}
                 autoPlay
@@ -192,9 +181,9 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 loop
                 playsInline
                 preload="metadata"
-                poster={video.thumbnailLink ?? undefined}
+                poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
                 className="absolute inset-0 w-full h-full object-cover"
-                src={previewUrl}
+                src={`/api/stream/${video.id}`}
                 onCanPlay={() => setVideoReady(true)}
               />
             )}
@@ -235,6 +224,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <h2 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
                 {cleanName}
               </h2>
+
               <div className="flex flex-wrap gap-3 items-center">
                 <button
                   ref={playBtnRef}
@@ -250,8 +240,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   onClick={onToggleFav}
                   disabled={!userEmail}
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
-                  aria-label={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
-                  title={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
+                  aria-label={fav ? "Retirer de ma liste" : "Ajouter Ã  ma liste"}
+                  title={fav ? "Retirer de ma liste" : "Ajouter Ã  ma liste"}
                 >
                   {fav ? (
                     <Check className="w-5 h-5 text-white" />
@@ -339,3 +329,4 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     </div>
   );
 }
+
