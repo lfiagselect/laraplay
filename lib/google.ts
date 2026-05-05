@@ -7,21 +7,24 @@ import type { drive_v3, sheets_v4 } from "googleapis";
 /**
  * Auth Google. Deux modes:
  * - Local dev: GOOGLE_APPLICATION_CREDENTIALS = chemin fichier JSON
- * - Vercel prod: GOOGLE_SERVICE_ACCOUNT_JSON = string JSON complet
+ * - Netlify/Vercel prod: GOOGLE_SERVICE_ACCOUNT_JSON = JSON ou Base64
  */
 function getAuth() {
   const inlineJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-  // Scope spreadsheets read+write requis pour panneau admin (ajout/suppression users).
-  // Le service account doit être partagé en éditeur sur le Sheet whitelist.
   const scopes = [
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/spreadsheets",
   ];
 
   if (inlineJson) {
-    const credentials = JSON.parse(inlineJson);
+    // Supporte JSON brut ou Base64
+    let jsonString = inlineJson;
+    if (!inlineJson.trim().startsWith("{")) {
+      jsonString = Buffer.from(inlineJson, "base64").toString("utf-8");
+    }
+    const credentials = JSON.parse(jsonString);
     return new google.auth.GoogleAuth({ credentials, scopes });
   }
 
