@@ -1,10 +1,10 @@
-// LARAPLAY — Thumbnail signed URL
-// Drive thumbnailLink → retourne { url } JSON
-// Le browser charge l'image directement depuis Drive (zéro bandwidth Render).
+// LARAPLAY — Thumbnail proxy
+// GET /api/thumb/[id] → récupère l'image depuis Drive et la proxie directement.
+// Compatible <img src="/api/thumb/[id]"> sans JS supplémentaire.
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@/auth";
-import { getThumbUrl } from "@/lib/drive";
+import { fetchDriveThumb } from "@/lib/drive";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,20 +13,23 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-
-  const [session, url] = await Promise.all([auth(), getThumbUrl(id)]);
-
+  const session = await auth();
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
   }
-  if (!url) {
+
+  const { id } = await params;
+
+  const result = await fetchDriveThumb(id);
+
+  if (!result || !result.body) {
     return new Response("Not found", { status: 404 });
   }
 
-  return NextResponse.json({ url }, {
+  return new Response(result.body, {
+    status: 200,
     headers: {
-      // Thumbnails Drive changent rarement — browser cache 24h
+      "Content-Type": result.contentType ?? "image/jpeg",
       "Cache-Control": "private, max-age=86400",
     },
   });
