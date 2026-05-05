@@ -223,7 +223,9 @@ export async function getStreamUrl(
 }
 
 /**
- * Retourne l'URL thumbnail Drive directement utilisable en <img src>.
+ * Retourne l'URL thumbnail utilisable en <img src>.
+ * Priorité : thumbnailLink Drive API → fallback drive.google.com/thumbnail (fonctionne
+ * pour tous les fichiers accessibles, y compris Shared Drives).
  */
 export async function getThumbUrl(fileId: string): Promise<string | null> {
   const drive = getDrive()
@@ -233,8 +235,13 @@ export async function getThumbUrl(fileId: string): Promise<string | null> {
       fields: "thumbnailLink",
       supportsAllDrives: true,
     })
-    return res.data.thumbnailLink ?? null
+    // Priorité 1 : thumbnailLink natif Drive
+    if (res.data.thumbnailLink) return res.data.thumbnailLink
+
+    // Priorité 2 : URL thumbnail publique Drive — fonctionne même si thumbnailLink absent
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
   } catch {
-    return null
+    // En cas d'erreur API, on tente quand même le fallback
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
   }
 }
