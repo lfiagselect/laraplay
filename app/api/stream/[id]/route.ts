@@ -1,9 +1,13 @@
-// LARAPLAY — Stream proxy
-// GET /api/stream/[id] → proxie le stream Drive via le serveur
-// Évite le blocage Google "automated queries" quand le browser appelle Drive directement.
+// LARAPLAY — Stream signed URL
+// GET /api/stream/[id] → retourne { url, expiresAt } JSON
+// Le browser streame directement depuis Drive (zéro bandwidth Render).
+// Range/seek géré nativement par Drive côté browser.
+// Logs timing conservés sur la génération d'URL.
 
-import { NextRequest } from "next/server";
-import { fetchDriveStream } from "@/lib/drive";
+import { NextRequest, NextResponse } from "next/server";
+import { getStreamUrl } from "@/lib/drive";
+import { getCatalog } from "@/lib/catalog";
+import { getVideo } from "@/lib/drive";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -13,34 +17,40 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const t0 = performance.now();
+  const { id } = await params;
+
+  const [session, catalog] = await Promise.all([
+    auth(),
+    getCatalog(),
+  ]);
+
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { id } = await params;
-  const range = req.headers.get("range") ?? undefined;
-
-  const driveRes = await fetchDriveStream(id, range);
-
-  if (!driveRes.ok && driveRes.status !== 206) {
-    return new Response(`Drive error: ${driveRes.status}`, { status: driveRes.status });
+  // Vérification existence vidéo via catalog cache (byId Map) → 0ms
+  // Fallback Drive direct si miss catalog
+  let meta = catalog.byId.get(id);
+  let metaSource: "cache" | "drive" = "cache";
+  if (!meta) {
+    metaSource = "drive";
+    const fresh = await getVideo(id);
+    if (!fresh) return new Response("Not found", { status: 404 });
+    meta = fresh;
   }
 
-  const headers = new Headers();
-  const contentType = driveRes.headers.get("content-type");
-  const contentLength = driveRes.headers.get("content-length");
-  const contentRange = driveRes.headers.get("content-range");
-  const acceptRanges = driveRes.headers.get("accept-ranges");
+  const { url, expiresAt } = await getStreamUrl(id);
 
-  if (contentType) headers.set("content-type", contentType);
-  if (contentLength) headers.set("content-length", contentLength);
-  if (contentRange) headers.set("content-range", contentRange);
-  if (acceptRanges) headers.set("accept-ranges", acceptRanges);
-  headers.set("cache-control", "private, max-age=0");
+  const total = Math.round(performance.now() - t0);
+  console.log(
+    `[stream] id=${id} kind=signed total=${total}ms metaSource=${metaSource} expiresAt=${new Date(expiresAt).toISOString()}`
+  );
 
-  return new Response(driveRes.body, {
-    status: driveRes.status,
-    headers,
+  return NextResponse.json({ url, expiresAt }, {
+    headers: {
+      // Private : auth requise pour obtenir l'URL, browser peut garder 40min
+      "Cache-Control": "private, max-age=2400",
+    },
   });
 }

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { useVideoModal } from "./ModalProvider";
@@ -62,62 +62,16 @@ export function Top10Row({ title, videos }: Top10RowProps) {
             const rank = idx + 1;
             const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
             const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
-            const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
 
             return (
-              <button
+              <Top10Card
                 key={video.id}
-                type="button"
-                onClick={() => open(video.id)}
-                className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
-              >
-                {/* Chiffre géant en arrière-plan, aligné bas avec card */}
-                <span
-                  className="top10-rank text-[110px] sm:text-[150px] md:text-[220px] font-black leading-none select-none flex-shrink-0"
-                  style={{
-                    fontFamily: "var(--font-bebas), Impact, sans-serif",
-                    color: "transparent",
-                    WebkitTextStroke: "3px #e50914",
-                    textShadow: "0 0 30px rgba(229, 9, 20, 0.35)",
-                    lineHeight: "0.85",
-                    transform: "translateY(8px)",
-                  }}
-                >
-                  {rank}
-                </span>
-
-                {/* Card vidéo */}
-                <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-300 group-hover/card:scale-105 group-hover/card:z-10">
-                  {thumb ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={thumb}
-                      alt={cleanName}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
-                      <Play className="w-10 h-10 text-zinc-600" />
-                    </div>
-                  )}
-
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition flex items-center justify-center">
-                    <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
-                  </div>
-
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <p className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
-                      {cleanName}
-                    </p>
-                    {duration && (
-                      <p className="text-[10px] text-zinc-300 mt-1">{duration}</p>
-                    )}
-                  </div>
-                </div>
-              </button>
+                video={video}
+                rank={rank}
+                duration={duration}
+                cleanName={cleanName}
+                onOpen={() => open(video.id)}
+              />
             );
           })}
         </div>
@@ -131,5 +85,74 @@ export function Top10Row({ title, videos }: Top10RowProps) {
         </button>
       </div>
     </section>
+  );
+}
+
+interface Top10CardProps {
+  video: VideoFile;
+  rank: number;
+  duration: string | null;
+  cleanName: string;
+  onOpen: () => void;
+}
+
+function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
+  const [thumbError, setThumbError] = useState(false);
+  const showThumb = !thumbError;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
+    >
+      {/* Chiffre géant en arrière-plan, aligné bas avec card */}
+      <span
+        className="top10-rank text-[110px] sm:text-[150px] md:text-[220px] font-black leading-none select-none flex-shrink-0"
+        style={{
+          fontFamily: "var(--font-bebas), Impact, sans-serif",
+          color: "transparent",
+          WebkitTextStroke: "3px #e50914",
+          textShadow: "0 0 30px rgba(229, 9, 20, 0.35)",
+          lineHeight: "0.85",
+          transform: "translateY(8px)",
+        }}
+      >
+        {rank}
+      </span>
+
+      {/* Card vidéo */}
+      <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-300 group-hover/card:scale-105 group-hover/card:z-10">
+        {showThumb ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/thumb/${video.id}`}
+            alt={cleanName}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+            onError={() => setThumbError(true)}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+            <Play className="w-10 h-10 text-zinc-600" />
+          </div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition flex items-center justify-center">
+          <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
+        </div>
+
+        <div className="absolute bottom-2 left-2 right-2">
+          <p className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
+            {cleanName}
+          </p>
+          {duration && (
+            <p className="text-[10px] text-zinc-300 mt-1">{duration}</p>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }

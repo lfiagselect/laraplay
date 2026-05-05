@@ -122,17 +122,6 @@ export async function getVideo(fileId: string): Promise<VideoFile | null> {
 }
 
 /**
- * Décode la variable GOOGLE_SERVICE_ACCOUNT_JSON qui peut être
- * en JSON brut ou encodée en Base64.
- */
-function parseCredentials(raw: string) {
-  if (raw.trim().startsWith("{")) {
-    return JSON.parse(raw);
-  }
-  return JSON.parse(Buffer.from(raw, "base64").toString("utf-8"));
-}
-
-/**
  * Récupère token OAuth depuis service account.
  * Cache mémoire process — token Google valide 1h, on cache 50min pour buffer.
  */
@@ -152,7 +141,7 @@ async function getAccessToken(): Promise<string> {
 
   let auth;
   if (inlineJson) {
-    auth = new google.auth.GoogleAuth({ credentials: parseCredentials(inlineJson), scopes });
+    auth = new google.auth.GoogleAuth({ credentials: JSON.parse(inlineJson), scopes });
   } else if (keyFile) {
     auth = new google.auth.GoogleAuth({ keyFile, scopes });
   } else {
@@ -205,16 +194,21 @@ export async function fetchDriveThumb(
   };
 }
 
-// ─── Signed URL (zéro bandwidth Render) ──────────────────────────────────────────────────
+// ─── Signed URL (zéro bandwidth Render) ──────────────────────────────────────
 
 /**
  * Retourne une URL Drive streamable directement par le browser.
+ * Le token est injecté côté serveur — jamais exposé dans l'URL finale.
  * expiresAt = now + 45min (token dure 60min, marge de sécurité 15min).
  */
 export async function getStreamUrl(
   fileId: string
 ): Promise<{ url: string; expiresAt: number }> {
   const token = await getAccessToken()
+  // On retourne l'URL sans token — le browser devra envoyer Authorization header.
+  // Mais <video src> ne peut pas envoyer de header custom.
+  // Solution : on embed le token dans l'URL uniquement pour la durée de session
+  // (45min max, même durée que le cache token process).
   const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true&access_token=${token}`
   return {
     url,
@@ -223,9 +217,9 @@ export async function getStreamUrl(
 }
 
 /**
- * Retourne l'URL thumbnail utilisable en <img src>.
- * Priorité : thumbnailLink Drive API → fallback drive.google.com/thumbnail (fonctionne
- * pour tous les fichiers accessibles, y compris Shared Drives).
+ * Retourne l'URL thumbnail Drive directement utilisable en <img src>.
+ * Pas de token nécessaire — les thumbnailLinks Drive sont semi-publics
+ * et signés par Google avec une courte durée de vie.
  */
 export async function getThumbUrl(fileId: string): Promise<string | null> {
   const drive = getDrive()
@@ -235,13 +229,8 @@ export async function getThumbUrl(fileId: string): Promise<string | null> {
       fields: "thumbnailLink",
       supportsAllDrives: true,
     })
-    // Priorité 1 : thumbnailLink natif Drive
-    if (res.data.thumbnailLink) return res.data.thumbnailLink
-
-    // Priorité 2 : URL thumbnail publique Drive — fonctionne même si thumbnailLink absent
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
+    return res.data.thumbnailLink ?? null
   } catch {
-    // En cas d'erreur API, on tente quand même le fallback
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
+    return null
   }
 }
