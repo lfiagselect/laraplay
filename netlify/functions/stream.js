@@ -8,7 +8,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const base64 = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
     const json = Buffer.from(base64, 'base64').toString('utf-8');
     const credentials = JSON.parse(json);
 
