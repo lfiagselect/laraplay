@@ -1,11 +1,11 @@
 // LARAPLAY — Stream proxy server-side
-// GET /api/stream/[id] → vérifie auth + catalog, puis redirect 302 vers URL signée Drive.
-// Le token OAuth reste caché côté serveur (jamais visible dans le HTML/JS).
-// Le browser streame Drive directement — zéro bytes via Netlify.
+// GET /api/stream/[id] → proxifie les bytes Drive vers le browser.
+// Transfer-Encoding: chunked — le browser joue dès le 1er chunk, sans attendre content-length.
+// Range requests supportés pour le seek vidéo.
 // Auth requise.
 
 import { NextRequest } from "next/server";
-import { getStreamUrl } from "@/lib/drive";
+import { fetchDriveStream } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { getVideo } from "@/lib/drive";
 import { auth } from "@/auth";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -32,13 +32,28 @@ export async function GET(
     if (!fresh) return new Response("Not found", { status: 404 });
   }
 
-  const { url } = await getStreamUrl(id);
+  const range = req.headers.get("range") ?? undefined;
+  const driveRes = await fetchDriveStream(id, range);
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: url,
-      "Cache-Control": "no-store",
-    },
+  if (!driveRes.ok && driveRes.status !== 206) {
+    return new Response("Drive error", { status: driveRes.status });
+  }
+
+  const headers = new Headers();
+
+  // Propager content-type et range headers
+  for (const h of ["content-type", "content-range", "accept-ranges"]) {
+    const val = driveRes.headers.get(h);
+    if (val) headers.set(h, val);
+  }
+
+  // NE PAS propager content-length — force le browser en mode chunked streaming
+  // (avec content-length, le browser attend la totalité avant de jouer sur certains cas)
+  headers.set("cache-control", "private, max-age=2400");
+  headers.set("transfer-encoding", "chunked");
+
+  return new Response(driveRes.body, {
+    status: driveRes.status,
+    headers,
   });
 }
