@@ -21,7 +21,7 @@ export async function POST() {
 
   const t0 = Date.now();
   try {
-    revalidateTag("catalog");
+    revalidateTag("catalog", "fetch");
     revalidatePath("/", "layout");
     revalidatePath("/categories");
     revalidatePath("/eras");
