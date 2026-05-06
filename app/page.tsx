@@ -1,4 +1,4 @@
-// LARAPLAY — Page accueil. Séparateurs rouges entre rows.
+// LARAPLAY — Page accueil.
 
 import { Header } from "@/components/Header";
 import { HeroResponsive } from "@/components/HeroResponsive";
@@ -31,8 +31,14 @@ export default async function Home() {
 
   const hero = HERO_VIDEOS[0];
 
-  // Pré-résolution URL signée server-side → zéro fetch client au mount
-  const { url: heroSrc } = await getStreamUrl(hero.driveId);
+  // Pré-résolution URL signée server-side avec fallback silencieux
+  let heroSrc: string | undefined;
+  try {
+    const { url } = await getStreamUrl(hero.driveId);
+    heroSrc = url;
+  } catch {
+    heroSrc = undefined; // HeroVideoBlock fera le fetch client en fallback
+  }
 
   const heroCategory = "L'Effet Lara - 2026";
   const heroVideoForInfo = catalog.byCategory.get(heroCategory)?.[0]?.id;
@@ -56,12 +62,7 @@ export default async function Home() {
     const vids = catalog.byCategory.get(cat) ?? [];
     if (vids.length === 0) continue;
     sections.push(
-      <Row
-        key={cat}
-        title={cat}
-        videos={vids.slice(0, 20)}
-        href={`/category/${slugify(cat)}`}
-      />
+      <Row key={cat} title={cat} videos={vids.slice(0, 20)} href={`/category/${slugify(cat)}`} />
     );
   }
 
@@ -69,9 +70,7 @@ export default async function Home() {
     <div className="min-h-screen bg-black">
       <SplashIntro />
       <Header />
-
       <HeroResponsive hero={heroFinal} heroSrc={heroSrc} carouselSlides={HERO_CAROUSEL_SLIDES} />
-
       <main className="relative pt-10 md:pt-8 pb-24">
         {sections.map((section, i) => (
           <div key={i}>
