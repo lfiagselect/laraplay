@@ -1,9 +1,8 @@
 // LARAPLAY — Player vidéo.
-// State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
+// State machine événementielle: idle → loading → ready → playing ⇔ buffering → error.
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
-// Perf marks: loadstart/canplay/playing latency → /api/log via beacon.
-// V2: src résolu via /api/stream/[id] (JSON) — zéro bandwidth Netlify.
+// V3: src = /api/stream/[id] direct (proxy server-side, zéro CORB).
 
 "use client";
 
@@ -32,41 +31,18 @@ export function Player({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<PlayerState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const urlExpiresAt = useRef<number>(0);
-  const fetchingUrl = useRef(false);
 
-  // ── Fetch URL signée Drive ─────────────────────────────────────────────────
-  const fetchVideoUrl = useCallback(async () => {
-    if (!videoId || fetchingUrl.current) return;
-    fetchingUrl.current = true;
-    try {
-      const res = await fetch(`/api/stream/${videoId}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { url, expiresAt } = await res.json();
-      urlExpiresAt.current = expiresAt;
-      setVideoUrl(url);
-    } catch (err) {
-      console.error("[player] fetch url error", err);
-      setState("error");
-      setErrorMsg("Erreur de lecture. Réessaie.");
-    } finally {
-      fetchingUrl.current = false;
-    }
+  // ── Assign src direct (proxy server-side, pas de fetch JSON) ──────────────
+  const loadVideo = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !videoId) return;
+    v.src = `/api/stream/${videoId}`;
+    v.load();
   }, [videoId]);
 
-  // Fetch initial
   useEffect(() => {
-    fetchVideoUrl();
-  }, [fetchVideoUrl]);
-
-  // Assigner src dès que l'URL est prête
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!videoUrl || !v) return;
-    v.src = videoUrl;
-    v.load();
-  }, [videoUrl]);
+    loadVideo();
+  }, [loadVideo]);
 
   // ── State machine + perf marks ─────────────────────────────────────────────
   useEffect(() => {
@@ -91,11 +67,6 @@ export function Player({
       track({ type: "player.waiting", videoId, ms: elapsed() });
     };
     const onError = () => {
-      if (Date.now() >= urlExpiresAt.current - 60_000) {
-        console.log("[player] token expired, refetching url");
-        fetchVideoUrl();
-        return;
-      }
       setState("error");
       setErrorMsg("Erreur de lecture. Réessaie.");
       const err = v.error;
@@ -123,7 +94,7 @@ export function Player({
       v.removeEventListener("stalled", onStalled);
       v.removeEventListener("error", onError);
     };
-  }, [videoId, fetchVideoUrl]);
+  }, [videoId]);
 
   // ── Resume position ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -234,7 +205,7 @@ export function Player({
               onClick={() => {
                 setErrorMsg(null);
                 setState("idle");
-                fetchVideoUrl();
+                loadVideo();
               }}
               className="text-sm text-white bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded"
             >
