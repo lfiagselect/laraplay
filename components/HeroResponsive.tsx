@@ -11,7 +11,7 @@ import type { HeroVideo, HeroCarouselSlideConfig } from "@/lib/hero-videos";
 
 interface HeroResponsiveProps {
   hero: HeroVideo;
-  heroSrc: string; // URL signée pré-résolue server-side
+  heroSrc?: string; // URL signée pré-résolue server-side (optionnelle, fallback client si absent)
   carouselSlides: HeroCarouselSlideConfig[];
 }
 
