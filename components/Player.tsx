@@ -1,8 +1,8 @@
 // LARAPLAY — Player vidéo.
-// State machine événementielle: idle → loading → ready → playing ⇔ buffering → error.
+// State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
-// V3: src = /api/stream/[id] direct (proxy server-side, zéro CORB).
+// V4: preload=auto + src direct /api/stream/[id] (proxy server-side, zéro CORB).
 
 "use client";
 
@@ -32,7 +32,7 @@ export function Player({
   const [state, setState] = useState<PlayerState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ── Assign src direct (proxy server-side, pas de fetch JSON) ──────────────
+  // ── Assign src direct (proxy server-side) ─────────────────────────────────
   const loadVideo = useCallback(() => {
     const v = videoRef.current;
     if (!v || !videoId) return;
@@ -176,7 +176,7 @@ export function Player({
         controls
         autoPlay={autoPlay}
         playsInline
-        preload="metadata"
+        preload="auto"
         poster={poster}
         className="w-full h-full"
       />
