@@ -1,6 +1,6 @@
 // LARAPLAY — Hero billboard avec vidéo background.
-// V4: src optionnel — si passé (server-side) = démarrage immédiat.
-//     sinon fallback fetch /api/stream/[driveId] (client-side).
+// V5: src = /api/stream/[driveId] (proxy server-side, pas d'URL Drive exposée).
+// Pas de fetch JSON intermédiaire — src direct sur la route proxy.
 
 "use client";
 
@@ -10,36 +10,20 @@ import type { HeroVideo } from "@/lib/hero-videos";
 
 interface HeroVideoProps {
   hero: HeroVideo;
-  src?: string; // URL signée pré-résolue server-side (optionnelle)
   onEnded?: () => void;
 }
 
-export function HeroVideoBlock({ hero, src, onEnded }: HeroVideoProps) {
+export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
-
-    if (src) {
-      // URL pré-résolue server-side — démarrage immédiat
-      v.src = src;
-      v.load();
-      v.play().catch(() => {});
-    } else if (hero.driveId) {
-      // Fallback: fetch client
-      fetch(`/api/stream/${hero.driveId}`)
-        .then((r) => r.json())
-        .then(({ url }) => {
-          if (!v || !url) return;
-          v.src = url;
-          v.load();
-          v.play().catch(() => {});
-        })
-        .catch(console.error);
-    }
-  }, [src, hero.driveId]);
+    if (!v || !hero.driveId) return;
+    v.src = `/api/stream/${hero.driveId}`;
+    v.load();
+    v.play().catch(() => {});
+  }, [hero.driveId]);
 
   useEffect(() => {
     const v = videoRef.current;

@@ -1,11 +1,11 @@
-// LARAPLAY — Stream signed URL
-// GET /api/stream/[id] → retourne { url, expiresAt } JSON
-// Le browser streame directement depuis Drive (zéro bandwidth Render).
-// Range/seek géré nativement par Drive côté browser.
-// Logs timing conservés sur la génération d'URL.
+// LARAPLAY — Stream proxy server-side
+// GET /api/stream/[id] → proxifie les bytes Drive vers le browser.
+// Le token OAuth reste côté serveur — jamais exposé dans l'URL.
+// Range requests supportés pour le seek vidéo.
+// Auth requise.
 
-import { NextRequest, NextResponse } from "next/server";
-import { getStreamUrl } from "@/lib/drive";
+import { NextRequest } from "next/server";
+import { fetchDriveStream } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { getVideo } from "@/lib/drive";
 import { auth } from "@/auth";
@@ -17,40 +17,46 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const t0 = performance.now();
   const { id } = await params;
 
-  const [session, catalog] = await Promise.all([
-    auth(),
-    getCatalog(),
-  ]);
+  const [session, catalog] = await Promise.all([auth(), getCatalog()]);
 
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Vérification existence vidéo via catalog cache (byId Map) → 0ms
-  // Fallback Drive direct si miss catalog
+  // Vérification existence vidéo
   let meta = catalog.byId.get(id);
-  let metaSource: "cache" | "drive" = "cache";
   if (!meta) {
-    metaSource = "drive";
     const fresh = await getVideo(id);
     if (!fresh) return new Response("Not found", { status: 404 });
-    meta = fresh;
   }
 
-  const { url, expiresAt } = await getStreamUrl(id);
+  // Transfert du Range header pour le seek
+  const range = req.headers.get("range") ?? undefined;
 
-  const total = Math.round(performance.now() - t0);
-  console.log(
-    `[stream] id=${id} kind=signed total=${total}ms metaSource=${metaSource} expiresAt=${new Date(expiresAt).toISOString()}`
-  );
+  const driveRes = await fetchDriveStream(id, range);
 
-  return NextResponse.json({ url, expiresAt }, {
-    headers: {
-      // Private : auth requise pour obtenir l'URL, browser peut garder 40min
-      "Cache-Control": "private, max-age=2400",
-    },
+  if (!driveRes.ok && driveRes.status !== 206) {
+    return new Response("Drive error", { status: driveRes.status });
+  }
+
+  // Propagation des headers nécessaires au player
+  const headers = new Headers();
+  const propagate = [
+    "content-type",
+    "content-length",
+    "content-range",
+    "accept-ranges",
+  ];
+  for (const h of propagate) {
+    const val = driveRes.headers.get(h);
+    if (val) headers.set(h, val);
+  }
+  headers.set("cache-control", "private, max-age=2400");
+
+  return new Response(driveRes.body, {
+    status: driveRes.status,
+    headers,
   });
 }

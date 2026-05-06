@@ -10,7 +10,6 @@ import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
 import { posterImage } from "@/lib/category-images";
 import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
-import { getStreamUrl } from "@/lib/drive";
 import { auth } from "@/auth";
 
 export const revalidate = 3600;
@@ -30,16 +29,6 @@ export default async function Home() {
   })).filter((e) => e.count > 0);
 
   const hero = HERO_VIDEOS[0];
-
-  // Pré-résolution URL signée server-side avec fallback silencieux
-  let heroSrc: string | undefined;
-  try {
-    const { url } = await getStreamUrl(hero.driveId);
-    heroSrc = url;
-  } catch {
-    heroSrc = undefined; // HeroVideoBlock fera le fetch client en fallback
-  }
-
   const heroCategory = "L'Effet Lara - 2026";
   const heroVideoForInfo = catalog.byCategory.get(heroCategory)?.[0]?.id;
   const heroFinal = heroVideoForInfo
@@ -70,7 +59,7 @@ export default async function Home() {
     <div className="min-h-screen bg-black">
       <SplashIntro />
       <Header />
-      <HeroResponsive hero={heroFinal} heroSrc={heroSrc} carouselSlides={HERO_CAROUSEL_SLIDES} />
+      <HeroResponsive hero={heroFinal} carouselSlides={HERO_CAROUSEL_SLIDES} />
       <main className="relative pt-10 md:pt-8 pb-24">
         {sections.map((section, i) => (
           <div key={i}>

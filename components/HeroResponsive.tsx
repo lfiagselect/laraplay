@@ -11,11 +11,10 @@ import type { HeroVideo, HeroCarouselSlideConfig } from "@/lib/hero-videos";
 
 interface HeroResponsiveProps {
   hero: HeroVideo;
-  heroSrc?: string; // URL signée pré-résolue server-side (optionnelle, fallback client si absent)
   carouselSlides: HeroCarouselSlideConfig[];
 }
 
-export function HeroResponsive({ hero, heroSrc, carouselSlides }: HeroResponsiveProps) {
+export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [videoEnded, setVideoEnded] = useState(false);
 
@@ -29,24 +28,16 @@ export function HeroResponsive({ hero, heroSrc, carouselSlides }: HeroResponsive
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  if (isMobile === null) {
-    return <HeroCarousel slides={carouselSlides} />;
-  }
-
-  if (isMobile) {
-    return <HeroCarousel slides={carouselSlides} />;
-  }
+  if (isMobile === null) return <HeroCarousel slides={carouselSlides} />;
+  if (isMobile) return <HeroCarousel slides={carouselSlides} />;
 
   return (
     <div className="relative">
-      <div
-        className={`transition-opacity duration-700 ${
-          videoEnded ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"
-        }`}
-      >
-        <HeroVideoBlock hero={hero} src={heroSrc} onEnded={() => setVideoEnded(true)} />
+      <div className={`transition-opacity duration-700 ${
+        videoEnded ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"
+      }`}>
+        <HeroVideoBlock hero={hero} onEnded={() => setVideoEnded(true)} />
       </div>
-
       {videoEnded && (
         <div className="animate-hero-fade-up">
           <HeroCarousel slides={carouselSlides} />
