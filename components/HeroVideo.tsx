@@ -1,7 +1,7 @@
 // LARAPLAY — Hero billboard avec vidéo background.
 // Aucun poster — fond noir avant 1ère frame vidéo (pas de fallback image).
 // Callback onEnded → HeroResponsive bascule vers carousel après lecture.
-// V2: src résolu via /api/stream/[driveId] (JSON) — zéro bandwidth GitHub/Netlify.
+// V3: src passé directement en prop (pré-résolu server-side dans page.tsx).
 
 "use client";
 
@@ -11,27 +11,21 @@ import type { HeroVideo } from "@/lib/hero-videos";
 
 interface HeroVideoProps {
   hero: HeroVideo;
+  src: string; // URL signée pré-résolue server-side
   onEnded?: () => void;
 }
 
-export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
+export function HeroVideoBlock({ hero, src, onEnded }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
 
-  // Fetch URL signée Drive au mount — pattern identique à Player.tsx
   useEffect(() => {
-    if (!hero.driveId) return;
-    fetch(`/api/stream/${hero.driveId}`)
-      .then((r) => r.json())
-      .then(({ url }) => {
-        const v = videoRef.current;
-        if (!v || !url) return;
-        v.src = url;
-        v.load();
-        v.play().catch(() => {});
-      })
-      .catch(console.error);
-  }, [hero.driveId]);
+    const v = videoRef.current;
+    if (!v || !src) return;
+    v.src = src;
+    v.load();
+    v.play().catch(() => {});
+  }, [src]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -59,7 +53,6 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
 
   return (
     <section className="relative w-full overflow-hidden aspect-video max-h-[78vh] min-h-[420px] bg-black">
-      {/* Vidéo background avec zoom lent — pas de poster, fond noir avant 1ère frame */}
       <div className="absolute inset-0 animate-hero-zoom origin-center bg-black">
         <video
           ref={videoRef}
@@ -72,10 +65,8 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
         />
       </div>
 
-      {/* Gradient bas pour fondu vers rows */}
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0b0b0b] via-black/40 to-transparent pointer-events-none" />
 
-      {/* Bouton mute */}
       <button
         onClick={(e) => {
           e.stopPropagation();
