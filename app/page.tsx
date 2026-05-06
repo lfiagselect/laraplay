@@ -35,7 +35,6 @@ export default async function Home() {
     ? { ...hero, ctaInfoVideoId: heroVideoForInfo }
     : hero;
 
-  // Construit liste sections affichées (filtre vides) pour insérer dividers entre uniquement
   const sections: React.ReactNode[] = [];
   if (userEmail) {
     sections.push(<ContinueWatchingRow key="continue" userEmail={userEmail} />);
