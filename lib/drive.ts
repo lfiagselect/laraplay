@@ -194,7 +194,7 @@ export async function fetchDriveThumb(
   };
 }
 
-// ─── Signed URL (zéro bandwidth Render) ──────────────────────────────────────
+// ─── Signed URL (zéro bandwidth Netlify) ─────────────────────────────────────
 
 /**
  * Retourne une URL Drive streamable directement par le browser.
@@ -204,33 +204,10 @@ export async function fetchDriveThumb(
 export async function getStreamUrl(
   fileId: string
 ): Promise<{ url: string; expiresAt: number }> {
-  const token = await getAccessToken()
-  // On retourne l'URL sans token — le browser devra envoyer Authorization header.
-  // Mais <video src> ne peut pas envoyer de header custom.
-  // Solution : on embed le token dans l'URL uniquement pour la durée de session
-  // (45min max, même durée que le cache token process).
-  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true&access_token=${token}`
+  const token = await getAccessToken();
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&supportsAllDrives=true&access_token=${token}`;
   return {
     url,
     expiresAt: Date.now() + 45 * 60 * 1000,
-  }
-}
-
-/**
- * Retourne l'URL thumbnail Drive directement utilisable en <img src>.
- * Pas de token nécessaire — les thumbnailLinks Drive sont semi-publics
- * et signés par Google avec une courte durée de vie.
- */
-export async function getThumbUrl(fileId: string): Promise<string | null> {
-  const drive = getDrive()
-  try {
-    const res = await drive.files.get({
-      fileId,
-      fields: "thumbnailLink",
-      supportsAllDrives: true,
-    })
-    return res.data.thumbnailLink ?? null
-  } catch {
-    return null
-  }
+  };
 }

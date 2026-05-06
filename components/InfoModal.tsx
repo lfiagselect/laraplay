@@ -3,6 +3,7 @@
 // Préview vidéo monté après 600ms — économise bandwidth si user ferme vite.
 // TV (I3): skip preview vidéo entirement (économise bandwidth Drive + perf TV ARM)
 //          + focus initial sur bouton Lecture après mount.
+// V2: src vidéo preview assigné via useRef (évite double-stream avec warmStream preload).
 
 "use client";
 
@@ -13,30 +14,13 @@ import type { VideoFile } from "@/lib/drive";
 import { VideoCard } from "./VideoCard";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
 import { useTV } from "@/lib/tv-client";
+import { formatDuration, formatSize } from "@/lib/format";
 
 interface InfoModalProps {
   video: VideoFile;
   related: VideoFile[];
   userEmail?: string | null;
   onClose: () => void;
-}
-
-function formatDuration(ms?: string): string | null {
-  if (!ms) return null;
-  const total = Math.floor(Number(ms) / 1000);
-  if (!total) return null;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h > 0) return `${h}h ${m}min`;
-  return `${m}min`;
-}
-
-function formatSize(size?: string): string | null {
-  if (!size) return null;
-  const n = Number(size);
-  if (!n) return null;
-  if (n > 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} Go`;
-  return `${(n / 1_000_000).toFixed(0)} Mo`;
 }
 
 const DRAG_CLOSE_THRESHOLD = 120;
@@ -58,12 +42,26 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   // Skip preview vidéo TV (économise bandwidth + perf)
   useEffect(() => {
     if (isTV) {
-      setVideoReady(true); // hide loader (poster suffit)
+      setVideoReady(true);
       return;
     }
     const t = setTimeout(() => setShouldMountVideo(true), 600);
     return () => clearTimeout(t);
   }, [isTV]);
+
+  // Fetch URL signée et assigne via ref — évite double-stream avec warmStream
+  useEffect(() => {
+    if (!shouldMountVideo || isTV) return;
+    fetch(`/api/stream/${video.id}`)
+      .then((r) => r.json())
+      .then(({ url }) => {
+        const v = videoRef.current;
+        if (!v || !url) return;
+        v.src = url;
+        v.load();
+      })
+      .catch(console.error);
+  }, [shouldMountVideo, isTV, video.id]);
 
   // Focus initial Play button TV
   useEffect(() => {
@@ -183,7 +181,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 preload="metadata"
                 poster={video.thumbnailLink ? `/api/thumb/${video.id}` : undefined}
                 className="absolute inset-0 w-full h-full object-cover"
-                src={`/api/stream/${video.id}`}
                 onCanPlay={() => setVideoReady(true)}
               />
             )}
@@ -210,7 +207,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <button
                 onClick={() => setMuted((m) => !m)}
                 className="absolute bottom-6 right-6 z-20 w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition"
-                aria-label={muted ? "Activer son" : "Couper son"}
+                aria-label={muted ? "Activer le son" : "Couper le son"}
               >
                 {muted ? (
                   <VolumeX className="w-4 h-4 text-white" />
@@ -240,8 +237,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   onClick={onToggleFav}
                   disabled={!userEmail}
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition disabled:opacity-50"
-                  aria-label={fav ? "Retirer de ma liste" : "Ajouter Ã  ma liste"}
-                  title={fav ? "Retirer de ma liste" : "Ajouter Ã  ma liste"}
+                  aria-label={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
+                  title={fav ? "Retirer de ma liste" : "Ajouter à ma liste"}
                 >
                   {fav ? (
                     <Check className="w-5 h-5 text-white" />
@@ -329,4 +326,3 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     </div>
   );
 }
-

@@ -1,15 +1,17 @@
 // LARAPLAY — Provider modal "Plus d'infos"
 // Permet d'ouvrir le modal depuis n'importe quelle card sans prop drilling.
+// V2: prefetch /api/video au hover → cache Map en mémoire → modal instantané.
 
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { VideoFile } from "@/lib/drive";
 import { InfoModal } from "./InfoModal";
 
 interface ModalContextValue {
   open: (videoId: string) => void;
   close: () => void;
+  preload: (videoId: string) => void;
   userEmail: string | null;
 }
 
@@ -28,6 +30,8 @@ interface State {
   error: string | null;
 }
 
+const EMPTY_STATE: State = { loading: false, video: null, related: [], error: null };
+
 export function ModalProvider({
   children,
   userEmail = null,
@@ -36,21 +40,51 @@ export function ModalProvider({
   userEmail?: string | null;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const [state, setState] = useState<State>({
-    loading: false,
-    video: null,
-    related: [],
-    error: null,
-  });
+  const [state, setState] = useState<State>(EMPTY_STATE);
+  const cache = useRef<Map<string, State>>(new Map());
 
-  const open = useCallback((videoId: string) => setOpenId(videoId), []);
-  const close = useCallback(() => {
-    setOpenId(null);
-    setState({ loading: false, video: null, related: [], error: null });
+  // Prefetch au hover — fire & forget, résultat mis en cache
+  const preload = useCallback((videoId: string) => {
+    if (cache.current.has(videoId)) return;
+    // Marquer comme en cours pour éviter doubles requêtes
+    cache.current.set(videoId, { loading: true, video: null, related: [], error: null });
+    fetch(`/api/video/${videoId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        cache.current.set(videoId, {
+          loading: false,
+          video: data.video,
+          related: data.related ?? [],
+          error: null,
+        });
+      })
+      .catch(() => {
+        // En cas d'erreur réseau : supprimer du cache pour permettre retry au clic
+        cache.current.delete(videoId);
+      });
   }, []);
 
+  const open = useCallback((videoId: string) => {
+    const cached = cache.current.get(videoId);
+    // Si données déjà en cache et complètes → affichage instantané
+    if (cached?.video) {
+      setState(cached);
+    }
+    setOpenId(videoId);
+  }, []);
+
+  const close = useCallback(() => {
+    setOpenId(null);
+    setState(EMPTY_STATE);
+  }, []);
+
+  // Fetch normal au clic — fallback si prefetch pas encore arrivé
   useEffect(() => {
     if (!openId) return;
+    // Si déjà chargé via cache → pas de fetch supplémentaire
+    const cached = cache.current.get(openId);
+    if (cached?.video) return;
+
     let cancelled = false;
     setState({ loading: true, video: null, related: [], error: null });
 
@@ -61,12 +95,14 @@ export function ModalProvider({
       })
       .then((data) => {
         if (cancelled) return;
-        setState({
+        const next: State = {
           loading: false,
           video: data.video,
           related: data.related ?? [],
           error: null,
-        });
+        };
+        cache.current.set(openId, next);
+        setState(next);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -84,7 +120,7 @@ export function ModalProvider({
   }, [openId]);
 
   return (
-    <ModalContext.Provider value={{ open, close, userEmail }}>
+    <ModalContext.Provider value={{ open, close, preload, userEmail }}>
       {children}
       {openId && state.video && (
         <InfoModal

@@ -2,6 +2,7 @@
 // Hover desktop V2: scale 1.12, delay 200ms, gradient bottom, actions ronde, metadata.
 // Mobile: aucun hover (touch).
 // Préload stream au hover desktop + IntersectionObserver mobile.
+// V2: prefetch modal metadata au hover via ModalProvider.preload()
 
 "use client";
 
@@ -38,10 +39,9 @@ interface VideoCardProps {
 export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const year = formatYear(video.modifiedTime);
-  // V2: thumbnailLink Drive utilisé directement — plus de proxy /api/thumb
   const thumb = !fallbackImage && video.thumbnailLink ? video.thumbnailLink : null;
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
-  const { open } = useVideoModal();
+  const { open, preload } = useVideoModal();
   const hover = useHoverPreload(video.id);
   const viewportRef = useViewportPreload(video.id);
 
@@ -50,6 +50,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
 
   const onEnter = () => {
     hover.onMouseEnter();
+    preload(video.id); // prefetch modal metadata dès le hover
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
   };

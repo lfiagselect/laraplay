@@ -15,26 +15,9 @@ import { detectTVServer } from "@/lib/tv";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
+import { formatDuration, formatSize } from "@/lib/format";
 
 export const revalidate = 3600;
-
-function formatDuration(ms?: string): string | null {
-  if (!ms) return null;
-  const total = Math.floor(Number(ms) / 1000);
-  if (!total) return null;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h > 0) return `${h}h ${m}min`;
-  return `${m}min`;
-}
-
-function formatSize(size?: string): string | null {
-  if (!size) return null;
-  const n = Number(size);
-  if (!n) return null;
-  if (n > 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)} Go`;
-  return `${(n / 1_000_000).toFixed(0)} Mo`;
-}
 
 export default async function WatchPage({
   params,
@@ -88,7 +71,6 @@ export default async function WatchPage({
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-6">
         <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-6 shadow-2xl">
           <Player
-            src={`/api/stream/${video.id}`}
             poster={video.thumbnailLink ?? undefined}
             videoId={video.id}
             userEmail={userEmail ?? undefined}
@@ -96,6 +78,7 @@ export default async function WatchPage({
           />
           <Link
             href="/"
+            prefetch={true}
             aria-label="Fermer et retour à l'accueil"
             className="absolute top-3 right-3 z-30 w-10 h-10 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-sm flex items-center justify-center transition active:scale-[0.95]"
           >

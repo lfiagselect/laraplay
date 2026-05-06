@@ -1,6 +1,7 @@
 // LARAPLAY — Hero billboard avec vidéo background.
 // Aucun poster — fond noir avant 1ère frame vidéo (pas de fallback image).
 // Callback onEnded → HeroResponsive bascule vers carousel après lecture.
+// V2: src résolu via /api/stream/[driveId] (JSON) — zéro bandwidth GitHub/Netlify.
 
 "use client";
 
@@ -16,6 +17,21 @@ interface HeroVideoProps {
 export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
+
+  // Fetch URL signée Drive au mount — pattern identique à Player.tsx
+  useEffect(() => {
+    if (!hero.driveId) return;
+    fetch(`/api/stream/${hero.driveId}`)
+      .then((r) => r.json())
+      .then(({ url }) => {
+        const v = videoRef.current;
+        if (!v || !url) return;
+        v.src = url;
+        v.load();
+        v.play().catch(() => {});
+      })
+      .catch(console.error);
+  }, [hero.driveId]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -53,7 +69,6 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
           preload="auto"
           onEnded={() => onEnded?.()}
           className="absolute inset-0 w-full h-full object-cover"
-          src={hero.src}
         />
       </div>
 

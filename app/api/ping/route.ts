@@ -1,6 +1,7 @@
 // LARAPLAY — Endpoint keepalive
-// GET /api/ping → pong. Utilisé par cron externe pour empêcher Render free tier de dormir.
-// Public (pas d'auth) — léger, juste pour réveiller le service.
+// GET /api/ping → pong. Utilisé par cron externe (cron-job.org) pour maintenir
+// le cache catalog chaud sur Netlify.
+// Public (pas d'auth) — léger, juste un ping HTTP.
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

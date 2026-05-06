@@ -3,7 +3,7 @@
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
 // Perf marks: loadstart/canplay/playing latency → /api/log via beacon.
-// V2: src résolu via /api/stream/[id] (JSON) — zéro bandwidth Render.
+// V2: src résolu via /api/stream/[id] (JSON) — zéro bandwidth Netlify.
 
 "use client";
 
@@ -15,7 +15,6 @@ import { track, startTimer } from "@/lib/perf";
 type PlayerState = "idle" | "loading" | "ready" | "playing" | "buffering" | "error";
 
 interface PlayerProps {
-  src: string; // conservé pour compatibilité appelants — ignoré, on fetch via videoId
   poster?: string;
   videoId?: string;
   userEmail?: string;
@@ -24,7 +23,6 @@ interface PlayerProps {
 }
 
 export function Player({
-  src: _src, // ignoré — l'URL est résolue via /api/stream/[videoId]
   poster,
   videoId,
   userEmail,
@@ -93,7 +91,6 @@ export function Player({
       track({ type: "player.waiting", videoId, ms: elapsed() });
     };
     const onError = () => {
-      // Si le token a expiré (ou est proche) → refetch silencieux
       if (Date.now() >= urlExpiresAt.current - 60_000) {
         console.log("[player] token expired, refetching url");
         fetchVideoUrl();
@@ -203,7 +200,6 @@ export function Player({
 
   return (
     <div className={`relative bg-black ${className}`}>
-      {/* src non assigné ici — géré via useEffect + videoRef.current.src */}
       <video
         ref={videoRef}
         controls
