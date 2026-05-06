@@ -1,6 +1,6 @@
 // LARAPLAY — Stream proxy server-side
 // GET /api/stream/[id] → proxifie les bytes Drive vers le browser.
-// Transfer-Encoding: chunked — le browser joue dès le 1er chunk, sans attendre content-length.
+// Le token OAuth reste côté serveur — jamais exposé dans l'URL.
 // Range requests supportés pour le seek vidéo.
 // Auth requise.
 
@@ -40,17 +40,11 @@ export async function GET(
   }
 
   const headers = new Headers();
-
-  // Propager content-type et range headers
-  for (const h of ["content-type", "content-range", "accept-ranges"]) {
+  for (const h of ["content-type", "content-length", "content-range", "accept-ranges"]) {
     const val = driveRes.headers.get(h);
     if (val) headers.set(h, val);
   }
-
-  // NE PAS propager content-length — force le browser en mode chunked streaming
-  // (avec content-length, le browser attend la totalité avant de jouer sur certains cas)
   headers.set("cache-control", "private, max-age=2400");
-  headers.set("transfer-encoding", "chunked");
 
   return new Response(driveRes.body, {
     status: driveRes.status,
