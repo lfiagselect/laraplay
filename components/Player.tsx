@@ -2,7 +2,7 @@
 // State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
-// V4: preload=auto + src direct /api/stream/[id] (proxy server-side, zéro CORB).
+// V5: controlsList="nodownload" — désactive le bouton téléchargement natif du browser.
 
 "use client";
 
@@ -178,6 +178,8 @@ export function Player({
         playsInline
         preload="auto"
         poster={poster}
+        controlsList="nodownload"
+        onContextMenu={(e) => e.preventDefault()}
         className="w-full h-full"
       />
 
