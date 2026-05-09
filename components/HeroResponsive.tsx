@@ -1,10 +1,10 @@
 // LARAPLAY — Hero responsive
 // Mobile + Desktop : vidéo immersive Bunny, fade-cross vers carousel quand terminée.
-// Bouton "Passer" disponible sur toutes les résolutions.
+// Bouton "Passer" : arrête la vidéo + son avant d'afficher le carousel.
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HeroVideoBlock } from "./HeroVideo";
 import { HeroCarousel } from "./HeroCarousel";
 import type { HeroVideo, HeroCarouselSlideConfig } from "@/lib/hero-videos";
@@ -17,8 +17,25 @@ interface HeroResponsiveProps {
 export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
   const [videoEnded, setVideoEnded] = useState(false);
   const [skipped, setSkipped] = useState(false);
+  const videoElRef = useRef<HTMLVideoElement | null>(null);
 
   const showCarousel = videoEnded || skipped;
+
+  // Expose une ref vers l'élément video natif pour pouvoir le stopper au skip
+  useEffect(() => {
+    videoElRef.current = document.querySelector("#hero-video-el");
+  }, []);
+
+  function handleSkip() {
+    // Arrête la vidéo et coupe le son immédiatement
+    const v = videoElRef.current ?? document.querySelector<HTMLVideoElement>("#hero-video-el");
+    if (v) {
+      v.pause();
+      v.muted = true;
+      v.src = "";
+    }
+    setSkipped(true);
+  }
 
   return (
     <div className="relative">
@@ -33,7 +50,7 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
         {/* Bouton Passer */}
         {!showCarousel && (
           <button
-            onClick={() => setSkipped(true)}
+            onClick={handleSkip}
             className="absolute right-6 bottom-24 md:right-12 md:bottom-14 z-30 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 border border-white/30 hover:bg-black/70 hover:border-white/60 backdrop-blur-sm text-white text-sm font-medium transition"
             aria-label="Passer l'intro"
           >
