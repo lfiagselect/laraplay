@@ -40,7 +40,11 @@ export default async function WatchPage({
     return (
       <div className="fixed inset-0 bg-black">
         <PlayerTV
-          src={`/api/stream/${video.id}`}
+          src={
+            video.bunnyId && process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE
+              ? `https://${process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE}/${video.bunnyId}/play_720p.mp4`
+              : `/api/stream/${video.id}`
+          }
           poster={video.thumbnailLink ?? undefined}
           videoId={video.id}
           userEmail={userEmail}
@@ -61,7 +65,7 @@ export default async function WatchPage({
 
   const related = video.category
     ? (catalog.byCategory.get(video.category) ?? [])
-        .filter((v) => v.id !== video.id)
+        .filter((v) => v.id !== video!.id)
         .slice(0, 20)
     : [];
 
@@ -73,6 +77,7 @@ export default async function WatchPage({
           <Player
             poster={video.thumbnailLink ?? undefined}
             videoId={video.id}
+            bunnyId={video.bunnyId}
             userEmail={userEmail ?? undefined}
             className="w-full h-full"
           />

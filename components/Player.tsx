@@ -2,7 +2,7 @@
 // State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
-// V5: controlsList="nodownload" — désactive le bouton téléchargement natif du browser.
+// V6: stream Bunny CDN direct — plus de proxy Drive.
 
 "use client";
 
@@ -16,14 +16,18 @@ type PlayerState = "idle" | "loading" | "ready" | "playing" | "buffering" | "err
 interface PlayerProps {
   poster?: string;
   videoId?: string;
+  bunnyId?: string;
   userEmail?: string;
   className?: string;
   autoPlay?: boolean;
 }
 
+const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
+
 export function Player({
   poster,
   videoId,
+  bunnyId,
   userEmail,
   className = "",
   autoPlay = true,
@@ -32,13 +36,19 @@ export function Player({
   const [state, setState] = useState<PlayerState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ── Assign src direct (proxy server-side) ─────────────────────────────────
+  // ── Assign src : Bunny CDN si disponible, sinon fallback proxy Drive ───────
   const loadVideo = useCallback(() => {
     const v = videoRef.current;
-    if (!v || !videoId) return;
-    v.src = `/api/stream/${videoId}`;
+    if (!v) return;
+    if (bunnyId && BUNNY_PULL_ZONE) {
+      v.src = `https://${BUNNY_PULL_ZONE}/${bunnyId}/play_720p.mp4`;
+    } else if (videoId) {
+      v.src = `/api/stream/${videoId}`;
+    } else {
+      return;
+    }
     v.load();
-  }, [videoId]);
+  }, [bunnyId, videoId]);
 
   useEffect(() => {
     loadVideo();
@@ -52,19 +62,19 @@ export function Player({
 
     const onLoadStart = () => {
       setState("loading");
-      track({ type: "player.loadstart", videoId, ms: elapsed() });
+      track({ type: "player.loadstart", videoId: bunnyId ?? videoId, ms: elapsed() });
     };
     const onCanPlay = () => {
       setState((s) => (s === "playing" ? s : "ready"));
-      track({ type: "player.canplay", videoId, ms: elapsed() });
+      track({ type: "player.canplay", videoId: bunnyId ?? videoId, ms: elapsed() });
     };
     const onPlaying = () => {
       setState("playing");
-      track({ type: "player.playing", videoId, ms: elapsed() });
+      track({ type: "player.playing", videoId: bunnyId ?? videoId, ms: elapsed() });
     };
     const onWaiting = () => {
       setState("buffering");
-      track({ type: "player.waiting", videoId, ms: elapsed() });
+      track({ type: "player.waiting", videoId: bunnyId ?? videoId, ms: elapsed() });
     };
     const onError = () => {
       setState("error");
@@ -72,7 +82,7 @@ export function Player({
       const err = v.error;
       track({
         type: "player.error",
-        videoId,
+        videoId: bunnyId ?? videoId,
         ms: elapsed(),
         meta: { code: err?.code ?? -1, message: err?.message ?? "unknown" },
       });
@@ -94,7 +104,7 @@ export function Player({
       v.removeEventListener("stalled", onStalled);
       v.removeEventListener("error", onError);
     };
-  }, [videoId]);
+  }, [bunnyId, videoId]);
 
   // ── Resume position ────────────────────────────────────────────────────────
   useEffect(() => {
