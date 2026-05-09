@@ -5,6 +5,11 @@
 // liste toutes les vidéos Drive, et reconstruit le mapping driveId → bunnyId
 // en faisant correspondre les noms de fichiers.
 //
+// Stratégie de matching (ordre de priorité) :
+//   1. Exact match (lowercase + trim)
+//   2. Sans extension .mp4/.mkv/etc.
+//   3. Normalisation agressive : double espaces, apostrophes, tirets, accents
+//
 // Usage:
 //   node scripts/rebuild-bunny-mapping.mjs
 //
@@ -14,7 +19,7 @@
 //   BUNNY_LIBRARY_ID=656728
 //   BUNNY_API_KEY=xxx
 
-import { writeFileSync, existsSync, readFileSync } from "fs";
+import { writeFileSync } from "fs";
 import { createRequire } from "module";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -39,14 +44,36 @@ if (!BUNNY_LIBRARY_ID || !BUNNY_API_KEY || !DRIVE_FOLDER_ID || !SA_JSON) {
   process.exit(1);
 }
 
-// ── Google Drive setup ──────────────────────────────────────────────────────
+// ── Google Drive setup ────────────────────────────────────────────
 const auth = new google.auth.GoogleAuth({
   credentials: JSON.parse(SA_JSON),
   scopes: ["https://www.googleapis.com/auth/drive.readonly"],
 });
 const drive = google.drive({ version: "v3", auth });
 
-// ── Lister toutes les vidéos Bunny (pagination) ─────────────────────────────
+// ── Normalisation fuzzy ─────────────────────────────────────────────────────
+function stripExt(name) {
+  return name.replace(/\.(mp4|mkv|avi|mov|wmv|flv|webm|m4v|ts|m2ts)$/i, "");
+}
+
+function normalize(name) {
+  return stripExt(name)
+    .toLowerCase()
+    .trim()
+    // double espaces → simple
+    .replace(/\s+/g, " ")
+    // apostrophes typographiques → standard
+    .replace(/[‘’ʼ′]/g, "'")
+    // tirets longs → tiret simple
+    .replace(/[–—]/g, "-")
+    // guillemets typographiques
+    .replace(/[«»“”„]/g, '"')
+    // décomposer les accents puis supprimer les diacritiques
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+// ── Lister toutes les vidéos Bunny (pagination) ─────────────────────────
 async function listAllBunnyVideos() {
   const videos = [];
   let page = 1;
@@ -70,7 +97,7 @@ async function listAllBunnyVideos() {
   return videos; // [{ guid, title, ... }]
 }
 
-// ── Lister toutes les vidéos Drive récursivement ────────────────────────────
+// ── Lister toutes les vidéos Drive récursivement ────────────────────────
 async function listAllDriveVideos(folderId) {
   const videos = [];
   const queue = [folderId];
@@ -103,7 +130,7 @@ async function listAllDriveVideos(folderId) {
   return videos; // [{ id, name }]
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ────────────────────────────────────────────────────────────────
 async function main() {
   console.log("\n🔄 LARAPLAY — Reconstruction bunny-mapping.json\n");
 
@@ -112,11 +139,20 @@ async function main() {
     listAllDriveVideos(DRIVE_FOLDER_ID),
   ]);
 
-  // Index Bunny par titre normalisé (lowercase, trim)
-  const bunnyByTitle = new Map();
+  // Index Bunny par titre : 3 clés par vidéo (exact, sans ext, fuzzy)
+  const bunnyByExact = new Map();   // titre exact lowercase+trim
+  const bunnyByNoExt = new Map();   // sans extension
+  const bunnyByFuzzy = new Map();   // normalisation complète
+
   for (const v of bunnyVideos) {
-    const key = (v.title ?? "").trim().toLowerCase();
-    if (key) bunnyByTitle.set(key, v.guid);
+    const title = (v.title ?? "").trim();
+    if (!title) continue;
+    const exact = title.toLowerCase();
+    const noExt = stripExt(title).toLowerCase().trim();
+    const fuzzy = normalize(title);
+    if (!bunnyByExact.has(exact)) bunnyByExact.set(exact, v.guid);
+    if (!bunnyByNoExt.has(noExt)) bunnyByNoExt.set(noExt, v.guid);
+    if (!bunnyByFuzzy.has(fuzzy)) bunnyByFuzzy.set(fuzzy, v.guid);
   }
 
   // Construire le mapping driveId → bunnyId
@@ -124,16 +160,28 @@ async function main() {
   let matched = 0;
   let unmatched = 0;
   const unmatchedList = [];
+  const matchLog = []; // pour debug
 
   for (const driveVideo of driveVideos) {
-    const key = (driveVideo.name ?? "").trim().toLowerCase();
-    const bunnyId = bunnyByTitle.get(key);
+    const name = (driveVideo.name ?? "").trim();
+    const exact = name.toLowerCase();
+    const noExt = stripExt(name).toLowerCase().trim();
+    const fuzzy = normalize(name);
+
+    let bunnyId = bunnyByExact.get(exact)
+      ?? bunnyByNoExt.get(noExt)
+      ?? bunnyByFuzzy.get(fuzzy);
+
     if (bunnyId) {
       mapping[driveVideo.id] = bunnyId;
       matched++;
+      // Log si match non-exact (pour vérification)
+      if (!bunnyByExact.has(exact)) {
+        matchLog.push(`  🔍 fuzzy match: "${name}"`);
+      }
     } else {
       unmatched++;
-      unmatchedList.push(driveVideo.name);
+      unmatchedList.push(name);
     }
   }
 
@@ -142,6 +190,10 @@ async function main() {
 
   console.log(`\n🏁 Résultat :`);
   console.log(`   ✅ ${matched} vidéos mappées`);
+  if (matchLog.length > 0) {
+    console.log(`   🔍 ${matchLog.length} via matching fuzzy :`);
+    matchLog.forEach((l) => console.log(l));
+  }
   console.log(`   ⚠️  ${unmatched} vidéos sans correspondance Bunny`);
   console.log(`💾 Mapping sauvegardé dans scripts/bunny-mapping.json`);
 
