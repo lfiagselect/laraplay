@@ -1,5 +1,5 @@
 // LARAPLAY — Hero billboard avec vidéo background.
-// V6: src = Bunny Stream CDN direct (plus de proxy Drive).
+// V7: hero video sur mobile + desktop (Bunny Stream CDN).
 
 "use client";
 
@@ -49,7 +49,7 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   }, []);
 
   return (
-    <section className="relative w-full overflow-hidden aspect-video max-h-[78vh] min-h-[420px] bg-black">
+    <section className="relative w-full overflow-hidden bg-black" style={{ minHeight: "56vw", maxHeight: "78vh" }}>
       <div className="absolute inset-0 animate-hero-zoom origin-center bg-black">
         <video
           ref={videoRef}
@@ -61,10 +61,12 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
           className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
+      {/* Gradient bas */}
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0b0b0b] via-black/40 to-transparent pointer-events-none" />
+      {/* Bouton son */}
       <button
         onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-        className="absolute right-6 md:right-12 bottom-12 md:top-1/2 md:bottom-auto md:-translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-20"
+        className="absolute right-6 bottom-12 md:right-12 md:top-1/2 md:bottom-auto md:-translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-20"
         aria-label={muted ? "Activer son" : "Couper son"}
       >
         {muted ? <VolumeX className="w-5 h-5 text-white" /> : <Volume2 className="w-5 h-5 text-white" />}
