@@ -1,29 +1,57 @@
 /**
- * LARAPLAY — Google Apps Script : Trigger revalidation sur ajout Drive
+ * LARAPLAY — Google Apps Script : Revalidation catalogue sur ajout Drive
+ *
+ * Principe : trigger temporel toutes les 5 minutes.
+ * Compare la date du fichier le plus récent dans le dossier Drive
+ * avec la dernière date connue (stockée dans PropertiesService).
+ * Si un nouveau fichier est détecté → appelle /api/revalidate.
  *
  * INSTALLATION :
- * 1. Aller sur https://script.google.com
- * 2. Créer un nouveau projet
- * 3. Coller ce code
- * 4. Remplacer SITE_URL et SECRET ci-dessous
- * 5. Exécuter setupTrigger() UNE FOIS pour installer le trigger
- * 6. Autoriser les permissions demandées
- *
- * Le trigger se déclenchera automatiquement lors de tout changement
- * dans le dossier Drive (ajout, renommage, suppression).
- *
- * IMPORTANT : remplacer les valeurs ci-dessous avant déploiement.
+ * 1. Coller ce code dans script.google.com
+ * 2. Remplir SECRET et FOLDER_ID ci-dessous
+ * 3. Exécuter setupTrigger() UNE FOIS
+ * 4. Tester avec testRevalidation()
  */
 
-var SITE_URL = "https://laraplay.netlify.app"; // URL de production
-var SECRET   = "REMPLACER_PAR_REVALIDATE_SECRET";  // valeur de REVALIDATE_SECRET dans Netlify
-var FOLDER_ID = "REMPLACER_PAR_GOOGLE_DRIVE_FOLDER_ID"; // ID du dossier Drive vidéos
+var SITE_URL  = "https://laraplay.netlify.app";
+var SECRET    = "REMPLACER_PAR_REVALIDATE_SECRET";
+var FOLDER_ID = "REMPLACER_PAR_GOOGLE_DRIVE_FOLDER_ID";
 
 /**
- * Appelle /api/revalidate sur le site pour invalider le cache catalogue.
- * Déclenché automatiquement par le trigger Drive.
+ * Vérifie si un nouveau fichier a été ajouté dans le dossier Drive.
+ * Déclenché toutes les 5 minutes par le trigger temporel.
  */
-function onDriveChange(e) {
+function checkDriveForNewFiles() {
+  var props = PropertiesService.getScriptProperties();
+  var lastCheck = props.getProperty("LAST_CHECK");
+  var lastCheckDate = lastCheck ? new Date(lastCheck) : new Date(0);
+
+  var folder = DriveApp.getFolderById(FOLDER_ID);
+  var files = folder.getFiles();
+  var hasNew = false;
+
+  while (files.hasNext()) {
+    var file = files.next();
+    if (file.getDateCreated() > lastCheckDate) {
+      hasNew = true;
+      Logger.log("[LaraPlay] Nouveau fichier détecté : " + file.getName());
+      break;
+    }
+  }
+
+  props.setProperty("LAST_CHECK", new Date().toISOString());
+
+  if (hasNew) {
+    callRevalidate();
+  } else {
+    Logger.log("[LaraPlay] Aucun nouveau fichier.");
+  }
+}
+
+/**
+ * Appelle /api/revalidate sur LaraPlay.
+ */
+function callRevalidate() {
   var url = SITE_URL + "/api/revalidate?secret=" + SECRET + "&source=drive";
   try {
     var response = UrlFetchApp.fetch(url, {
@@ -32,38 +60,47 @@ function onDriveChange(e) {
     });
     var code = response.getResponseCode();
     var body = response.getContentText();
-    Logger.log("[LaraPlay] Revalidation Drive → HTTP " + code + " : " + body);
+    Logger.log("[LaraPlay] Revalidation → HTTP " + code + " : " + body);
   } catch (err) {
     Logger.log("[LaraPlay] Erreur revalidation : " + err.message);
   }
 }
 
 /**
- * Exécuter cette fonction UNE FOIS pour installer le trigger Drive.
- * Menu : Exécuter > setupTrigger
+ * Exécuter UNE FOIS pour installer le trigger temporel (toutes les 5 min).
  */
 function setupTrigger() {
-  // Supprimer les triggers existants du même type pour éviter les doublons
+  // Supprimer les triggers existants pour éviter les doublons
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === "onDriveChange") {
+    if (triggers[i].getHandlerFunction() === "checkDriveForNewFiles") {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
 
-  // Créer le trigger sur le dossier Drive
-  ScriptApp.newTrigger("onDriveChange")
-    .forDrive()
-    .onChangeFile()
+  // Trigger toutes les 5 minutes
+  ScriptApp.newTrigger("checkDriveForNewFiles")
+    .timeBased()
+    .everyMinutes(5)
     .create();
 
-  Logger.log("[LaraPlay] Trigger Drive installé avec succès.");
+  // Initialiser la date de référence à maintenant
+  PropertiesService.getScriptProperties().setProperty("LAST_CHECK", new Date().toISOString());
+
+  Logger.log("[LaraPlay] Trigger installé : vérification toutes les 5 minutes.");
 }
 
 /**
- * Test manuel : exécuter cette fonction pour vérifier que tout fonctionne
- * sans attendre un vrai changement Drive.
+ * Test manuel : force la revalidation sans vérification Drive.
  */
 function testRevalidation() {
-  onDriveChange(null);
+  callRevalidate();
+}
+
+/**
+ * Utilitaire : réinitialiser la date de référence à maintenant.
+ */
+function resetLastCheck() {
+  PropertiesService.getScriptProperties().setProperty("LAST_CHECK", new Date().toISOString());
+  Logger.log("[LaraPlay] LAST_CHECK réinitialisé à : " + new Date().toISOString());
 }
