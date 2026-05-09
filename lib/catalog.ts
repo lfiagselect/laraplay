@@ -38,12 +38,14 @@ function loadBunnyMapping(): Map<string, string> {
 
 const bunnyMapping = loadBunnyMapping();
 
-// URL thumbnail Bunny publique — ne nécessite aucune auth
-const BUNNY_LIBRARY_ID = process.env.BUNNY_LIBRARY_ID ?? process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
+// URL thumbnail Bunny via Pull Zone CDN : https://{pullZone}/{bunnyId}/thumbnail.jpg
+// NEXT_PUBLIC_BUNNY_PULL_ZONE = hostname CDN (ex: vz-xxxxxx.b-cdn.net)
+const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
 
 function bunnyThumbnailUrl(bunnyId: string): string | undefined {
-  if (!BUNNY_LIBRARY_ID) return undefined;
-  return `https://iframe.mediadelivery.net/${BUNNY_LIBRARY_ID}/${bunnyId}/thumbnail.jpg`;
+  if (!BUNNY_PULL_ZONE) return undefined;
+  const host = BUNNY_PULL_ZONE.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return `https://${host}/${bunnyId}/thumbnail.jpg`;
 }
 
 // Tri "récent" basé sur createdTime (vraie date d'ajout initial).
@@ -65,7 +67,7 @@ const fetchCatalogRaw = unstable_cache(
       if (bunnyId) {
         v.bunnyId = bunnyId;
         const thumb = bunnyThumbnailUrl(bunnyId);
-        if (thumb) v.bunnyThumbnail = thumb; // champ séparé, ne touche pas thumbnailLink
+        if (thumb) v.bunnyThumbnail = thumb;
       }
     }
 
@@ -75,7 +77,7 @@ const fetchCatalogRaw = unstable_cache(
 
     return { all, recents, hero: recents[0] ?? null };
   },
-  ["catalog-v4-bunny-thumbs"],
+  ["catalog-v5-pull-zone-thumb"],
   { revalidate: 3600, tags: ["catalog"] }
 );
 
