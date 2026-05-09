@@ -1,13 +1,5 @@
 // LARAPLAY — Endpoint revalidation pour webhooks externes
 // POST /api/revalidate?secret=REVALIDATE_SECRET
-//
-// Appelé par :
-//   - Google Apps Script (trigger Drive onFileCreated)
-//   - Bunny Stream webhook (VideoEncoded)
-//
-// Sécurité : secret en query param comparé à REVALIDATE_SECRET (env Netlify)
-// Action : revalidateTag("catalog") + revalidatePath layout
-// Résultat : prochain visiteur déclenche un re-fetch Drive complet
 
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
@@ -15,7 +7,7 @@ import { revalidateTag, revalidatePath } from "next/cache";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST(req: NextRequest) {
+async function handle(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret");
 
   if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
@@ -42,7 +34,5 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET pour test manuel depuis le navigateur (admin)
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export async function POST(req: NextRequest) { return handle(req); }
+export async function GET(req: NextRequest) { return handle(req); }
