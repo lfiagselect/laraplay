@@ -1,5 +1,5 @@
 // LARAPLAY — Rangée Top 10 avec chiffres géants derrière cards.
-// Glow rouge sur les chiffres : actif sur mobile ET desktop.
+// Glow rouge : intense sur desktop, doux sur mobile (lisibilité).
 
 "use client";
 
@@ -89,30 +89,52 @@ interface Top10CardProps {
 }
 
 function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
-  // Thumbnail : bunnyThumbnail en priorité, sinon proxy Drive
   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
 
+  // Glow desktop : 3 couches intenses
+  // Glow mobile : 1 couche très douce pour garder la lisibilité du chiffre
+  const glowDesktop = [
+    "0 0 20px rgba(229,9,20,0.6)",
+    "0 0 45px rgba(229,9,20,0.35)",
+    "0 0 80px rgba(229,9,20,0.15)",
+  ].join(", ");
+  const glowMobile = "0 0 12px rgba(229,9,20,0.25)";
+
+  // On choisit via CSS custom property injectée inline,
+  // mais textShadow JS ne gère pas les media queries —
+  // on utilise deux <span> : un visible mobile, un visible desktop.
   return (
     <button
       type="button"
       onClick={onOpen}
-      // touch-action: manipulation élimine le délai 300ms sur mobile
       style={{ touchAction: "manipulation" }}
       className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
     >
-      {/* Chiffre géant — glow rouge actif sur TOUS les breakpoints */}
+      {/* Mobile : glow doux */}
       <span
-        className="top10-rank text-[110px] sm:text-[150px] md:text-[220px] font-black leading-none select-none flex-shrink-0"
+        aria-hidden="true"
+        className="md:hidden top10-rank text-[110px] sm:text-[150px] font-black leading-none select-none flex-shrink-0"
+        style={{
+          fontFamily: "var(--font-bebas), Impact, sans-serif",
+          color: "transparent",
+          WebkitTextStroke: "2px #e50914",
+          textShadow: glowMobile,
+          lineHeight: "0.85",
+          transform: "translateY(8px)",
+        }}
+      >
+        {rank}
+      </span>
+
+      {/* Desktop : glow intense */}
+      <span
+        aria-hidden="true"
+        className="hidden md:inline top10-rank text-[220px] font-black leading-none select-none flex-shrink-0"
         style={{
           fontFamily: "var(--font-bebas), Impact, sans-serif",
           color: "transparent",
           WebkitTextStroke: "3px #e50914",
-          // glow toujours visible (pas de media query)
-          textShadow: [
-            "0 0 20px rgba(229, 9, 20, 0.6)",
-            "0 0 45px rgba(229, 9, 20, 0.35)",
-            "0 0 80px rgba(229, 9, 20, 0.15)",
-          ].join(", "),
+          textShadow: glowDesktop,
           lineHeight: "0.85",
           transform: "translateY(8px)",
         }}

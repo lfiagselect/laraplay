@@ -1,12 +1,9 @@
 // LARAPLAY — Modal "Plus d'infos" type Netflix
-// Desktop: modal centré max-w-4xl. Mobile: bottom sheet avec drag handle.
 // Preview vidéo :
-//   - Si bunnyId disponible → iframe Bunny embed (autoplay muted loop)
-//     L'iframe Bunny ne supporte pas seek — on simule le random via CSS animation fade
-//   - Sinon fallback → <video> avec URL signée Drive + seek random
-// Thumbnail : bunnyThumbnail (CDN) en priorité, sinon /api/thumb/{id}
-// TV : skip preview vidéo entièrement + focus initial Play button.
-// PERF: touch-action manipulation + active:scale supprimés pour réactivité instantanée.
+//   - Bunny embed : paramètre ?t={seconds} pour démarrage aléatoire (10s–120s)
+//     Format accepté par Bunny : valeur numérique en secondes
+//   - Fallback Drive : seek aléatoire via loadedmetadata
+// Fade : thumbnail visible → fade out 800ms quand vidéo prête → vidéo fade in
 
 "use client";
 
@@ -36,7 +33,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const [shouldMountVideo, setShouldMountVideo] = useState(false);
   const [fav, setFav] = useState(false);
   const [dragY, setDragY] = useState(0);
-  // fade state pour la preview (simule un "preview depuis un moment aléatoire")
   const [previewVisible, setPreviewVisible] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -47,17 +43,15 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
 
   const hasBunny = !!video.bunnyId && !!BUNNY_LIBRARY_ID;
 
-  // URL iframe Bunny embed pour la preview — start param pour position aléatoire
-  // Bunny supporte &start={seconds} pour démarrer à un moment donné
-  const randomStart = Math.floor(Math.random() * 120) + 10; // entre 10s et 130s
+  // Démarrage aléatoire entre 10s et 120s
+  // Paramètre Bunny : ?t={seconds} (valeur numérique)
+  const randomStart = useRef(Math.floor(Math.random() * 110) + 10);
   const bunnyEmbedUrl = hasBunny
-    ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=true&muted=true&loop=true&preload=true&responsive=true&startTime=${randomStart}`
+    ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=true&muted=true&loop=true&preload=true&responsive=true&t=${randomStart.current}`
     : null;
 
-  // Thumbnail à afficher (CDN Bunny en priorité, sinon proxy Drive)
   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
 
-  // Skip preview vidéo TV
   useEffect(() => {
     if (isTV) {
       setVideoReady(true);
@@ -67,15 +61,14 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     return () => clearTimeout(t);
   }, [isTV]);
 
-  // Fade in de la preview après chargement
+  // Fade in vidéo après que isReady est true
   useEffect(() => {
     if (!videoReady) return;
-    // court délai avant fade in pour laisser la vidéo démarrer
     const t = setTimeout(() => setPreviewVisible(true), 300);
     return () => clearTimeout(t);
   }, [videoReady]);
 
-  // Fetch URL signée Drive + seek aléatoire (fallback uniquement si pas de bunnyId)
+  // Fallback Drive : fetch URL signée + seek aléatoire
   useEffect(() => {
     if (!shouldMountVideo || isTV || hasBunny) return;
     fetch(`/api/stream/${video.id}`)
@@ -85,7 +78,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         if (!v || !url) return;
         v.src = url;
         v.load();
-        // seek aléatoire une fois les méta chargées
         v.addEventListener("loadedmetadata", () => {
           const dur = v.duration;
           if (dur && dur > 30) {
@@ -96,7 +88,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
       .catch(console.error);
   }, [shouldMountVideo, isTV, video.id, hasBunny]);
 
-  // Focus initial Play button TV
   useEffect(() => {
     if (!isTV) return;
     const t = setTimeout(() => playBtnRef.current?.focus(), 200);
@@ -134,9 +125,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
       : null;
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     document.body.style.overflow = "hidden";
     return () => {
@@ -156,11 +145,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   };
   const onTouchEnd = () => {
     if (dragStartY.current === null) return;
-    if (dragY > DRAG_CLOSE_THRESHOLD) {
-      onClose();
-    } else {
-      setDragY(0);
-    }
+    if (dragY > DRAG_CLOSE_THRESHOLD) onClose();
+    else setDragY(0);
     dragStartY.current = null;
   };
 
@@ -168,9 +154,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     <div
       ref={overlayRef}
       className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm overflow-y-auto"
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose();
-      }}
+      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       <div
         ref={sheetRef}
@@ -197,7 +181,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         <div className="overflow-y-auto max-h-[88vh] md:max-h-none">
           <div className="relative aspect-video bg-black overflow-hidden">
 
-            {/* Thumbnail — visible jusqu'au fade in de la préview */}
+            {/* Thumbnail — se cache en fondu quand la vidéo démarre */}
             {thumbSrc && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -208,25 +192,21 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               />
             )}
 
-            {/* Player Bunny embed (prioritaire) — fade in quand prêt */}
+            {/* Bunny embed — démarre à randomStart secondes */}
             {shouldMountVideo && !isTV && hasBunny && (
               <iframe
                 src={bunnyEmbedUrl!}
                 className="absolute inset-0 w-full h-full"
+                style={{ border: "none", opacity: previewVisible ? 1 : 0, transition: "opacity 800ms ease" }}
                 allow="autoplay; fullscreen"
                 allowFullScreen
                 loading="lazy"
                 onLoad={() => setVideoReady(true)}
                 title={cleanName}
-                style={{
-                  border: "none",
-                  opacity: previewVisible ? 1 : 0,
-                  transition: "opacity 800ms ease",
-                }}
               />
             )}
 
-            {/* Fallback player Drive — fade in quand prêt */}
+            {/* Fallback Drive */}
             {shouldMountVideo && !isTV && !hasBunny && (
               <video
                 ref={videoRef}
@@ -237,15 +217,11 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 preload="metadata"
                 poster={thumbSrc ?? undefined}
                 className="absolute inset-0 w-full h-full object-cover"
-                style={{
-                  opacity: previewVisible ? 1 : 0,
-                  transition: "opacity 800ms ease",
-                }}
+                style={{ opacity: previewVisible ? 1 : 0, transition: "opacity 800ms ease" }}
                 onCanPlay={() => setVideoReady(true)}
               />
             )}
 
-            {/* Spinner de chargement */}
             {!videoReady && !isTV && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
                 <Loader2 className="w-12 h-12 text-[var(--accent)] animate-spin" />
@@ -254,7 +230,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
 
             <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent pointer-events-none" />
 
-            {/* Bouton fermer */}
             <button
               onClick={onClose}
               data-tv-close
@@ -265,7 +240,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <X className="w-5 h-5 text-white" />
             </button>
 
-            {/* Bouton mute uniquement pour fallback Drive */}
             {!isTV && !hasBunny && (
               <button
                 onClick={() => setMuted((m) => !m)}
@@ -280,7 +254,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <h2 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
                 {cleanName}
               </h2>
-
               <div className="flex flex-wrap gap-3 items-center">
                 <button
                   ref={playBtnRef}
@@ -297,7 +270,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   disabled={!userEmail}
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition-colors disabled:opacity-50"
                   aria-label={fav ? "Retirer de ma liste" : "Ajouter \u00e0 ma liste"}
-                  title={fav ? "Retirer de ma liste" : "Ajouter \u00e0 ma liste"}
                 >
                   {fav ? <Check className="w-5 h-5 text-white" /> : <Plus className="w-5 h-5 text-white" />}
                 </button>
@@ -305,7 +277,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   data-focusable
                   className="w-11 h-11 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition-colors"
                   aria-label="J'aime"
-                  title="J'aime (bient\u00f4t)"
                 >
                   <ThumbsUp className="w-5 h-5 text-white" />
                 </button>
@@ -328,28 +299,16 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   <p className="text-zinc-400 italic">Aucune description disponible.</p>
                 )}
               </div>
-
               <aside className="text-sm space-y-2">
                 {video.category && (
-                  <p>
-                    <span className="text-zinc-500">Cat\u00e9gorie\u00a0: </span>
-                    <span className="text-zinc-200">{video.category}</span>
-                  </p>
+                  <p><span className="text-zinc-500">Cat\u00e9gorie\u00a0: </span><span className="text-zinc-200">{video.category}</span></p>
                 )}
                 {video.modifiedTime && (
-                  <p>
-                    <span className="text-zinc-500">Ajout\u00e9 le\u00a0: </span>
-                    <span className="text-zinc-200">
-                      {new Date(video.modifiedTime).toLocaleDateString("fr-FR", {
-                        day: "numeric", month: "long", year: "numeric",
-                      })}
-                    </span>
-                  </p>
+                  <p><span className="text-zinc-500">Ajout\u00e9 le\u00a0: </span><span className="text-zinc-200">
+                    {new Date(video.modifiedTime).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                  </span></p>
                 )}
-                <p>
-                  <span className="text-zinc-500">Format\u00a0: </span>
-                  <span className="text-zinc-200">{video.mimeType.replace("video/", "").toUpperCase()}</span>
-                </p>
+                <p><span className="text-zinc-500">Format\u00a0: </span><span className="text-zinc-200">{video.mimeType.replace("video/", "").toUpperCase()}</span></p>
               </aside>
             </div>
 
@@ -357,9 +316,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <div>
                 <h3 className="text-xl font-bold text-white mb-4">Autres vid\u00e9os similaires</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {related.slice(0, 6).map((v) => (
-                    <VideoCard key={v.id} video={v} />
-                  ))}
+                  {related.slice(0, 6).map((v) => <VideoCard key={v.id} video={v} />)}
                 </div>
               </div>
             )}
