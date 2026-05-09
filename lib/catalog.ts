@@ -24,16 +24,14 @@ interface CatalogSerialized {
   hero: VideoFile | null;
 }
 
-// Charge le mapping Bunny une seule fois au démarrage
-function loadBunnyMapping(): Map<string, { bunnyId: string; collectionId: string }> {
+// Charge le mapping Bunny une seule fois au démarrage.
+// Le fichier bunny-mapping.json a la forme : { "driveId": "bunnyVideoId" }
+function loadBunnyMapping(): Map<string, string> {
   const mappingPath = resolve(process.cwd(), "scripts/bunny-mapping.json");
   if (!existsSync(mappingPath)) return new Map();
   try {
-    const raw = JSON.parse(readFileSync(mappingPath, "utf8"));
-    return new Map(Object.entries(raw).map(([driveId, v]: [string, any]) => [
-      driveId,
-      { bunnyId: v.bunnyId, collectionId: v.collectionId },
-    ]));
+    const raw = JSON.parse(readFileSync(mappingPath, "utf8")) as Record<string, string>;
+    return new Map(Object.entries(raw));
   } catch {
     return new Map();
   }
@@ -54,12 +52,11 @@ const fetchCatalogRaw = unstable_cache(
 
     const all = await listAllVideos(folderId);
 
-    // Enrichir chaque vidéo avec son bunnyId
+    // Enrichir chaque vidéo avec son bunnyId (string directe depuis le mapping)
     for (const v of all) {
-      const bunny = bunnyMapping.get(v.id);
-      if (bunny) {
-        v.bunnyId = bunny.bunnyId;
-        v.collectionId = bunny.collectionId;
+      const bunnyId = bunnyMapping.get(v.id);
+      if (bunnyId) {
+        v.bunnyId = bunnyId;
       }
     }
 
