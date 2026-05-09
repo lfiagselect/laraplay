@@ -39,6 +39,14 @@ function loadBunnyMapping(): Map<string, string> {
 
 const bunnyMapping = loadBunnyMapping();
 
+// URL thumbnail Bunny : https://iframe.mediadelivery.net/{libraryId}/{bunnyId}/thumbnail.jpg
+const BUNNY_LIBRARY_ID = process.env.BUNNY_LIBRARY_ID ?? process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
+
+function bunnyThumbnailUrl(bunnyId: string): string | undefined {
+  if (!BUNNY_LIBRARY_ID) return undefined;
+  return `https://iframe.mediadelivery.net/${BUNNY_LIBRARY_ID}/${bunnyId}/thumbnail.jpg`;
+}
+
 // Tri "récent" basé sur createdTime (vraie date d'ajout initial).
 // Fallback modifiedTime si createdTime absent (anciens fichiers).
 function sortKey(v: VideoFile): string {
@@ -52,11 +60,14 @@ const fetchCatalogRaw = unstable_cache(
 
     const all = await listAllVideos(folderId);
 
-    // Enrichir chaque vidéo avec son bunnyId (string directe depuis le mapping)
+    // Enrichir chaque vidéo avec bunnyId + thumbnail Bunny
     for (const v of all) {
       const bunnyId = bunnyMapping.get(v.id);
       if (bunnyId) {
         v.bunnyId = bunnyId;
+        // Remplace le thumbnail Drive par le thumbnail Bunny (CDN rapide, meilleure qualité)
+        const thumb = bunnyThumbnailUrl(bunnyId);
+        if (thumb) v.thumbnailLink = thumb;
       }
     }
 
@@ -66,7 +77,7 @@ const fetchCatalogRaw = unstable_cache(
 
     return { all, recents, hero: recents[0] ?? null };
   },
-  ["catalog-v2-createdTime"],
+  ["catalog-v3-bunny-thumbs"],
   { revalidate: 3600, tags: ["catalog"] }
 );
 
