@@ -3,6 +3,8 @@
 // Sort par createdTime (stable) — replace version Drive ne fait PAS remonter en Top.
 
 import "server-only";
+import { readFileSync, existsSync } from "fs";
+import { resolve } from "path";
 import { unstable_cache } from "next/cache";
 import { listAllVideos, type VideoFile } from "./drive";
 
@@ -22,6 +24,23 @@ interface CatalogSerialized {
   hero: VideoFile | null;
 }
 
+// Charge le mapping Bunny une seule fois au démarrage
+function loadBunnyMapping(): Map<string, { bunnyId: string; collectionId: string }> {
+  const mappingPath = resolve(process.cwd(), "scripts/bunny-mapping.json");
+  if (!existsSync(mappingPath)) return new Map();
+  try {
+    const raw = JSON.parse(readFileSync(mappingPath, "utf8"));
+    return new Map(Object.entries(raw).map(([driveId, v]: [string, any]) => [
+      driveId,
+      { bunnyId: v.bunnyId, collectionId: v.collectionId },
+    ]));
+  } catch {
+    return new Map();
+  }
+}
+
+const bunnyMapping = loadBunnyMapping();
+
 // Tri "récent" basé sur createdTime (vraie date d'ajout initial).
 // Fallback modifiedTime si createdTime absent (anciens fichiers).
 function sortKey(v: VideoFile): string {
@@ -34,6 +53,15 @@ const fetchCatalogRaw = unstable_cache(
     if (!folderId) throw new Error("GOOGLE_DRIVE_FOLDER_ID missing");
 
     const all = await listAllVideos(folderId);
+
+    // Enrichir chaque vidéo avec son bunnyId
+    for (const v of all) {
+      const bunny = bunnyMapping.get(v.id);
+      if (bunny) {
+        v.bunnyId = bunny.bunnyId;
+        v.collectionId = bunny.collectionId;
+      }
+    }
 
     const recents = [...all]
       .sort((a, b) => sortKey(b).localeCompare(sortKey(a)))

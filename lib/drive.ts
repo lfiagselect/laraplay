@@ -20,6 +20,8 @@ export interface VideoFile {
   createdTime?: string;
   description?: string;
   category?: string;
+  bunnyId?: string;
+  collectionId?: string;
 }
 
 const VIDEO_MIME_PREFIX = "video/";
@@ -194,13 +196,6 @@ export async function fetchDriveThumb(
   };
 }
 
-// ─── Signed URL (zéro bandwidth Netlify) ─────────────────────────────────────
-
-/**
- * Retourne une URL Drive streamable directement par le browser.
- * Le token est injecté côté serveur — jamais exposé dans l'URL finale.
- * expiresAt = now + 45min (token dure 60min, marge de sécurité 15min).
- */
 export async function getStreamUrl(
   fileId: string
 ): Promise<{ url: string; expiresAt: number }> {
