@@ -2,7 +2,7 @@
 // State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
 // Affiche poster immédiat + loader pendant chargement (perception <100ms).
 // Track watch progress (localStorage par user).
-// V6: stream Bunny CDN direct — plus de proxy Drive.
+// V7: HLS adaptatif via hls.js — qualité auto selon bande passante.
 
 "use client";
 
@@ -36,22 +36,66 @@ export function Player({
   const [state, setState] = useState<PlayerState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ── Assign src : Bunny CDN si disponible, sinon fallback proxy Drive ───────
+  // ── Assign src : HLS Bunny si disponible, sinon fallback proxy Drive ────────
   const loadVideo = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
+
     if (bunnyId && BUNNY_PULL_ZONE) {
-      v.src = `https://${BUNNY_PULL_ZONE}/${bunnyId}/play_720p.mp4`;
+      const hlsUrl = `https://${BUNNY_PULL_ZONE}/${bunnyId}/playlist.m3u8`;
+
+      // Safari supporte HLS nativement
+      if (v.canPlayType("application/vnd.apple.mpegurl")) {
+        v.src = hlsUrl;
+        v.load();
+      } else {
+        // Chrome/Firefox → hls.js
+        import("hls.js").then(({ default: Hls }) => {
+          if (!Hls.isSupported()) {
+            // Fallback MP4 si hls.js non supporté
+            v.src = `https://${BUNNY_PULL_ZONE}/${bunnyId}/play_720p.mp4`;
+            v.load();
+            return;
+          }
+          // Détruire l'instance précédente si elle existe
+          const existing = (v as any).__hls as import("hls.js").default | undefined;
+          if (existing) existing.destroy();
+
+          const hls = new Hls({
+            enableWorker: true,
+            lowLatencyMode: false,
+            backBufferLength: 90,
+          });
+          hls.loadSource(hlsUrl);
+          hls.attachMedia(v);
+          (v as any).__hls = hls;
+
+          hls.on(Hls.Events.ERROR, (_evt, data) => {
+            if (data.fatal) {
+              setState("error");
+              setErrorMsg("Erreur de lecture. Réessaie.");
+            }
+          });
+        });
+      }
     } else if (videoId) {
       v.src = `/api/stream/${videoId}`;
-    } else {
-      return;
+      v.load();
     }
-    v.load();
   }, [bunnyId, videoId]);
 
   useEffect(() => {
     loadVideo();
+    // Nettoyage hls.js au démontage
+    return () => {
+      const v = videoRef.current;
+      if (!v) return;
+      const hls = (v as any).__hls as import("hls.js").default | undefined;
+      if (hls) {
+        hls.destroy();
+        delete (v as any).__hls;
+      }
+    };
   }, [loadVideo]);
 
   // ── State machine + perf marks ─────────────────────────────────────────────
