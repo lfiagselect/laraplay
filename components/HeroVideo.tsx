@@ -1,12 +1,13 @@
 // LARAPLAY — Hero billboard avec vidéo background.
-// V5: src = /api/stream/[driveId] (proxy server-side, pas d'URL Drive exposée).
-// Pas de fetch JSON intermédiaire — src direct sur la route proxy.
+// V6: src = Bunny Stream CDN direct (plus de proxy Drive).
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import type { HeroVideo } from "@/lib/hero-videos";
+
+const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
 
 interface HeroVideoProps {
   hero: HeroVideo;
@@ -19,11 +20,11 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !hero.driveId) return;
-    v.src = `/api/stream/${hero.driveId}`;
+    if (!v || !hero.bunnyId) return;
+    v.src = `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_720p.mp4`;
     v.load();
     v.play().catch(() => {});
-  }, [hero.driveId]);
+  }, [hero.bunnyId]);
 
   useEffect(() => {
     const v = videoRef.current;
