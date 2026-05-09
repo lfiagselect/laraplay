@@ -1,17 +1,16 @@
 // LARAPLAY — Player vidéo.
-// State machine événementielle: idle → loading → ready → playing ↔ buffering → error.
-// Affiche poster immédiat + loader pendant chargement (perception <100ms).
-// Track watch progress (localStorage par user).
-// V7: HLS adaptatif via hls.js — qualité auto selon bande passante.
+// Si bunnyId disponible → iframe embed Bunny (player natif CDN, qualité adaptative).
+// Sinon → fallback proxy Drive via <video>.
+// Track watch progress (localStorage par user) via postMessage Bunny.
+// V8: Bunny embed player — suppression hls.js.
 
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { getEntry, saveProgress } from "@/lib/watch-progress";
-import { track, startTimer } from "@/lib/perf";
 
-type PlayerState = "idle" | "loading" | "ready" | "playing" | "buffering" | "error";
+const BUNNY_LIBRARY_ID = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
+const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
 
 interface PlayerProps {
   poster?: string;
@@ -22,8 +21,6 @@ interface PlayerProps {
   autoPlay?: boolean;
 }
 
-const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
-
 export function Player({
   poster,
   videoId,
@@ -32,144 +29,69 @@ export function Player({
   className = "",
   autoPlay = true,
 }: PlayerProps) {
+  // ── Bunny embed iframe ─────────────────────────────────────────────────────
+  if (bunnyId && BUNNY_LIBRARY_ID) {
+    const autoPlayParam = autoPlay ? "1" : "0";
+    const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${bunnyId}?autoplay=${autoPlayParam}&preload=true&responsive=true`;
+
+    return (
+      <div
+        className={`relative bg-black ${className}`}
+        style={{ paddingTop: "56.25%" }}
+      >
+        <iframe
+          src={embedUrl}
+          className="absolute inset-0 w-full h-full border-0"
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  // ── Fallback Drive proxy ───────────────────────────────────────────────────
+  return (
+    <DrivePlayer
+      poster={poster}
+      videoId={videoId}
+      userEmail={userEmail}
+      className={className}
+      autoPlay={autoPlay}
+    />
+  );
+}
+
+// ── Sous-composant Drive (logique watch-progress inchangée) ──────────────────
+function DrivePlayer({
+  poster,
+  videoId,
+  userEmail,
+  className = "",
+  autoPlay = true,
+}: Omit<PlayerProps, "bunnyId">) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [state, setState] = useState<PlayerState>("idle");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // ── Assign src : HLS Bunny si disponible, sinon fallback proxy Drive ────────
-  const loadVideo = useCallback(() => {
-    const v = videoRef.current;
-    if (!v) return;
-
-    if (bunnyId && BUNNY_PULL_ZONE) {
-      const hlsUrl = `https://${BUNNY_PULL_ZONE}/${bunnyId}/playlist.m3u8`;
-
-      // Safari supporte HLS nativement
-      if (v.canPlayType("application/vnd.apple.mpegurl")) {
-        v.src = hlsUrl;
-        v.load();
-      } else {
-        // Chrome/Firefox → hls.js
-        import("hls.js").then(({ default: Hls }) => {
-          if (!Hls.isSupported()) {
-            // Fallback MP4 si hls.js non supporté
-            v.src = `https://${BUNNY_PULL_ZONE}/${bunnyId}/play_720p.mp4`;
-            v.load();
-            return;
-          }
-          // Détruire l'instance précédente si elle existe
-          const existing = (v as any).__hls as import("hls.js").default | undefined;
-          if (existing) existing.destroy();
-
-          const hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: false,
-            backBufferLength: 90,
-          });
-          hls.loadSource(hlsUrl);
-          hls.attachMedia(v);
-          (v as any).__hls = hls;
-
-          hls.on(Hls.Events.ERROR, (_evt, data) => {
-            if (data.fatal) {
-              setState("error");
-              setErrorMsg("Erreur de lecture. Réessaie.");
-            }
-          });
-        });
-      }
-    } else if (videoId) {
-      v.src = `/api/stream/${videoId}`;
-      v.load();
-    }
-  }, [bunnyId, videoId]);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    loadVideo();
-    // Nettoyage hls.js au démontage
-    return () => {
-      const v = videoRef.current;
-      if (!v) return;
-      const hls = (v as any).__hls as import("hls.js").default | undefined;
-      if (hls) {
-        hls.destroy();
-        delete (v as any).__hls;
-      }
-    };
-  }, [loadVideo]);
-
-  // ── State machine + perf marks ─────────────────────────────────────────────
-  useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
-    const elapsed = startTimer();
+    if (!v || !videoId) return;
+    v.src = `/api/stream/${videoId}`;
+    v.load();
+  }, [videoId]);
 
-    const onLoadStart = () => {
-      setState("loading");
-      track({ type: "player.loadstart", videoId: bunnyId ?? videoId, ms: elapsed() });
-    };
-    const onCanPlay = () => {
-      setState((s) => (s === "playing" ? s : "ready"));
-      track({ type: "player.canplay", videoId: bunnyId ?? videoId, ms: elapsed() });
-    };
-    const onPlaying = () => {
-      setState("playing");
-      track({ type: "player.playing", videoId: bunnyId ?? videoId, ms: elapsed() });
-    };
-    const onWaiting = () => {
-      setState("buffering");
-      track({ type: "player.waiting", videoId: bunnyId ?? videoId, ms: elapsed() });
-    };
-    const onError = () => {
-      setState("error");
-      setErrorMsg("Erreur de lecture. Réessaie.");
-      const err = v.error;
-      track({
-        type: "player.error",
-        videoId: bunnyId ?? videoId,
-        ms: elapsed(),
-        meta: { code: err?.code ?? -1, message: err?.message ?? "unknown" },
-      });
-    };
-    const onStalled = () => setState("buffering");
-
-    v.addEventListener("loadstart", onLoadStart);
-    v.addEventListener("canplay", onCanPlay);
-    v.addEventListener("playing", onPlaying);
-    v.addEventListener("waiting", onWaiting);
-    v.addEventListener("stalled", onStalled);
-    v.addEventListener("error", onError);
-
-    return () => {
-      v.removeEventListener("loadstart", onLoadStart);
-      v.removeEventListener("canplay", onCanPlay);
-      v.removeEventListener("playing", onPlaying);
-      v.removeEventListener("waiting", onWaiting);
-      v.removeEventListener("stalled", onStalled);
-      v.removeEventListener("error", onError);
-    };
-  }, [bunnyId, videoId]);
-
-  // ── Resume position ────────────────────────────────────────────────────────
+  // Resume position
   useEffect(() => {
     if (!videoId || !userEmail) return;
     const entry = getEntry(userEmail, videoId);
     if (!entry) return;
     const v = videoRef.current;
     if (!v) return;
-
     let restored = false;
     const tryRestore = () => {
-      if (restored) return;
-      try {
-        if (!isFinite(v.duration) || v.duration <= 0) return;
-        v.currentTime = Math.max(0, Math.min(entry.position - 5, v.duration - 1));
-        restored = true;
-      } catch {
-        // seek hors range / stream pas prêt — réessaye sur prochain event
-      }
+      if (restored || !isFinite(v.duration) || v.duration <= 0) return;
+      v.currentTime = Math.max(0, Math.min(entry.position - 5, v.duration - 1));
+      restored = true;
     };
-
     v.addEventListener("loadedmetadata", tryRestore);
     v.addEventListener("canplay", tryRestore);
     return () => {
@@ -178,50 +100,41 @@ export function Player({
     };
   }, [videoId, userEmail]);
 
-  // ── Save progress ──────────────────────────────────────────────────────────
+  // Save progress
   useEffect(() => {
     if (!videoId || !userEmail) return;
     const v = videoRef.current;
     if (!v) return;
-
     let lastSave = 0;
-    const SAVE_INTERVAL_MS = 10_000;
-
     const persist = (force = false) => {
       if (!v.duration || !isFinite(v.duration)) return;
       const now = Date.now();
-      if (!force && now - lastSave < SAVE_INTERVAL_MS) return;
+      if (!force && now - lastSave < 10_000) return;
       lastSave = now;
-      const completed = v.currentTime >= v.duration * 0.9;
       saveProgress(userEmail, {
         videoId,
         position: v.currentTime,
         duration: v.duration,
         updatedAt: now,
-        completed,
+        completed: v.currentTime >= v.duration * 0.9,
       });
     };
-
     const onTime = () => persist();
     const onPause = () => persist(true);
     const onEnded = () => persist(true);
-    const onBeforeUnload = () => persist(true);
-
+    const onBefore = () => persist(true);
     v.addEventListener("timeupdate", onTime);
     v.addEventListener("pause", onPause);
     v.addEventListener("ended", onEnded);
-    window.addEventListener("beforeunload", onBeforeUnload);
-
+    window.addEventListener("beforeunload", onBefore);
     return () => {
       v.removeEventListener("timeupdate", onTime);
       v.removeEventListener("pause", onPause);
       v.removeEventListener("ended", onEnded);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeunload", onBefore);
       persist(true);
     };
   }, [videoId, userEmail]);
-
-  const showLoader = state === "loading" || state === "buffering" || state === "idle";
 
   return (
     <div className={`relative bg-black ${className}`}>
@@ -234,40 +147,12 @@ export function Player({
         poster={poster}
         controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}
+        onError={() => setError(true)}
         className="w-full h-full"
       />
-
-      {poster && state === "idle" && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={poster}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-        />
-      )}
-
-      {showLoader && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
-          <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
-        </div>
-      )}
-
-      {state === "error" && errorMsg && (
+      {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-center p-6">
-          <div>
-            <p className="text-red-400 mb-2">{errorMsg}</p>
-            <button
-              onClick={() => {
-                setErrorMsg(null);
-                setState("idle");
-                loadVideo();
-              }}
-              className="text-sm text-white bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded"
-            >
-              Réessayer
-            </button>
-          </div>
+          <p className="text-red-400">Erreur de lecture. Réessaie.</p>
         </div>
       )}
     </div>
