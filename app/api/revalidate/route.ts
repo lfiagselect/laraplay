@@ -15,7 +15,7 @@ async function handle(req: NextRequest) {
   }
 
   try {
-    revalidateTag("catalog");
+    revalidateTag("catalog", "fetch");
     revalidatePath("/", "layout");
     revalidatePath("/categories");
     revalidatePath("/eras");
