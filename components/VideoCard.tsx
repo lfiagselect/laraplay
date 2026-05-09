@@ -1,9 +1,8 @@
 // LARAPLAY — Carte vidéo. Clic = ouvre modal info.
-// Hover desktop V2: scale 1.12, delay 200ms, gradient bottom, actions ronde, metadata.
+// Hover desktop: scale 1.12, delay 200ms, gradient bottom, actions rondes, metadata.
 // Mobile: aucun hover (touch).
-// Préload stream au hover desktop + IntersectionObserver mobile.
-// V2: prefetch modal metadata au hover via ModalProvider.preload()
-// Thumb: bunnyThumbnail (CDN Bunny) en priorité, fallback /api/thumb/{id} (Drive proxy)
+// PERF: touch-action manipulation élimine le délai 300ms mobile.
+//       transition uniquement sur color/opacity (pas sur transform au repos).
 
 "use client";
 
@@ -40,7 +39,6 @@ interface VideoCardProps {
 export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const year = formatYear(video.modifiedTime);
-  // Priorité : bunnyThumbnail (CDN public) > fallbackImage > /api/thumb/{id} (Drive proxy)
   const thumb = video.bunnyThumbnail
     ?? (fallbackImage || null)
     ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
@@ -60,10 +58,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   };
   const onLeave = () => {
     hover.onMouseLeave();
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
+    if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null; }
     setIsHover(false);
   };
 
@@ -78,27 +73,22 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         type="button"
         data-focusable
         onClick={() => open(video.id)}
+        // touch-action: manipulation élimine le délai 300ms sur mobile
+        style={{ touchAction: "manipulation" }}
         onFocus={(e) => {
           if (typeof document !== "undefined" && document.documentElement.classList.contains("tv")) {
-            try {
-              e.currentTarget.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-            } catch {}
+            try { e.currentTarget.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); } catch {}
           }
         }}
         className={[
           "relative block aspect-video w-full overflow-hidden rounded-md bg-[var(--bg-elevated)] text-left",
-          "transition-transform duration-200 ease-out",
+          "transition-[transform,box-shadow] duration-200 ease-out will-change-transform",
           isHover ? "md:scale-[1.12] md:z-30 md:shadow-[0_18px_45px_rgba(0,0,0,.75)]" : "",
         ].join(" ")}
       >
         {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumb}
-            alt={cleanName}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+          <img src={thumb} alt={cleanName} className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-900 flex items-center justify-center">
             <Play className="w-12 h-12 text-zinc-500" />
@@ -106,7 +96,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         )}
 
         <div
-          data-card-hover-only
           className={[
             "pointer-events-none absolute inset-0 transition-opacity duration-200",
             "bg-gradient-to-t from-black/95 via-black/40 to-transparent",
@@ -115,7 +104,8 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           ].join(" ")}
         />
 
-        <div className="absolute inset-0 bg-black/30 opacity-0 group-active:opacity-100 md:hidden flex items-center justify-center transition-opacity">
+        {/* Feedback tactile mobile */}
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-active:opacity-100 md:hidden flex items-center justify-center transition-opacity duration-75">
           <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
         </div>
 
@@ -125,13 +115,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           </span>
         )}
 
-        <div
-          data-card-hover-only
-          className={[
-            "hidden md:flex absolute bottom-3 left-3 right-3 items-center gap-2 transition-opacity duration-200",
-            isHover ? "opacity-100" : "opacity-0",
-          ].join(" ")}
-        >
+        <div className={["hidden md:flex absolute bottom-3 left-3 right-3 items-center gap-2 transition-opacity duration-200", isHover ? "opacity-100" : "opacity-0"].join(" ")}>
           <span className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shadow-lg" title="Lecture">
             <Play className="w-4 h-4" fill="currentColor" />
           </span>
@@ -143,32 +127,17 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           </span>
         </div>
 
-        <div
-          data-card-hover-only
-          className={[
-            "hidden md:block absolute left-3 right-3 transition-opacity duration-200",
-            "bottom-12",
-            isHover ? "opacity-100" : "opacity-0",
-          ].join(" ")}
-        >
+        <div className={["hidden md:block absolute left-3 right-3 bottom-12 transition-opacity duration-200", isHover ? "opacity-100" : "opacity-0"].join(" ")}>
           <h3 className="text-white text-sm font-semibold line-clamp-1 drop-shadow-lg">{cleanName}</h3>
           <p className="text-[var(--text-secondary)] text-xs mt-0.5 line-clamp-1">
-            {[year, video.category].filter(Boolean).join(" · ")}
+            {[year, video.category].filter(Boolean).join(" \u00b7 ")}
           </p>
         </div>
       </button>
 
-      <div
-        className={[
-          "p-2.5 transition-opacity duration-200",
-          "md:opacity-100",
-          isHover ? "md:opacity-0" : "",
-        ].join(" ")}
-      >
+      <div className={["p-2.5 transition-opacity duration-200", "md:opacity-100", isHover ? "md:opacity-0" : ""].join(" ")}>
         <h3 className="text-sm font-medium text-zinc-100 line-clamp-2 leading-tight">{cleanName}</h3>
-        {video.category && (
-          <p className="text-xs text-[var(--text-muted)] mt-1">{video.category}</p>
-        )}
+        {video.category && <p className="text-xs text-[var(--text-muted)] mt-1">{video.category}</p>}
       </div>
     </article>
   );

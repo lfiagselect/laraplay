@@ -1,16 +1,16 @@
 // LARAPLAY — Rangée Top 10 avec chiffres géants derrière cards.
-// Style emblématique streaming premium.
+// Glow rouge sur les chiffres : actif sur mobile ET desktop.
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { useVideoModal } from "./ModalProvider";
 
 interface Top10RowProps {
   title: string;
-  videos: VideoFile[]; // limité à 10
+  videos: VideoFile[];
 }
 
 function formatDuration(ms?: string): string | null {
@@ -40,16 +40,14 @@ export function Top10Row({ title, videos }: Top10RowProps) {
   return (
     <section className="relative group/row mb-12">
       <div className="px-4 md:px-12 mb-4">
-        <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-          {title}
-        </h2>
+        <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">{title}</h2>
       </div>
 
       <div className="relative">
         <button
           onClick={() => scroll("left")}
-          className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
-          aria-label="Précédent"
+          className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+          aria-label="Pr\u00e9c\u00e9dent"
         >
           <ChevronLeft className="w-8 h-8 text-white" />
         </button>
@@ -58,27 +56,21 @@ export function Top10Row({ title, videos }: Top10RowProps) {
           ref={scrollRef}
           className="no-scrollbar flex gap-2 overflow-x-auto scroll-smooth px-4 md:px-12 py-6"
         >
-          {top10.map((video, idx) => {
-            const rank = idx + 1;
-            const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
-            const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
-
-            return (
-              <Top10Card
-                key={video.id}
-                video={video}
-                rank={rank}
-                duration={duration}
-                cleanName={cleanName}
-                onOpen={() => open(video.id)}
-              />
-            );
-          })}
+          {top10.map((video, idx) => (
+            <Top10Card
+              key={video.id}
+              video={video}
+              rank={idx + 1}
+              duration={formatDuration(video.videoMediaMetadata?.durationMillis)}
+              cleanName={video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "")}
+              onOpen={() => open(video.id)}
+            />
+          ))}
         </div>
 
         <button
           onClick={() => scroll("right")}
-          className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
+          className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
           aria-label="Suivant"
         >
           <ChevronRight className="w-8 h-8 text-white" />
@@ -97,23 +89,30 @@ interface Top10CardProps {
 }
 
 function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
-  const [thumbError, setThumbError] = useState(false);
-  const showThumb = !thumbError;
+  // Thumbnail : bunnyThumbnail en priorité, sinon proxy Drive
+  const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
 
   return (
     <button
       type="button"
       onClick={onOpen}
+      // touch-action: manipulation élimine le délai 300ms sur mobile
+      style={{ touchAction: "manipulation" }}
       className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
     >
-      {/* Chiffre géant en arrière-plan, aligné bas avec card */}
+      {/* Chiffre géant — glow rouge actif sur TOUS les breakpoints */}
       <span
         className="top10-rank text-[110px] sm:text-[150px] md:text-[220px] font-black leading-none select-none flex-shrink-0"
         style={{
           fontFamily: "var(--font-bebas), Impact, sans-serif",
           color: "transparent",
           WebkitTextStroke: "3px #e50914",
-          textShadow: "0 0 30px rgba(229, 9, 20, 0.35)",
+          // glow toujours visible (pas de media query)
+          textShadow: [
+            "0 0 20px rgba(229, 9, 20, 0.6)",
+            "0 0 45px rgba(229, 9, 20, 0.35)",
+            "0 0 80px rgba(229, 9, 20, 0.15)",
+          ].join(", "),
           lineHeight: "0.85",
           transform: "translateY(8px)",
         }}
@@ -122,15 +121,14 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
       </span>
 
       {/* Card vidéo */}
-      <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-300 group-hover/card:scale-105 group-hover/card:z-10">
-        {showThumb ? (
+      <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-200 group-hover/card:scale-105 group-hover/card:z-10">
+        {thumbSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/thumb/${video.id}`}
+            src={thumbSrc}
             alt={cleanName}
             className="absolute inset-0 w-full h-full object-cover"
             loading="lazy"
-            onError={() => setThumbError(true)}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
@@ -140,17 +138,13 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center">
           <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
         </div>
 
         <div className="absolute bottom-2 left-2 right-2">
-          <p className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
-            {cleanName}
-          </p>
-          {duration && (
-            <p className="text-[10px] text-zinc-300 mt-1">{duration}</p>
-          )}
+          <p className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">{cleanName}</p>
+          {duration && <p className="text-[10px] text-zinc-300 mt-1">{duration}</p>}
         </div>
       </div>
     </button>
