@@ -3,6 +3,7 @@
 // Mobile: aucun hover (touch).
 // Préload stream au hover desktop + IntersectionObserver mobile.
 // V2: prefetch modal metadata au hover via ModalProvider.preload()
+// Thumb: bunnyThumbnail (CDN Bunny) en priorité, fallback /api/thumb/{id} (Drive proxy)
 
 "use client";
 
@@ -39,7 +40,10 @@ interface VideoCardProps {
 export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const year = formatYear(video.modifiedTime);
-  const thumb = !fallbackImage && video.thumbnailLink ? video.thumbnailLink : null;
+  // Priorité : bunnyThumbnail (CDN public) > fallbackImage > /api/thumb/{id} (Drive proxy)
+  const thumb = video.bunnyThumbnail
+    ?? (fallbackImage || null)
+    ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const { open, preload } = useVideoModal();
   const hover = useHoverPreload(video.id);
@@ -50,7 +54,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
 
   const onEnter = () => {
     hover.onMouseEnter();
-    preload(video.id); // prefetch modal metadata dès le hover
+    preload(video.id);
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
   };
@@ -92,14 +96,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           <img
             src={thumb}
             alt={cleanName}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-        ) : fallbackImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={fallbackImage}
-            alt={video.category ?? video.name}
             className="w-full h-full object-cover"
             loading="lazy"
           />

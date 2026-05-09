@@ -3,6 +3,7 @@
 // Preview vidéo :
 //   - Si bunnyId disponible → iframe Bunny embed (autoplay muted loop)
 //   - Sinon fallback → <video> avec URL signée Drive
+// Thumbnail : bunnyThumbnail (CDN) en priorité, sinon /api/thumb/{id} (Drive proxy)
 // TV : skip preview vidéo entièrement + focus initial Play button.
 
 "use client";
@@ -42,10 +43,13 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
 
   const hasBunny = !!video.bunnyId && !!BUNNY_LIBRARY_ID;
 
-  // URL iframe Bunny embed
+  // URL iframe Bunny embed pour la preview
   const bunnyEmbedUrl = hasBunny
     ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=true&muted=true&loop=true&preload=true&responsive=true`
     : null;
+
+  // Thumbnail à afficher (CDN Bunny en priorité, sinon proxy Drive)
+  const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
 
   // Skip preview vidéo TV
   useEffect(() => {
@@ -172,11 +176,11 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
         <div className="overflow-y-auto max-h-[88vh] md:max-h-none">
           <div className="relative aspect-video bg-black overflow-hidden">
 
-            {/* Thumbnail (visible avant le chargement vidéo) */}
-            {video.thumbnailLink && !shouldMountVideo && (
+            {/* Thumbnail (visible avant chargement vidéo) */}
+            {thumbSrc && !shouldMountVideo && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={video.thumbnailLink}
+                src={thumbSrc}
                 alt={cleanName}
                 className="absolute inset-0 w-full h-full object-cover"
               />
@@ -205,7 +209,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 loop
                 playsInline
                 preload="metadata"
-                poster={video.thumbnailLink ?? undefined}
+                poster={thumbSrc ?? undefined}
                 className="absolute inset-0 w-full h-full object-cover"
                 onCanPlay={() => setVideoReady(true)}
               />
@@ -229,7 +233,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <X className="w-5 h-5 text-white" />
             </button>
 
-            {/* Bouton mute uniquement pour le fallback Drive (Bunny gère son propre son) */}
+            {/* Bouton mute uniquement pour fallback Drive */}
             {!isTV && !hasBunny && (
               <button
                 onClick={() => setMuted((m) => !m)}
@@ -310,13 +314,13 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               <aside className="text-sm space-y-2">
                 {video.category && (
                   <p>
-                    <span className="text-zinc-500">Catégorie : </span>
+                    <span className="text-zinc-500">Catégorie : </span>
                     <span className="text-zinc-200">{video.category}</span>
                   </p>
                 )}
                 {video.modifiedTime && (
                   <p>
-                    <span className="text-zinc-500">Ajouté le : </span>
+                    <span className="text-zinc-500">Ajouté le : </span>
                     <span className="text-zinc-200">
                       {new Date(video.modifiedTime).toLocaleDateString("fr-FR", {
                         day: "numeric",
@@ -327,7 +331,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   </p>
                 )}
                 <p>
-                  <span className="text-zinc-500">Format : </span>
+                  <span className="text-zinc-500">Format : </span>
                   <span className="text-zinc-200">
                     {video.mimeType.replace("video/", "").toUpperCase()}
                   </span>

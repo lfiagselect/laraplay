@@ -9,7 +9,8 @@ export interface VideoFile {
   name: string;
   mimeType: string;
   size?: string;
-  thumbnailLink?: string;
+  thumbnailLink?: string;       // URL Drive thumbnail (original, jamais écrasé)
+  bunnyThumbnail?: string;      // URL CDN Bunny thumbnail (prioritaire pour affichage)
   videoMediaMetadata?: {
     width?: number;
     height?: number;

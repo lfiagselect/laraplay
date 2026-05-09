@@ -25,7 +25,6 @@ interface CatalogSerialized {
 }
 
 // Charge le mapping Bunny une seule fois au démarrage.
-// Le fichier bunny-mapping.json a la forme : { "driveId": "bunnyVideoId" }
 function loadBunnyMapping(): Map<string, string> {
   const mappingPath = resolve(process.cwd(), "scripts/bunny-mapping.json");
   if (!existsSync(mappingPath)) return new Map();
@@ -39,7 +38,7 @@ function loadBunnyMapping(): Map<string, string> {
 
 const bunnyMapping = loadBunnyMapping();
 
-// URL thumbnail Bunny : https://iframe.mediadelivery.net/{libraryId}/{bunnyId}/thumbnail.jpg
+// URL thumbnail Bunny publique — ne nécessite aucune auth
 const BUNNY_LIBRARY_ID = process.env.BUNNY_LIBRARY_ID ?? process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
 
 function bunnyThumbnailUrl(bunnyId: string): string | undefined {
@@ -48,7 +47,6 @@ function bunnyThumbnailUrl(bunnyId: string): string | undefined {
 }
 
 // Tri "récent" basé sur createdTime (vraie date d'ajout initial).
-// Fallback modifiedTime si createdTime absent (anciens fichiers).
 function sortKey(v: VideoFile): string {
   return v.createdTime ?? v.modifiedTime ?? "";
 }
@@ -60,14 +58,14 @@ const fetchCatalogRaw = unstable_cache(
 
     const all = await listAllVideos(folderId);
 
-    // Enrichir chaque vidéo avec bunnyId + thumbnail Bunny
+    // Enrichir chaque vidéo avec bunnyId + bunnyThumbnail
+    // thumbnailLink Drive est CONSERVÉ intact pour /api/thumb/
     for (const v of all) {
       const bunnyId = bunnyMapping.get(v.id);
       if (bunnyId) {
         v.bunnyId = bunnyId;
-        // Remplace le thumbnail Drive par le thumbnail Bunny (CDN rapide, meilleure qualité)
         const thumb = bunnyThumbnailUrl(bunnyId);
-        if (thumb) v.thumbnailLink = thumb;
+        if (thumb) v.bunnyThumbnail = thumb; // champ séparé, ne touche pas thumbnailLink
       }
     }
 
@@ -77,7 +75,7 @@ const fetchCatalogRaw = unstable_cache(
 
     return { all, recents, hero: recents[0] ?? null };
   },
-  ["catalog-v3-bunny-thumbs"],
+  ["catalog-v4-bunny-thumbs"],
   { revalidate: 3600, tags: ["catalog"] }
 );
 
