@@ -10,11 +10,19 @@ export interface Catalog {
   byCategory: Map<string, VideoFile[]>;
   byId: Map<string, VideoFile>;
   recents: VideoFile[];
+  top10: VideoFile[];
+  recentAdds: VideoFile[];
   hero: VideoFile | null;
 }
 
 // Cache mémoire process — fonctionne sur Netlify
-let cacheData: { all: VideoFile[]; recents: VideoFile[]; hero: VideoFile | null } | null = null;
+let cacheData: {
+  all: VideoFile[];
+  recents: VideoFile[];
+  top10: VideoFile[];
+  recentAdds: VideoFile[];
+  hero: VideoFile | null;
+} | null = null;
 let cacheExpiry = 0;
 const CACHE_TTL = 3600 * 1000; // 1h
 
@@ -30,11 +38,20 @@ async function fetchCatalogRaw() {
   console.log("[catalog] fetching from Bunny...");
   const all = await listAllVideos();
   console.log(`[catalog] got ${all.length} videos`);
+
   const recents = [...all]
     .sort((a, b) => (b.createdTime ?? "").localeCompare(a.createdTime ?? ""))
     .slice(0, 16);
 
-  cacheData = { all, recents, hero: recents[0] ?? null };
+  const top10 = [...all]
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .slice(0, 10);
+
+  const recentAdds = [...all]
+    .sort((a, b) => (b.createdTime ?? "").localeCompare(a.createdTime ?? ""))
+    .slice(0, 4);
+
+  cacheData = { all, recents, top10, recentAdds, hero: recents[0] ?? null };
   cacheExpiry = now + CACHE_TTL;
   return cacheData;
 }
@@ -56,5 +73,13 @@ export async function getCatalog(): Promise<Catalog> {
     list.sort((a, b) => (b.createdTime ?? "").localeCompare(a.createdTime ?? ""));
   }
 
-  return { all: raw.all, byCategory, byId, recents: raw.recents, hero: raw.hero };
+  return {
+    all: raw.all,
+    byCategory,
+    byId,
+    recents: raw.recents,
+    top10: raw.top10,
+    recentAdds: raw.recentAdds,
+    hero: raw.hero,
+  };
 }

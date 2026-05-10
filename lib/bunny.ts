@@ -23,6 +23,7 @@ export interface VideoFile {
   description?: string;
   category?: string;
   collectionId?: string;
+  views?: number;
 }
 
 interface BunnyVideo {
@@ -110,6 +111,7 @@ export async function listAllVideos(): Promise<VideoFile[]> {
       modifiedTime: v.dateUploaded,
       category: v.collectionId ? collections.get(v.collectionId) ?? "Lara Fabian - Divers" : "Lara Fabian - Divers",
       collectionId: v.collectionId,
+      views: v.views ?? 0,
     };
   });
 }

@@ -1,10 +1,11 @@
-// LARAPLAY — Page accueil.
+// LARAPLAY – Page accueil.
 
 import { Header } from "@/components/Header";
 import { HeroResponsive } from "@/components/HeroResponsive";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
 import { Top10Row } from "@/components/Top10Row";
+import { RecentRow } from "@/components/RecentRow";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
@@ -36,17 +37,29 @@ export default async function Home() {
     : hero;
 
   const sections: React.ReactNode[] = [];
+
   if (userEmail) {
     sections.push(<ContinueWatchingRow key="continue" userEmail={userEmail} />);
   }
-  if (catalog.recents.length > 0) {
+
+  // Ajouts récents — 4 dernières vidéos Bunny
+  if (catalog.recentAdds.length > 0) {
     sections.push(
-      <Top10Row key="top10" title="Top 10 sur LARAPLAY aujourd'hui" videos={catalog.recents} />
+      <RecentRow key="recent" title="Ajouts récents" videos={catalog.recentAdds} />
     );
   }
+
+  // Top 10 basé sur les vues Bunny
+  if (catalog.top10.length > 0) {
+    sections.push(
+      <Top10Row key="top10" title="Top 10 sur LARAPLAY aujourd'hui" videos={catalog.top10} />
+    );
+  }
+
   if (eras.length > 0) {
     sections.push(<EraRow key="eras" title="Choisissez votre ère" eras={eras} />);
   }
+
   for (const cat of THEMATIC_ROWS) {
     const vids = catalog.byCategory.get(cat) ?? [];
     if (vids.length === 0) continue;
