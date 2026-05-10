@@ -6,13 +6,13 @@ const API_KEY = process.env.BUNNY_API_KEY!;
 const PULL_ZONE = (process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 export interface VideoFile {
-  id: string;          // guid Bunny (utilisé partout comme identifiant)
-  bunnyId: string;     // même valeur que id
+  id: string;
+  bunnyId: string;
   name: string;
   mimeType: string;
   size?: string;
-  thumbnailLink?: string;   // URL CDN Bunny thumbnail
-  bunnyThumbnail?: string;  // idem (alias pour compat Player)
+  thumbnailLink?: string;
+  bunnyThumbnail?: string;
   videoMediaMetadata?: {
     width?: number;
     height?: number;
@@ -30,10 +30,10 @@ interface BunnyVideo {
   title: string;
   dateUploaded: string;
   views: number;
-  length: number;         // secondes
+  length: number;
   width: number;
   height: number;
-  status: number;         // 4 = encodage terminé
+  status: number;
   collectionId?: string;
   storageSize: number;
 }
@@ -59,7 +59,9 @@ async function fetchAllCollections(): Promise<Map<string, string>> {
     for (const c of data.items ?? []) {
       map.set(c.guid, c.name);
     }
-  } catch {}
+  } catch (err) {
+    console.error("[bunny] fetchAllCollections error:", err);
+  }
   return map;
 }
 
@@ -106,7 +108,7 @@ export async function listAllVideos(): Promise<VideoFile[]> {
       },
       createdTime: v.dateUploaded,
       modifiedTime: v.dateUploaded,
-      category: v.collectionId ? collections.get(v.collectionId) ?? "Divers" : "Divers",
+      category: v.collectionId ? collections.get(v.collectionId) ?? "Lara Fabian - Divers" : "Lara Fabian - Divers",
       collectionId: v.collectionId,
     };
   });

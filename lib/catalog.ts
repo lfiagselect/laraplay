@@ -16,7 +16,9 @@ export interface Catalog {
 
 const fetchCatalogRaw = unstable_cache(
   async () => {
+    console.log("[catalog] fetching from Bunny...");
     const all = await listAllVideos();
+    console.log(`[catalog] got ${all.length} videos`);
     const recents = [...all]
       .sort((a, b) => (b.createdTime ?? "").localeCompare(a.createdTime ?? ""))
       .slice(0, 16);
