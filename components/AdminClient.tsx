@@ -1,4 +1,4 @@
-// LARAPLAY — Admin UI (client)
+// LARAPLAY – Admin UI (client)
 // Liste users + form ajout + bouton désactiver/supprimer par ligne.
 
 "use client";
@@ -18,7 +18,7 @@ export function AdminClient() {
   const [users, setUsers] = useState<WhitelistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null); // email en cours d'action
+  const [busy, setBusy] = useState<string | null>(null);
 
   // Form ajout
   const [newEmail, setNewEmail] = useState("");
@@ -185,7 +185,7 @@ export function AdminClient() {
 
   return (
     <div className="space-y-8">
-      {/* Refresh catalogue Drive */}
+      {/* Refresh catalogue Bunny */}
       <section className="bg-[var(--bg-elevated)] rounded-xl p-5 md:p-6 border border-white/5">
         <div className="flex flex-col md:flex-row md:items-center gap-4 md:justify-between">
           <div>
@@ -194,7 +194,7 @@ export function AdminClient() {
               Catalogue vidéos
             </h2>
             <p className="text-sm text-[var(--text-secondary)] mt-1">
-              Force le rafraîchissement du cache (1h par défaut). À utiliser après ajout/suppression d&apos;une vidéo dans Drive.
+              Force le rafraîchissement du cache (1h par défaut). À utiliser après ajout/suppression d&apos;une vidéo dans Bunny.
             </p>
             {catalogMsg && (
               <p className={`text-sm mt-2 ${catalogMsg.startsWith("Erreur") ? "text-red-400" : "text-green-400"}`}>
@@ -213,7 +213,7 @@ export function AdminClient() {
             ) : (
               <RefreshCw className="w-4 h-4" />
             )}
-            Rafraîchir Drive
+            Rafraîchir Bunny
           </button>
         </div>
       </section>
