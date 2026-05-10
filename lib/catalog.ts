@@ -1,4 +1,4 @@
-// LARAPLAY — Catalogue (source : Bunny Stream API)
+// LARAPLAY – Catalogue (source : Bunny Stream API)
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { listAllVideos, type VideoFile } from "./bunny";
@@ -24,7 +24,7 @@ const fetchCatalogRaw = unstable_cache(
       .slice(0, 16);
     return { all, recents, hero: recents[0] ?? null };
   },
-  ["catalog-bunny-v1"],
+  ["catalog-bunny-v2"],
   { revalidate: 3600, tags: ["catalog"] }
 );
 
@@ -35,7 +35,7 @@ export async function getCatalog(): Promise<Catalog> {
   const byId = new Map<string, VideoFile>();
 
   for (const v of raw.all) {
-    const cat = v.category ?? "Divers";
+    const cat = v.category ?? "Lara Fabian - Divers";
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(v);
     byId.set(v.id, v);
