@@ -1,6 +1,5 @@
-// LARAPLAY – Refresh catalogue Bunny (invalide le cache unstable_cache)
+// LARAPLAY – Refresh catalogue Bunny
 import { auth } from "@/auth";
-import { revalidateTag } from "next/cache";
 import { listAllVideos } from "@/lib/bunny";
 import { NextResponse } from "next/server";
 
@@ -13,7 +12,6 @@ export async function POST() {
   }
 
   const start = Date.now();
-  revalidateTag("catalog", "layout");
   const videos = await listAllVideos();
   const ms = Date.now() - start;
 

@@ -1,6 +1,5 @@
 // LARAPLAY – Catalogue (source : Bunny Stream API)
 import "server-only";
-import { unstable_cache } from "next/cache";
 import { listAllVideos, type VideoFile } from "./bunny";
 
 export { THEMATIC_ROWS, ERAS, slugify, unslugify } from "./catalog-meta";
@@ -14,19 +13,31 @@ export interface Catalog {
   hero: VideoFile | null;
 }
 
-const fetchCatalogRaw = unstable_cache(
-  async () => {
-    console.log("[catalog] fetching from Bunny...");
-    const all = await listAllVideos();
-    console.log(`[catalog] got ${all.length} videos`);
-    const recents = [...all]
-      .sort((a, b) => (b.createdTime ?? "").localeCompare(a.createdTime ?? ""))
-      .slice(0, 16);
-    return { all, recents, hero: recents[0] ?? null };
-  },
-  ["catalog-bunny-v2"],
-  { revalidate: 3600, tags: ["catalog"] }
-);
+// Cache mémoire process — fonctionne sur Netlify
+let cacheData: { all: VideoFile[]; recents: VideoFile[]; hero: VideoFile | null } | null = null;
+let cacheExpiry = 0;
+const CACHE_TTL = 3600 * 1000; // 1h
+
+export function invalidateCatalogCache() {
+  cacheData = null;
+  cacheExpiry = 0;
+}
+
+async function fetchCatalogRaw() {
+  const now = Date.now();
+  if (cacheData && now < cacheExpiry) return cacheData;
+
+  console.log("[catalog] fetching from Bunny...");
+  const all = await listAllVideos();
+  console.log(`[catalog] got ${all.length} videos`);
+  const recents = [...all]
+    .sort((a, b) => (b.createdTime ?? "").localeCompare(a.createdTime ?? ""))
+    .slice(0, 16);
+
+  cacheData = { all, recents, hero: recents[0] ?? null };
+  cacheExpiry = now + CACHE_TTL;
+  return cacheData;
+}
 
 export async function getCatalog(): Promise<Catalog> {
   const raw = await fetchCatalogRaw();
