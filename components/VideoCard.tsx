@@ -10,7 +10,6 @@ import { useState, useRef } from "react";
 import type { VideoFile } from "@/lib/drive";
 import { Play, Plus, Info } from "lucide-react";
 import { useVideoModal } from "./ModalProvider";
-import { useHoverPreload, useViewportPreload } from "@/lib/preload";
 
 const HOVER_DELAY_MS = 200;
 
@@ -44,27 +43,24 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
     ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const { open, preload } = useVideoModal();
-  const hover = useHoverPreload(video.id);
-  const viewportRef = useViewportPreload(video.id);
 
   const [isHover, setIsHover] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onEnter = () => {
-    hover.onMouseEnter();
+    // Preload metadata modal (cheap JSON fetch /api/video/[id])
+    // Stream warmup retiré: vidéos sur Bunny CDN, pas besoin Range request Drive
     preload(video.id);
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
   };
   const onLeave = () => {
-    hover.onMouseLeave();
     if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null; }
     setIsHover(false);
   };
 
   return (
     <article
-      ref={viewportRef as React.RefObject<HTMLElement>}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       className="group relative shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] overflow-visible"
