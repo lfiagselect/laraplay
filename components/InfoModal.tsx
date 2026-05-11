@@ -60,8 +60,9 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const bunnyEmbedUrl = hasBunny
     ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=true&muted=true&loop=true&preload=true&responsive=true&t=${randomStart.current}`
     : null;
+  // t=0 force démarrage début (sinon Bunny peut hériter position preview)
   const bunnyPlayUrl = hasBunny
-    ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=1&preload=true&responsive=true`
+    ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=1&preload=true&responsive=true&t=0`
     : null;
 
   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
