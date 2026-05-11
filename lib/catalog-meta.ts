@@ -7,6 +7,7 @@ export const THEMATIC_ROWS: string[] = [
   "Lara Fabian Documentaires",
   "Lara Fabian au Cinéma",
   "The Voice 2026",
+  "La Voix - Saison 6",
   "Star Academie 2025",
   "Star Academy France",
   "The Voice Kids 2024",
