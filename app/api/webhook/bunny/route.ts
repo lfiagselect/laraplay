@@ -27,21 +27,9 @@ async function handle(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret");
   const expected = process.env.BUNNY_WEBHOOK_SECRET;
 
-  // DEBUG temporaire — retourne diag dans response (à retirer ASAP)
-  // Sécurité: longueurs + 3 premiers chars seulement, pas valeurs full
-  const debug = {
-    expectedLen: expected?.length ?? null,
-    receivedLen: secret?.length ?? null,
-    expectedFirst3: expected?.slice(0, 3) ?? null,
-    receivedFirst3: secret?.slice(0, 3) ?? null,
-    expectedLast3: expected?.slice(-3) ?? null,
-    receivedLast3: secret?.slice(-3) ?? null,
-    match: expected === secret,
-  };
-
   if (!expected || secret !== expected) {
     console.warn("[webhook/bunny] unauthorized: bad secret");
-    return NextResponse.json({ error: "unauthorized", debug }, { status: 401 });
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   let payload: BunnyWebhookPayload = {};
