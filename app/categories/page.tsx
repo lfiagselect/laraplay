@@ -17,7 +17,8 @@ export default async function CategoriesPage() {
     .map(([name, videos]) => ({
       name,
       count: videos.length,
-      image: landscapeImage(name, "png"),
+      // webp pour grille thumbnails (~50ko/img vs ~800ko PNG)
+      image: landscapeImage(name, "webp"),
     }))
     .sort((a, b) => b.count - a.count);
 
@@ -46,6 +47,7 @@ export default async function CategoriesPage() {
                     alt={c.name}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                     loading="lazy"
+                    decoding="async"
                   />
                   {/* Gradient bas pour lisibilité titre */}
                   <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 via-black/55 to-transparent pointer-events-none" />

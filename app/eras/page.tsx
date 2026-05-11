@@ -12,7 +12,8 @@ export default async function ErasPage() {
   const eras = ERAS.map((name) => ({
     name,
     count: catalog.byCategory.get(name)?.length ?? 0,
-    image: posterImage(name, "png"),
+    // webp pour grille thumbnails (~50ko/img vs ~800ko PNG)
+    image: posterImage(name, "webp"),
   }));
 
   return (
@@ -42,6 +43,7 @@ export default async function ErasPage() {
                   alt={era.name}
                   className="absolute inset-0 w-full h-full object-cover"
                   loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900 to-black" />
