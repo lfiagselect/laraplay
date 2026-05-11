@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { ModalProvider } from "@/components/ModalProvider";
@@ -8,18 +7,27 @@ import { TVNavProvider } from "@/components/TVNavProvider";
 import { auth } from "@/auth";
 import { detectTVServer } from "@/lib/tv";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
-
-// Bebas Neue self-host (public/fonts/bebas-neue-latin.woff2) via @font-face globals.css
-// → évite blocage DNS fonts.googleapis.com sur certaines TV (Tizen ancien, env restrictifs)
+// Fonts:
+//   - Bebas Neue self-host (public/fonts/bebas-neue-latin.woff2) via @font-face globals.css
+//     → évite blocage DNS fonts.googleapis.com (TV Tizen ancien, env restrictifs)
+//   - Inter remplacé par pile système (--font-inter dans globals.css)
+//     → build offline-friendly, plus de fetch Google Fonts au build
 
 export const metadata: Metadata = {
   title: "LARAPLAY",
   description: "Streaming privé — Lara Fabian",
   manifest: "/manifest.webmanifest",
+  // Site privé (whitelist) — aucune indexation moteurs de recherche
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -53,7 +61,6 @@ export default async function RootLayout({
     <html
       lang="fr"
       className={[
-        inter.variable,
         "h-full antialiased",
         isTV ? "tv" : "",
       ].filter(Boolean).join(" ")}

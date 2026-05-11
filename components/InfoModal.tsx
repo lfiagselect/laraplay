@@ -82,23 +82,26 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     return () => clearTimeout(t);
   }, [videoReady]);
 
+  // Fallback Drive: /api/stream/[id] retourne bytes vidéo, pas JSON
+  // Assignation directe au lieu de fetch JSON (bug audit 2026-05-11)
   useEffect(() => {
     if (!shouldMountVideo || isTV || hasBunny) return;
-    fetch(`/api/stream/${video.id}`)
-      .then((r) => r.json())
-      .then(({ url }) => {
-        const v = videoRef.current;
-        if (!v || !url) return;
-        v.src = url;
-        v.load();
-        v.addEventListener("loadedmetadata", () => {
-          const dur = v.duration;
-          if (dur && dur > 30) {
-            v.currentTime = Math.random() * Math.min(dur * 0.6, 120) + 10;
-          }
-        }, { once: true });
-      })
-      .catch(console.error);
+    const v = videoRef.current;
+    if (!v) return;
+    v.src = `/api/stream/${video.id}`;
+    v.load();
+    const onMeta = () => {
+      const dur = v.duration;
+      if (dur && dur > 30) {
+        v.currentTime = Math.random() * Math.min(dur * 0.6, 120) + 10;
+      }
+    };
+    v.addEventListener("loadedmetadata", onMeta, { once: true });
+    return () => {
+      v.removeEventListener("loadedmetadata", onMeta);
+      v.removeAttribute("src");
+      v.load();
+    };
   }, [shouldMountVideo, isTV, video.id, hasBunny]);
 
   useEffect(() => {
@@ -176,6 +179,9 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     >
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="infomodal-title"
         data-tv-trap="modal"
         className={[
           "relative w-full max-w-4xl bg-zinc-950 overflow-hidden shadow-2xl",
@@ -304,7 +310,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 )}
 
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10">
-                  <h2 className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
+                  <h2 id="infomodal-title" className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
                     {cleanName}
                   </h2>
                   <div className="flex flex-wrap gap-3 items-center">

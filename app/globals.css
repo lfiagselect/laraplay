@@ -25,6 +25,9 @@
   /* Bebas Neue var (replace next/font/google plus loaded) */
   --font-bebas: "Bebas Neue";
 
+  /* Inter remplacé par pile système — évite fetch Google Fonts au build */
+  --font-inter: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
   /* Legacy aliases pour code existant */
   --background: var(--bg-main);
   --foreground: var(--text-primary);
