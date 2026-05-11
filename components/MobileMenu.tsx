@@ -101,6 +101,7 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
                 <Link
                   key={href}
                   href={href}
+                  prefetch={false}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition"
                 >
@@ -111,6 +112,7 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
               {isAdmin ? (
                 <Link
                   href="/admin"
+                  prefetch={false}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg text-[var(--accent)] hover:bg-zinc-800 hover:text-white transition mt-2 border-t border-zinc-800/50 pt-4"
                 >
@@ -120,6 +122,7 @@ export function MobileMenu({ userName, isAdmin = false }: MobileMenuProps) {
               ) : (
                 <Link
                   href="/settings"
+                  prefetch={false}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-lg text-zinc-200 hover:bg-zinc-800 hover:text-white transition mt-2 border-t border-zinc-800/50 pt-4"
                 >

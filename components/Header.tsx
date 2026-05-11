@@ -15,19 +15,20 @@ export async function Header() {
   return (
     <HeaderShell>
       <header className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
-        <Link href="/" className="shrink-0">
+        <Link href="/" prefetch={false} className="shrink-0">
           <Logo size="md" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-200">
-          <Link href="/" className="hover:text-white transition">Accueil</Link>
-          <Link href="/categories" className="hover:text-white transition">Catégories</Link>
-          <Link href="/eras" className="hover:text-white transition">Ères</Link>
-          <Link href="/my-list" className="hover:text-white transition">Ma liste</Link>
+          <Link href="/" prefetch={false} className="hover:text-white transition">Accueil</Link>
+          <Link href="/categories" prefetch={false} className="hover:text-white transition">Catégories</Link>
+          <Link href="/eras" prefetch={false} className="hover:text-white transition">Ères</Link>
+          <Link href="/my-list" prefetch={false} className="hover:text-white transition">Ma liste</Link>
           {isLogged && (
             isAdmin ? (
               <Link
                 href="/admin"
+                prefetch={false}
                 className="flex items-center gap-1.5 text-[var(--accent)] hover:text-white transition"
                 title="Administration"
               >
@@ -37,6 +38,7 @@ export async function Header() {
             ) : (
               <Link
                 href="/settings"
+                prefetch={false}
                 className="flex items-center gap-1.5 text-zinc-300 hover:text-white transition"
                 title="Paramètres"
               >
@@ -50,6 +52,7 @@ export async function Header() {
         <div className="ml-auto flex items-center gap-2 md:gap-4">
           <Link
             href="/search"
+            prefetch={false}
             className="p-2 rounded hover:bg-white/10 transition"
             aria-label="Rechercher"
           >

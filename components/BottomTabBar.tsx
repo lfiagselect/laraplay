@@ -65,6 +65,7 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
             <li key={href} className="flex">
               <Link
                 href={href}
+                prefetch={false}
                 className={[
                   "flex-1 flex flex-col items-center justify-center gap-0.5 transition px-1",
                   active
