@@ -27,6 +27,16 @@ async function handle(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret");
   const expected = process.env.BUNNY_WEBHOOK_SECRET;
 
+  // DEBUG temporaire — révèle source du 401 (longueurs, pas valeurs)
+  // À retirer dès que webhook OK
+  console.log(
+    `[webhook/bunny] debug expectedLen=${expected?.length ?? "undef"} ` +
+    `receivedLen=${secret?.length ?? "undef"} ` +
+    `expectedFirst3=${expected?.slice(0, 3) ?? "-"} ` +
+    `receivedFirst3=${secret?.slice(0, 3) ?? "-"} ` +
+    `match=${expected === secret}`
+  );
+
   if (!expected || secret !== expected) {
     console.warn("[webhook/bunny] unauthorized: bad secret");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
