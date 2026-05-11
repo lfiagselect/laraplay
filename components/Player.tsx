@@ -2,12 +2,13 @@
 // Si bunnyId disponible → iframe embed Bunny (player natif CDN, qualité adaptative).
 // Sinon → fallback proxy Drive via <video>.
 // Track watch progress (localStorage par user) via postMessage Bunny.
-// V8: Bunny embed player — suppression hls.js.
+// V9: hook useBunnyProgress mutualisé avec InfoModal.
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { getEntry, saveProgress } from "@/lib/watch-progress";
+import { useBunnyProgress } from "@/lib/use-bunny-progress";
 
 const BUNNY_LIBRARY_ID = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
 const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
@@ -29,23 +30,16 @@ export function Player({
   className = "",
   autoPlay = true,
 }: PlayerProps) {
-  // ── Bunny embed iframe ─────────────────────────────────────────────────────
+  // ── Bunny embed iframe (avec watch-progress) ───────────────────────────────
   if (bunnyId && BUNNY_LIBRARY_ID) {
-    const autoPlayParam = autoPlay ? "1" : "0";
-    const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${bunnyId}?autoplay=${autoPlayParam}&preload=true&responsive=true`;
-
     return (
-      <div
-        className={`relative bg-black ${className}`}
-        style={{ paddingTop: "56.25%" }}
-      >
-        <iframe
-          src={embedUrl}
-          className="absolute inset-0 w-full h-full border-0"
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
-          allowFullScreen
-        />
-      </div>
+      <BunnyPlayer
+        bunnyId={bunnyId}
+        videoId={videoId}
+        userEmail={userEmail}
+        className={className}
+        autoPlay={autoPlay}
+      />
     );
   }
 
@@ -58,6 +52,45 @@ export function Player({
       className={className}
       autoPlay={autoPlay}
     />
+  );
+}
+
+// ── Bunny iframe player avec watch-progress via postMessage ──────────────────
+function BunnyPlayer({
+  bunnyId,
+  videoId,
+  userEmail,
+  className = "",
+  autoPlay = true,
+}: {
+  bunnyId: string;
+  videoId?: string;
+  userEmail?: string;
+  className?: string;
+  autoPlay?: boolean;
+}) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const autoPlayParam = autoPlay ? "1" : "0";
+  const embedUrl = `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${bunnyId}?autoplay=${autoPlayParam}&preload=true&responsive=true`;
+
+  useBunnyProgress({
+    iframeRef,
+    videoId,
+    userEmail,
+    enabled: true,
+    resume: true,
+  });
+
+  return (
+    <div className={`relative bg-black ${className}`} style={{ paddingTop: "56.25%" }}>
+      <iframe
+        ref={iframeRef}
+        src={embedUrl}
+        className="absolute inset-0 w-full h-full border-0"
+        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+        allowFullScreen
+      />
+    </div>
   );
 }
 

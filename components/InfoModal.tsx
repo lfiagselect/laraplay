@@ -15,6 +15,7 @@ import { VideoCard } from "./VideoCard";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
 import { useTV } from "@/lib/tv-client";
 import { formatDuration, formatSize } from "@/lib/format";
+import { useBunnyProgress } from "@/lib/use-bunny-progress";
 
 interface InfoModalProps {
   video: VideoFile;
@@ -40,9 +41,19 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const sheetRef = useRef<HTMLDivElement>(null);
   const playBtnRef = useRef<HTMLButtonElement>(null);
   const dragStartY = useRef<number | null>(null);
+  const playerIframeRef = useRef<HTMLIFrameElement>(null);
   const router = useRouter();
 
   const hasBunny = !!video.bunnyId && !!BUNNY_LIBRARY_ID;
+
+  // Watch-progress Bunny via postMessage — actif en mode lecture
+  useBunnyProgress({
+    iframeRef: playerIframeRef,
+    videoId: video.id,
+    userEmail,
+    enabled: playing && hasBunny,
+    resume: true,
+  });
 
   // Démarrage aléatoire entre 10s et 120s
   const randomStart = useRef(Math.floor(Math.random() * 110) + 10);
@@ -199,6 +210,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                 </button>
                 {hasBunny ? (
                   <iframe
+                    ref={playerIframeRef}
                     src={bunnyPlayUrl!}
                     className="absolute inset-0 w-full h-full border-0"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
