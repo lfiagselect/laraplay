@@ -68,10 +68,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
 
   useEffect(() => {
-    if (isTV) {
-      setVideoReady(true);
-      return;
-    }
+    // TV: mount aussi preview Bunny (sans cela, thumbnail s'efface → écran noir)
     const t = setTimeout(() => setShouldMountVideo(true), 400);
     return () => clearTimeout(t);
   }, [isTV]);
@@ -251,8 +248,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   />
                 )}
 
-                {/* Bunny embed preview */}
-                {shouldMountVideo && !isTV && hasBunny && (
+                {/* Bunny embed preview (desktop + TV) */}
+                {shouldMountVideo && hasBunny && (
                   <iframe
                     src={bunnyEmbedUrl!}
                     className="absolute inset-0 w-full h-full"

@@ -103,6 +103,7 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
         <>
           <button
             type="button"
+            tabIndex={-1}
             onClick={(e) => {
               e.stopPropagation();
               prev();
@@ -114,6 +115,7 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
           </button>
           <button
             type="button"
+            tabIndex={-1}
             onClick={(e) => {
               e.stopPropagation();
               next();
@@ -126,15 +128,16 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
         </>
       )}
 
-      {/* Indicateurs barres fines */}
-      <div className="absolute bottom-3 left-5 right-5 md:left-12 md:right-12 flex gap-1 z-30 pointer-events-auto">
+      {/* Indicateurs barres fines — centrés, largeur fixe */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-30 pointer-events-auto">
         {slides.map((_, i) => (
           <button
             key={i}
             type="button"
+            tabIndex={-1}
             onClick={() => goto(i)}
             aria-label={`Aller à la diapositive ${i + 1}`}
-            className={`flex-1 h-0.5 md:h-[3px] rounded-full transition-all ${
+            className={`w-8 md:w-10 h-[3px] rounded-full transition-all ${
               i === index ? "bg-white" : "bg-white/30 hover:bg-white/50"
             }`}
           />

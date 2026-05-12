@@ -108,6 +108,20 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
       type="button"
       onClick={onOpen}
       style={{ touchAction: "manipulation" }}
+      onFocus={(e) => {
+        if (typeof document === "undefined") return;
+        if (!document.documentElement.classList.contains("tv")) return;
+        try {
+          const target = e.currentTarget as HTMLElement;
+          const parent = target.parentElement;
+          if (!parent) return;
+          const tr = target.getBoundingClientRect();
+          const pr = parent.getBoundingClientRect();
+          const targetCenter = tr.left + tr.width / 2;
+          const parentCenter = pr.left + pr.width / 2;
+          parent.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
+        } catch {}
+      }}
       className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
     >
       {/* Mobile : glow doux */}

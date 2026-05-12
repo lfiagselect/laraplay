@@ -64,6 +64,7 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
       </div>
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#0b0b0b] via-black/40 to-transparent pointer-events-none" />
       <button
+        tabIndex={-1}
         onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
         className="absolute right-6 bottom-12 md:right-12 md:top-1/2 md:bottom-auto md:-translate-y-1/2 w-11 h-11 rounded-full border-2 border-white/40 bg-black/30 hover:border-white hover:bg-black/60 backdrop-blur-sm flex items-center justify-center transition z-20"
         aria-label={muted ? "Activer son" : "Couper son"}

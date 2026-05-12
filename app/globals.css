@@ -454,3 +454,16 @@ html.tv section > div.flex h2,
 html.tv section > div.px-4 h2 {
   font-size: 1rem !important; /* 16px (etait 18px apres mon ajustement, etait 1.5rem avant) */
 }
+
+/* Carousel hero: flèches visibles TV (au lieu de hover-only) */
+html.tv section button[aria-label="Précédent"],
+html.tv section button[aria-label="Suivant"] {
+  display: flex !important;
+  opacity: 0.6 !important;
+}
+
+/* Row flèches restent cachées TV (D-pad navigue cards directement) */
+html.tv [data-row-scroller] ~ button[aria-label="Précédent"],
+html.tv [data-row-scroller] ~ button[aria-label="Suivant"] {
+  display: none !important;
+}
