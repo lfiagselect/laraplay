@@ -46,6 +46,9 @@ export function Top10Row({ title, videos }: Top10RowProps) {
       <div className="relative">
         <button
           onClick={() => scroll("left")}
+          tabIndex={-1}
+          data-no-focus
+          aria-hidden="true"
           className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
           aria-label="Pr\u00e9c\u00e9dent"
         >
@@ -70,6 +73,9 @@ export function Top10Row({ title, videos }: Top10RowProps) {
 
         <button
           onClick={() => scroll("right")}
+          tabIndex={-1}
+          data-no-focus
+          aria-hidden="true"
           className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
           aria-label="Suivant"
         >

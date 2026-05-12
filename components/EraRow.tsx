@@ -34,6 +34,9 @@ export function EraRow({ title, eras }: EraRowProps) {
       <div className="relative">
         <button
           onClick={() => scroll("left")}
+          tabIndex={-1}
+          data-no-focus
+          aria-hidden="true"
           className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
           aria-label="Précédent"
         >
@@ -95,6 +98,9 @@ export function EraRow({ title, eras }: EraRowProps) {
 
         <button
           onClick={() => scroll("right")}
+          tabIndex={-1}
+          data-no-focus
+          aria-hidden="true"
           className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
           aria-label="Suivant"
         >

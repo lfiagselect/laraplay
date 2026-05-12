@@ -5,9 +5,9 @@ import { useEffect } from "react";
 import { matchTVKey, type TVKeyAction } from "./tv";
 
 const FOCUSABLE_SELECTOR = [
-  "[data-focusable]",
-  "a[href]:not([data-no-focus])",
-  "button:not([disabled]):not([data-no-focus])",
+  "[data-focusable]:not([data-no-focus])",
+  "a[href]:not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
+  "button:not([disabled]):not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
   '[tabindex]:not([tabindex="-1"]):not([data-no-focus])',
   "input:not([disabled]):not([type='hidden'])",
   "select:not([disabled])",
@@ -96,15 +96,22 @@ function pickBest(
 }
 
 function ensureVisible(el: HTMLElement) {
-  // Skip si déjà entièrement visible (évite scroll inutile)
   const r = el.getBoundingClientRect();
   const vh = window.innerHeight;
   const vw = window.innerWidth;
   const fullyVisible = r.top >= 0 && r.bottom <= vh && r.left >= 0 && r.right <= vw;
   if (fullyVisible) return;
 
-  // Si élément dans un scroller horizontal (data-row-scroller), scroll uniquement
-  // le scroller, pas la page entière — évite de bouger Hero/boutons absolus.
+  // Skip scroll si élément est position absolute/fixed (boutons overlay tels Passer, X, son, flèches)
+  // Sinon scrollIntoView fait bouger la page entière même quand visible.
+  try {
+    const cs = window.getComputedStyle(el);
+    if (cs.position === "absolute" || cs.position === "fixed" || cs.position === "sticky") {
+      return;
+    }
+  } catch {}
+
+  // Si dans un scroller horizontal: scroll scroller, pas page
   const rowScroller = el.closest<HTMLElement>("[data-row-scroller]");
   if (rowScroller) {
     try {
@@ -117,7 +124,10 @@ function ensureVisible(el: HTMLElement) {
     } catch {}
   }
 
-  // Vertical scroll de la page uniquement si vraiment nécessaire (block:nearest minimise)
+  // Vertical scroll page uniquement si vraiment hors verticalement
+  const verticallyHidden = r.top < 0 || r.bottom > vh;
+  if (!verticallyHidden) return;
+
   try {
     el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
   } catch {

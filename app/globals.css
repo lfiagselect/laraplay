@@ -467,3 +467,28 @@ html.tv [data-row-scroller] ~ button[aria-label="Précédent"],
 html.tv [data-row-scroller] ~ button[aria-label="Suivant"] {
   display: none !important;
 }
+
+/* ============ TV — DEFINITIF: cache TOUS scroll arrows + son ============ */
+/* Plus haute spécificité possible — domine n'importe quel override Tailwind */
+html.tv button[aria-hidden="true"],
+html.tv button[data-no-focus],
+html.tv [aria-label="Précédent"],
+html.tv [aria-label="Suivant"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Bouton son Hero: rester visible mais non focusable D-pad */
+html.tv button[aria-label*="son" i] {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Désactive outline focus rouge sur boutons cachés (anti-fantôme) */
+html.tv button[aria-hidden="true"]:focus,
+html.tv [aria-label="Précédent"]:focus,
+html.tv [aria-label="Suivant"]:focus {
+  outline: none !important;
+}
