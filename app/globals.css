@@ -406,3 +406,36 @@ html.tv [tabindex="0"]:focus {
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* ============ TV — Hide pointer-only UI ============ */
+/* Cache flèches scroll Row (D-pad navigue cards directement) */
+html.tv [aria-label="Précédent"],
+html.tv [aria-label="Suivant"] {
+  display: none !important;
+}
+
+/* Cache flèches navigation carousel hero (auto-rotate + indicateurs suffisent) */
+html.tv section button[aria-label="Précédent"],
+html.tv section button[aria-label="Suivant"] {
+  display: none !important;
+}
+
+/* Indicateurs carousel: barres TV plus fines + plus discretes */
+html.tv [aria-label^="Aller à la diapositive"] {
+  height: 2px !important;
+}
+
+/* ============ TV — Scale down v2 (plus agressif) ============ */
+html.tv {
+  font-size: 13px; /* -18.75% partout */
+}
+
+/* Cards width plus petites TV — override Tailwind */
+html.tv [data-row-scroller] > article {
+  width: 200px !important;
+}
+
+/* Hero hauteur réduite TV */
+html.tv section[class*="aspect-video"] {
+  /* No-op si ratio défini */
+}
