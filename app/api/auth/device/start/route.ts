@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     device_code: session.deviceCode,
     user_code: session.userCode,
     verification_uri: `${origin}/d`,
-    verification_uri_complete: `${origin}/d?code=${encodeURIComponent(session.userCode)}`,
+    verification_uri_complete: `${origin}/d?device=${encodeURIComponent(session.userCode)}`,
     expires_in: DEVICE_FLOW_CONFIG.expiresInSec,
     interval: DEVICE_FLOW_CONFIG.pollIntervalSec,
   });

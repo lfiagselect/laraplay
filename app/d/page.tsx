@@ -10,10 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function DevicePage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>;
+  searchParams: Promise<{ device?: string }>;
 }) {
   const [session, params] = await Promise.all([auth(), searchParams]);
-  const initialCode = params.code ?? "";
+  // Param "device" (pas "code" qui collide avec Google OAuth callback)
+  const initialCode = params.device ?? "";
 
   if (!session?.user?.email) {
     return (
@@ -27,7 +28,7 @@ export default async function DevicePage({
             action={async () => {
               "use server";
               const cb = initialCode
-                ? `/d?code=${encodeURIComponent(initialCode)}`
+                ? `/d?device=${encodeURIComponent(initialCode)}`
                 : "/d";
               await signIn("google", { redirectTo: cb });
             }}

@@ -115,23 +115,23 @@ export function LoginTVClient() {
   };
 
   return (
-    <div className="w-full max-w-3xl text-center">
-      <h1 className="logo-wordmark text-7xl md:text-8xl mb-12 select-none">LARAPLAY</h1>
+    <div className="w-full max-w-5xl text-center">
+      <h1 className="logo-wordmark text-4xl md:text-5xl mb-4 select-none">LARAPLAY</h1>
 
       {status === "loading" && (
-        <div className="flex flex-col items-center gap-4 text-zinc-400">
+        <div className="flex flex-col items-center gap-3 text-zinc-400">
           <Loader2 className="w-10 h-10 animate-spin text-[var(--accent)]" />
           <p className="text-lg">Préparation…</p>
         </div>
       )}
 
       {status === "error" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <p className="text-red-400 text-lg">{errorMsg}</p>
           <button
             data-focusable
             onClick={restart}
-            className="bg-white text-black font-bold px-8 py-4 rounded-lg text-lg hover:bg-zinc-200 transition"
+            className="bg-white text-black font-bold px-8 py-3 rounded-lg text-lg hover:bg-zinc-200 transition"
           >
             Réessayer
           </button>
@@ -139,54 +139,57 @@ export function LoginTVClient() {
       )}
 
       {status === "pending" && data && (
-        <div className="space-y-10">
-          <p className="text-2xl text-zinc-300 leading-relaxed">
-            Sur votre téléphone ou ordinateur, ouvrez :
-          </p>
-
-          <div
-            className="font-mono text-3xl md:text-5xl text-white bg-zinc-900 border-2 border-zinc-700 rounded-xl px-8 py-5 inline-block tracking-wide"
-          >
-            {new URL(data.verification_uri).host}/d
+        <div className="grid md:grid-cols-2 gap-8 items-center text-left md:text-center">
+          {/* Bloc gauche: URL */}
+          <div className="space-y-3">
+            <p className="text-lg md:text-xl text-zinc-400 uppercase tracking-wide">
+              Étape 1 · Ouvrez sur votre téléphone
+            </p>
+            <div className="font-mono text-2xl md:text-4xl text-white bg-zinc-900 border-2 border-zinc-700 rounded-xl px-4 py-3 tracking-wide break-all">
+              {new URL(data.verification_uri).host}/d
+            </div>
           </div>
 
-          <p className="text-2xl text-zinc-300 mt-8">Et entrez ce code :</p>
-
-          <div
-            className="font-mono text-7xl md:text-9xl font-bold text-[var(--accent)] tracking-[0.15em] select-all"
-            style={{
-              fontFamily: "var(--font-bebas), 'Bebas Neue', monospace",
-              textShadow: "0 4px 32px rgba(229, 9, 20, 0.5)",
-            }}
-          >
-            {data.user_code}
+          {/* Bloc droit: Code */}
+          <div className="space-y-3">
+            <p className="text-lg md:text-xl text-zinc-400 uppercase tracking-wide">
+              Étape 2 · Entrez ce code
+            </p>
+            <div
+              className="font-mono text-5xl md:text-7xl font-bold text-[var(--accent)] tracking-[0.1em] select-all bg-zinc-900/60 rounded-xl px-4 py-3 border-2 border-zinc-800"
+              style={{
+                fontFamily: "var(--font-bebas), 'Bebas Neue', monospace",
+                textShadow: "0 4px 32px rgba(229, 9, 20, 0.5)",
+              }}
+            >
+              {data.user_code}
+            </div>
           </div>
 
-          <div className="flex items-center justify-center gap-3 mt-12 text-zinc-500 text-base">
+          {/* Status bar pleine largeur */}
+          <div className="md:col-span-2 flex items-center justify-center gap-3 mt-4 text-zinc-400 text-base">
             <Loader2 className="w-5 h-5 animate-spin" />
             <span>En attente de connexion…</span>
+            <span className="text-zinc-600">·</span>
+            <span className="text-zinc-600">Code valide 10 minutes</span>
           </div>
-
-          <p className="text-zinc-600 text-sm mt-4">
-            Code valide 10 minutes
-          </p>
         </div>
       )}
 
       {status === "approved" && (
-        <div className="flex flex-col items-center gap-6 text-zinc-200">
+        <div className="flex flex-col items-center gap-4 text-zinc-200">
           <Loader2 className="w-12 h-12 animate-spin text-[var(--accent)]" />
           <p className="text-2xl">Connexion en cours…</p>
         </div>
       )}
 
       {status === "expired" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <p className="text-2xl text-zinc-300">Ce code a expiré.</p>
           <button
             data-focusable
             onClick={restart}
-            className="bg-white text-black font-bold px-8 py-4 rounded-lg text-lg hover:bg-zinc-200 transition"
+            className="bg-white text-black font-bold px-8 py-3 rounded-lg text-lg hover:bg-zinc-200 transition"
           >
             Générer un nouveau code
           </button>
@@ -194,12 +197,12 @@ export function LoginTVClient() {
       )}
 
       {status === "denied" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <p className="text-2xl text-red-400">Connexion refusée.</p>
           <button
             data-focusable
             onClick={restart}
-            className="bg-white text-black font-bold px-8 py-4 rounded-lg text-lg hover:bg-zinc-200 transition"
+            className="bg-white text-black font-bold px-8 py-3 rounded-lg text-lg hover:bg-zinc-200 transition"
           >
             Réessayer
           </button>
