@@ -244,9 +244,10 @@ export function uninstallSpatialNav() {
 export function useSpatialNav() {
   useEffect(() => {
     installSpatialNav();
+    // Délai plus long: laisse purgeDecorativeButtons (TVNavProvider) finir d'abord
     const t = window.setTimeout(() => {
       if (document.activeElement === document.body) focusFirstVisible();
-    }, 200);
+    }, 500);
     return () => {
       window.clearTimeout(t);
     };
