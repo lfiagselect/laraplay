@@ -73,7 +73,19 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         style={{ touchAction: "manipulation" }}
         onFocus={(e) => {
           if (typeof document !== "undefined" && document.documentElement.classList.contains("tv")) {
-            try { e.currentTarget.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); } catch {}
+            // Scroll horizontal SEULEMENT (inline:center) — pas de scroll vertical
+            // pour eviter de bouger Hero+boutons hors viewport
+            try {
+              const target = e.currentTarget;
+              const parent = target.closest<HTMLElement>("[data-row-scroller]");
+              if (parent) {
+                const tr = target.getBoundingClientRect();
+                const pr = parent.getBoundingClientRect();
+                const targetCenter = tr.left + tr.width / 2;
+                const parentCenter = pr.left + pr.width / 2;
+                parent.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
+              }
+            } catch {}
           }
         }}
         className={[

@@ -439,3 +439,18 @@ html.tv [data-row-scroller] > article {
 html.tv section[class*="aspect-video"] {
   /* No-op si ratio défini */
 }
+
+/* ============ TV — Top10 + Era cards plus compactes ============ */
+/* Cards Top10 portrait + chiffre rang réduits TV */
+html.tv .top10-rank {
+  font-size: 140px !important;
+}
+html.tv [class*="aspect-[2/3]"] {
+  width: 140px !important; /* etait 200px (Top10) / 260px (Era) */
+}
+
+/* Titre rangée plus discret aussi */
+html.tv section > div.flex h2,
+html.tv section > div.px-4 h2 {
+  font-size: 1rem !important; /* 16px (etait 18px apres mon ajustement, etait 1.5rem avant) */
+}

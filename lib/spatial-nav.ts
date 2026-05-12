@@ -96,14 +96,30 @@ function pickBest(
 }
 
 function ensureVisible(el: HTMLElement) {
-  // Skip si déjà entièrement visible (évite scroll inutile qui déplace UI)
+  // Skip si déjà entièrement visible (évite scroll inutile)
   const r = el.getBoundingClientRect();
   const vh = window.innerHeight;
   const vw = window.innerWidth;
   const fullyVisible = r.top >= 0 && r.bottom <= vh && r.left >= 0 && r.right <= vw;
   if (fullyVisible) return;
+
+  // Si élément dans un scroller horizontal (data-row-scroller), scroll uniquement
+  // le scroller, pas la page entière — évite de bouger Hero/boutons absolus.
+  const rowScroller = el.closest<HTMLElement>("[data-row-scroller]");
+  if (rowScroller) {
+    try {
+      const tr = el.getBoundingClientRect();
+      const pr = rowScroller.getBoundingClientRect();
+      const targetCenter = tr.left + tr.width / 2;
+      const parentCenter = pr.left + pr.width / 2;
+      rowScroller.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
+      return;
+    } catch {}
+  }
+
+  // Vertical scroll de la page uniquement si vraiment nécessaire (block:nearest minimise)
   try {
-    el.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
   } catch {
     el.scrollIntoView();
   }
