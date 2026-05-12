@@ -134,7 +134,7 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
             type="button"
             onClick={() => goto(i)}
             aria-label={`Aller à la diapositive ${i + 1}`}
-            className={`flex-1 h-0.5 md:h-1 rounded-full transition-all ${
+            className={`flex-1 h-0.5 md:h-[3px] rounded-full transition-all ${
               i === index ? "bg-white" : "bg-white/30 hover:bg-white/50"
             }`}
           />

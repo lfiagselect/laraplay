@@ -138,43 +138,59 @@ export function LoginTVClient() {
         </div>
       )}
 
-      {status === "pending" && data && (
-        <div className="grid md:grid-cols-2 gap-8 items-center text-left md:text-center">
-          {/* Bloc gauche: URL */}
-          <div className="space-y-3">
-            <p className="text-lg md:text-xl text-zinc-400 uppercase tracking-wide">
-              Étape 1 · Ouvrez sur votre téléphone
-            </p>
-            <div className="font-mono text-2xl md:text-4xl text-white bg-zinc-900 border-2 border-zinc-700 rounded-xl px-4 py-3 tracking-wide break-all">
-              {new URL(data.verification_uri).host}/d
+      {status === "pending" && data && (() => {
+        const fullUrl = `${new URL(data.verification_uri).origin}/d`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&bgcolor=18181b&color=ffffff&data=${encodeURIComponent(fullUrl)}`;
+        return (
+          <div className="grid md:grid-cols-[auto_1fr] gap-6 md:gap-10 items-center text-left">
+            {/* Bloc gauche: QR code */}
+            <div className="flex flex-col items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrUrl}
+                alt="QR code vers la page de connexion"
+                className="w-40 h-40 md:w-52 md:h-52 rounded-lg bg-zinc-900 p-2 border-2 border-zinc-800"
+              />
+              <p className="text-xs text-zinc-500 uppercase tracking-wide">Scannez</p>
+            </div>
+
+            {/* Bloc droit: URL + Code stacked */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm md:text-base text-zinc-400 uppercase tracking-wide">
+                  Ou ouvrez sur téléphone
+                </p>
+                <div className="font-mono text-xl md:text-3xl text-white bg-zinc-900 border-2 border-zinc-700 rounded-xl px-4 py-2 tracking-wide whitespace-nowrap overflow-hidden text-ellipsis">
+                  {fullUrl.replace(/^https?:\/\//, "")}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm md:text-base text-zinc-400 uppercase tracking-wide">
+                  Et entrez ce code
+                </p>
+                <div
+                  className="font-mono text-4xl md:text-6xl font-bold text-[var(--accent)] tracking-[0.1em] select-all bg-zinc-900/60 rounded-xl px-4 py-2 border-2 border-zinc-800 inline-block"
+                  style={{
+                    fontFamily: "var(--font-bebas), 'Bebas Neue', monospace",
+                    textShadow: "0 4px 32px rgba(229, 9, 20, 0.5)",
+                  }}
+                >
+                  {data.user_code}
+                </div>
+              </div>
+            </div>
+
+            {/* Status bar pleine largeur */}
+            <div className="md:col-span-2 flex items-center justify-center gap-3 mt-2 text-zinc-400 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>En attente de connexion…</span>
+              <span className="text-zinc-600">·</span>
+              <span className="text-zinc-600">Code valide 10 minutes</span>
             </div>
           </div>
-
-          {/* Bloc droit: Code */}
-          <div className="space-y-3">
-            <p className="text-lg md:text-xl text-zinc-400 uppercase tracking-wide">
-              Étape 2 · Entrez ce code
-            </p>
-            <div
-              className="font-mono text-5xl md:text-7xl font-bold text-[var(--accent)] tracking-[0.1em] select-all bg-zinc-900/60 rounded-xl px-4 py-3 border-2 border-zinc-800"
-              style={{
-                fontFamily: "var(--font-bebas), 'Bebas Neue', monospace",
-                textShadow: "0 4px 32px rgba(229, 9, 20, 0.5)",
-              }}
-            >
-              {data.user_code}
-            </div>
-          </div>
-
-          {/* Status bar pleine largeur */}
-          <div className="md:col-span-2 flex items-center justify-center gap-3 mt-4 text-zinc-400 text-base">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span>En attente de connexion…</span>
-            <span className="text-zinc-600">·</span>
-            <span className="text-zinc-600">Code valide 10 minutes</span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {status === "approved" && (
         <div className="flex flex-col items-center gap-4 text-zinc-200">

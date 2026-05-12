@@ -47,8 +47,9 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
       <div className="relative">
         <button
           onClick={() => scroll("left")}
-          className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
           aria-label="Précédent"
+          tabIndex={-1}
+          className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition hidden md:flex"
         >
           <ChevronLeft className="w-8 h-8 text-white" />
         </button>
@@ -65,8 +66,9 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
 
         <button
           onClick={() => scroll("right")}
-          className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
           aria-label="Suivant"
+          tabIndex={-1}
+          className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition hidden md:flex"
         >
           <ChevronRight className="w-8 h-8 text-white" />
         </button>

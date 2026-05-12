@@ -50,8 +50,9 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
         {/* Bouton Passer */}
         {!showCarousel && (
           <button
+            data-focusable
             onClick={handleSkip}
-            className="absolute right-6 bottom-24 md:right-12 md:bottom-14 z-30 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 border border-white/30 hover:bg-black/70 hover:border-white/60 backdrop-blur-sm text-white text-sm font-medium transition"
+            className="absolute right-6 bottom-24 md:right-12 md:bottom-14 z-30 flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 border border-white/30 hover:bg-black/70 hover:border-white/60 focus:bg-black/80 focus:border-white focus:outline focus:outline-2 focus:outline-white backdrop-blur-sm text-white text-sm font-medium transition"
             aria-label="Passer l'intro"
           >
             <span>Passer</span>

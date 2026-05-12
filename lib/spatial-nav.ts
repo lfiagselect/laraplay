@@ -96,6 +96,12 @@ function pickBest(
 }
 
 function ensureVisible(el: HTMLElement) {
+  // Skip si déjà entièrement visible (évite scroll inutile qui déplace UI)
+  const r = el.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const fullyVisible = r.top >= 0 && r.bottom <= vh && r.left >= 0 && r.right <= vw;
+  if (fullyVisible) return;
   try {
     el.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   } catch {

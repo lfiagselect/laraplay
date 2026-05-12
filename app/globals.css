@@ -353,3 +353,56 @@ html.tv .skeleton-shimmer {
     animation: none !important;
   }
 }
+
+/* ============ TV — Scale down global ============ */
+/* Réduit la taille visuelle sur TV (UA Tizen/WebOS/etc.) pour densifier */
+html.tv {
+  font-size: 14px; /* base rem: 14 au lieu de 16 → -12.5% partout */
+}
+
+/* Cards plus compactes TV */
+html.tv .video-card,
+html.tv [data-row-scroller] > article {
+  /* Largeur fixe Tailwind => override via classe wrapper si besoin */
+}
+
+/* Header padding réduit TV */
+html.tv header {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+/* Logo plus discret TV */
+html.tv .logo-wordmark {
+  letter-spacing: 0.04em;
+}
+
+/* Titres rangées plus petits TV */
+html.tv section > div > h2 {
+  font-size: 1.125rem !important; /* 18px */
+}
+
+/* Hero title scale down TV */
+html.tv .hero-title {
+  font-size: clamp(2rem, 4.5vw, 4rem) !important;
+}
+
+/* Era title réduit TV */
+html.tv .era-title {
+  font-size: clamp(0.95rem, 1.4vw, 1.35rem) !important;
+}
+
+/* Carousel indicateurs encore plus fins TV */
+html.tv [aria-label^="Aller à la diapositive"] {
+  height: 2px !important;
+}
+
+/* Focus ring TV — net + accent rouge */
+html.tv [data-focusable]:focus,
+html.tv a:focus,
+html.tv button:focus,
+html.tv [tabindex="0"]:focus {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
