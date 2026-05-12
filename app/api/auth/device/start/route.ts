@@ -34,7 +34,7 @@ function getPublicOrigin(req: Request): string {
 }
 
 export async function POST(req: Request) {
-  const session = createDeviceSession();
+  const session = await createDeviceSession();
   const origin = getPublicOrigin(req);
 
   return NextResponse.json({

@@ -32,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         const deviceCode = credentials?.device_code;
         if (!deviceCode || typeof deviceCode !== "string") return null;
-        const session = getByDeviceCode(deviceCode);
+        const session = await getByDeviceCode(deviceCode);
         if (!session) return null;
         if (session.status !== "approved") return null;
         if (!session.email) return null;

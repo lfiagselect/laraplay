@@ -64,6 +64,7 @@ export function PlayerTV({
   const playBtnRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hlsRef = useRef<{ destroy: () => void } | null>(null);
 
   const [state, setState] = useState<PlayerState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -82,6 +83,53 @@ export function PlayerTV({
       setControlsVisible(false);
     }, CONTROLS_HIDE_MS);
   };
+
+  // ============ HLS loader (hls.js fallback si pas support natif) ============
+  // Bunny stream URL = playlist.m3u8 (HLS).
+  // Safari/iOS/Tizen récent/WebOS récent: lecture native via v.src = url.
+  // Autres (Android natif, Tizen ancien, Chrome desktop): besoin hls.js.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !src) return;
+
+    const isHls = /\.m3u8($|\?)/i.test(src);
+    const canPlayHlsNatively = v.canPlayType("application/vnd.apple.mpegurl") !== "";
+
+    if (!isHls || canPlayHlsNatively) {
+      v.src = src;
+      return;
+    }
+
+    // Charge hls.js dynamiquement (évite poids initial pour TVs natives)
+    let cancelled = false;
+    (async () => {
+      try {
+        const HlsModule = await import("hls.js");
+        if (cancelled) return;
+        const Hls = HlsModule.default;
+        if (!Hls.isSupported()) {
+          // Browser ne support pas MSE → fallback URL directe (échouera mais clean error)
+          v.src = src;
+          return;
+        }
+        const hls = new Hls({ enableWorker: true });
+        hls.loadSource(src);
+        hls.attachMedia(v);
+        hlsRef.current = hls;
+      } catch (err) {
+        console.error("[PlayerTV] HLS load failed:", err);
+        v.src = src; // ultime fallback
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (hlsRef.current) {
+        try { hlsRef.current.destroy(); } catch {}
+        hlsRef.current = null;
+      }
+    };
+  }, [src]);
 
   // ============ State machine + perf marks (clone Player.tsx) ============
   useEffect(() => {
@@ -318,7 +366,6 @@ export function PlayerTV({
         poster={poster}
         muted={muted}
         className="w-full h-full"
-        src={src}
       />
 
       {/* Poster initial */}

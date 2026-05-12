@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  const found = getByUserCode(userCode);
+  const found = await getByUserCode(userCode);
   if (!found) {
     return NextResponse.json({ error: "invalid_code" }, { status: 404 });
   }
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, already: true });
   }
 
-  const updated = approveDevice(userCode, email);
+  const updated = await approveDevice(userCode, email);
   if (!updated || updated.status !== "approved") {
     return NextResponse.json({ error: "approval_failed" }, { status: 500 });
   }

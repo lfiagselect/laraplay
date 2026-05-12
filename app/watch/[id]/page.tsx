@@ -12,6 +12,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { headers } from "next/headers";
 import { detectTVServer } from "@/lib/tv";
+import { bunnyStreamUrl } from "@/lib/bunny-sign";
 import Link from "next/link";
 import { X } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
@@ -37,14 +38,16 @@ export default async function WatchPage({
   const isTV = detectTVServer(hdrs.get("user-agent"));
 
   if (isTV) {
+    // HLS playlist Bunny (adaptive bitrate) — URL signée si BUNNY_SECURITY_KEY défini
+    // Fallback API stream pour videos sans bunnyId (legacy Drive)
+    const streamSrc = video.bunnyId
+      ? bunnyStreamUrl(video.bunnyId, "playlist.m3u8") ?? `/api/stream/${video.id}`
+      : `/api/stream/${video.id}`;
+
     return (
       <div className="fixed inset-0 bg-black">
         <PlayerTV
-          src={
-            video.bunnyId && process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE
-              ? `https://${process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE}/${video.bunnyId}/play_720p.mp4`
-              : `/api/stream/${video.id}`
-          }
+          src={streamSrc}
           poster={video.thumbnailLink ?? undefined}
           videoId={video.id}
           userEmail={userEmail}

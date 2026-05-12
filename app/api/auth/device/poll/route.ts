@@ -26,12 +26,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
 
-  const session = getByDeviceCode(deviceCode);
+  const session = await getByDeviceCode(deviceCode);
   if (!session) {
     return NextResponse.json({ status: "expired" });
   }
 
-  if (!canPoll(deviceCode)) {
+  if (!(await canPoll(deviceCode))) {
     return NextResponse.json({ status: "slow_down" }, { status: 429 });
   }
 

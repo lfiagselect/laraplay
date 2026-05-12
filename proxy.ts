@@ -5,8 +5,9 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
+import { TV_UA_REGEX } from "./lib/tv";
 
-const PUBLIC_PATHS = ["/login", "/login-tv", "/unauthorized", "/manifest.webmanifest"];
+const PUBLIC_PATHS = ["/login", "/login-tv", "/unauthorized", "/manifest.webmanifest", "/d"];
 const PUBLIC_API_PREFIXES = ["/api/auth", "/api/ping", "/api/revalidate", "/api/webhook"];
 
 const { auth } = NextAuth(authConfig);
@@ -18,8 +19,14 @@ export default auth((req) => {
   if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   if (!req.auth) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", req.url);
+    // TV: redirige vers /login-tv (Google OAuth bloque sans clavier/souris)
+    const ua = req.headers.get("user-agent") ?? "";
+    const isTV = TV_UA_REGEX.test(ua);
+    const loginPath = isTV ? "/login-tv" : "/login";
+    const loginUrl = new URL(loginPath, req.url);
+    if (!isTV) {
+      loginUrl.searchParams.set("callbackUrl", req.url);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

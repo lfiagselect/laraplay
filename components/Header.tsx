@@ -2,15 +2,19 @@
 // Burger mobile supprimé — navigation via BottomTabBar.
 
 import Link from "next/link";
+import { headers } from "next/headers";
 import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
 import { Search, LogOut, ShieldCheck, Settings } from "lucide-react";
 import { HeaderShell } from "./HeaderShell";
+import { detectTVServer } from "@/lib/tv";
 
 export async function Header() {
-  const session = await auth();
+  const [session, hdrs] = await Promise.all([auth(), headers()]);
   const isAdmin = session?.user?.role === "admin";
   const isLogged = !!session?.user?.email;
+  const isTV = detectTVServer(hdrs.get("user-agent"));
+  const logoutRedirect = isTV ? "/login-tv" : "/login";
 
   return (
     <HeaderShell>
@@ -67,7 +71,7 @@ export async function Header() {
               <form
                 action={async () => {
                   "use server";
-                  await signOut({ redirectTo: "/login" });
+                  await signOut({ redirectTo: logoutRedirect });
                 }}
               >
                 <button
