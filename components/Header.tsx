@@ -18,7 +18,7 @@ export async function Header() {
 
   return (
     <HeaderShell>
-      <header className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
+      <header data-tv-section="header" className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
         <Link href="/" prefetch={false} className="shrink-0">
           <Logo size="md" />
         </Link>

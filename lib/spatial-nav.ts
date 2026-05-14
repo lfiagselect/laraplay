@@ -1,117 +1,73 @@
-// LARAPLAY — Spatial Navigation D-pad pour TV browsers.
+// LARAPLAY — Spatial Navigation D-pad TV (V2 row-focus model).
+// Inspiré Netflix TV: sections verticales avec UN focusable actif chacune.
+// LEFT/RIGHT déplace dans section, UP/DOWN saute entre sections.
+// Mémoire par section: revenant à une section restaure dernier chip focused.
+// Pas de calcul géométrique fragile → robuste cross-TV.
+
 "use client";
 
 import { useEffect } from "react";
-import { matchTVKey, type TVKeyAction } from "./tv";
+import { matchTVKeyEvent } from "./tv";
 
+// Sections = conteneurs marqués `data-tv-section`. Ordre DOM = ordre vertical.
+// Chaque section contient des focusables (button, a[href]) marqués naturellement.
+// Le composant child onFocus handler peut faire scroll local (déjà en place sur cards).
+
+const SECTION_ATTR = "data-tv-section";
 const FOCUSABLE_SELECTOR = [
-  "[data-focusable]:not([data-no-focus])",
   "a[href]:not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
   "button:not([disabled]):not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
-  '[tabindex]:not([tabindex="-1"]):not([data-no-focus])',
+  "[data-focusable]:not([data-no-focus])",
   "input:not([disabled]):not([type='hidden'])",
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  "video[controls]",
 ].join(",");
 
-const ATTR_DIR_LOCK = "data-tv-trap";
+// Mémoire focus par section (clé = section element)
+const SECTION_MEMORY = new WeakMap<HTMLElement, HTMLElement>();
 
-interface FocusableRect {
-  el: HTMLElement;
-  cx: number;
-  cy: number;
-  rect: DOMRect;
+function isTV(): boolean {
+  return document.documentElement.classList.contains("tv");
 }
 
-function collectFocusable(root: HTMLElement | Document = document): FocusableRect[] {
+function visibleFocusables(root: HTMLElement | Document = document): HTMLElement[] {
   const nodes = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-  const out: FocusableRect[] = [];
-  for (const el of nodes) {
-    if (el.hidden) continue;
-    if (el.getAttribute("aria-hidden") === "true") continue;
-    const rect = el.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) continue;
+  return nodes.filter((el) => {
+    if (el.hidden) return false;
     const cs = window.getComputedStyle(el);
-    if (cs.display === "none" || cs.visibility === "hidden") continue;
-    out.push({
-      el,
-      cx: rect.left + rect.width / 2,
-      cy: rect.top + rect.height / 2,
-      rect,
-    });
-  }
-  return out;
+    if (cs.display === "none" || cs.visibility === "hidden") return false;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return false;
+    return true;
+  });
 }
 
-function findTrapContainer(active: HTMLElement | null): HTMLElement | null {
-  let node: HTMLElement | null = active;
+function sectionOf(el: HTMLElement | null): HTMLElement | null {
+  let node: HTMLElement | null = el;
   while (node && node !== document.body) {
-    if (node.hasAttribute(ATTR_DIR_LOCK)) return node;
+    if (node.hasAttribute(SECTION_ATTR)) return node;
     node = node.parentElement;
   }
   return null;
 }
 
-type Direction = "UP" | "DOWN" | "LEFT" | "RIGHT";
-
-function pickBest(
-  origin: FocusableRect,
-  candidates: FocusableRect[],
-  dir: Direction,
-): HTMLElement | null {
-  let best: { el: HTMLElement; score: number } | null = null;
-
-  for (const c of candidates) {
-    if (c.el === origin.el) continue;
-    const dx = c.cx - origin.cx;
-    const dy = c.cy - origin.cy;
-    let primary: number;
-    let secondary: number;
-    let inDirection = false;
-    switch (dir) {
-      case "RIGHT":
-        primary = dx; secondary = dy;
-        inDirection = c.rect.left >= origin.rect.right - 4;
-        break;
-      case "LEFT":
-        primary = -dx; secondary = dy;
-        inDirection = c.rect.right <= origin.rect.left + 4;
-        break;
-      case "DOWN":
-        primary = dy; secondary = dx;
-        inDirection = c.rect.top >= origin.rect.bottom - 4;
-        break;
-      case "UP":
-        primary = -dy; secondary = dx;
-        inDirection = c.rect.bottom <= origin.rect.top + 4;
-        break;
+function allSections(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>(`[${SECTION_ATTR}]`)).filter(
+    (s) => {
+      const cs = window.getComputedStyle(s);
+      return cs.display !== "none" && cs.visibility !== "hidden";
     }
-    if (!inDirection) continue;
-    if (primary <= 0) continue;
-    const score = Math.abs(primary) + Math.abs(secondary) * 2;
-    if (!best || score < best.score) best = { el: c.el, score };
-  }
-  return best?.el ?? null;
+  );
 }
 
-function ensureVisible(el: HTMLElement) {
-  const r = el.getBoundingClientRect();
-  const vh = window.innerHeight;
-  const vw = window.innerWidth;
-  const fullyVisible = r.top >= 0 && r.bottom <= vh && r.left >= 0 && r.right <= vw;
-  if (fullyVisible) return;
+function focusableInSection(section: HTMLElement): HTMLElement[] {
+  return visibleFocusables(section);
+}
 
-  // Skip scroll si élément est position absolute/fixed (boutons overlay tels Passer, X, son, flèches)
-  // Sinon scrollIntoView fait bouger la page entière même quand visible.
-  try {
-    const cs = window.getComputedStyle(el);
-    if (cs.position === "absolute" || cs.position === "fixed" || cs.position === "sticky") {
-      return;
-    }
-  } catch {}
-
-  // Si dans un scroller horizontal: scroll scroller, pas page
+/** Focus un élément + mémorise dans sa section + scroll horizontal local si dans row scroller */
+function focusEl(el: HTMLElement) {
+  el.focus({ preventScroll: true });
+  const sec = sectionOf(el);
+  if (sec) SECTION_MEMORY.set(sec, el);
+  // Scroll horizontal local (row scroller) sans bouger page
   const rowScroller = el.closest<HTMLElement>("[data-row-scroller]");
   if (rowScroller) {
     try {
@@ -120,50 +76,78 @@ function ensureVisible(el: HTMLElement) {
       const targetCenter = tr.left + tr.width / 2;
       const parentCenter = pr.left + pr.width / 2;
       rowScroller.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
-      return;
     } catch {}
   }
-
-  // Vertical scroll page uniquement si vraiment hors verticalement
-  const verticallyHidden = r.top < 0 || r.bottom > vh;
-  if (!verticallyHidden) return;
-
-  try {
-    el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-  } catch {
-    el.scrollIntoView();
+  // Scroll vertical section dans viewport si hors verticalement
+  const sec2 = sectionOf(el);
+  if (sec2) {
+    const sr = sec2.getBoundingClientRect();
+    const vh = window.innerHeight;
+    if (sr.top < 0 || sr.bottom > vh) {
+      try {
+        sec2.scrollIntoView({ block: "center", behavior: "smooth" });
+      } catch {}
+    }
   }
 }
 
-function focusFirstVisible(): boolean {
-  const all = collectFocusable();
-  const vh = window.innerHeight;
-  const vw = window.innerWidth;
-  const visible = all.filter(
-    (c) => c.rect.top >= 0 && c.rect.bottom <= vh && c.rect.left >= 0 && c.rect.right <= vw,
-  );
-  const target = (visible[0] ?? all[0])?.el;
-  if (target) {
-    target.focus();
-    ensureVisible(target);
-    return true;
-  }
-  return false;
-}
-
-function moveFocus(dir: Direction): boolean {
+function moveHorizontal(dir: "LEFT" | "RIGHT"): boolean {
   const active = document.activeElement as HTMLElement | null;
-  if (!active || active === document.body) return focusFirstVisible();
-  const trap = findTrapContainer(active);
-  const root: HTMLElement | Document = trap ?? document;
-  const all = collectFocusable(root);
-  const origin = all.find((f) => f.el === active);
-  if (!origin) return focusFirstVisible();
-  const next = pickBest(origin, all, dir);
-  if (next) {
-    next.focus();
-    ensureVisible(next);
+  if (!active || active === document.body) return focusInitial();
+  const sec = sectionOf(active);
+  if (!sec) return false;
+  const items = focusableInSection(sec);
+  if (items.length === 0) return false;
+  const idx = items.indexOf(active);
+  if (idx < 0) {
+    // Active hors section actuelle — focus premier
+    focusEl(items[0]);
     return true;
+  }
+  const next = dir === "RIGHT" ? items[idx + 1] : items[idx - 1];
+  if (next) {
+    focusEl(next);
+    return true;
+  }
+  // Bord atteint: stay (pas wrap, pas saute section)
+  return true;
+}
+
+function moveVertical(dir: "UP" | "DOWN"): boolean {
+  const active = document.activeElement as HTMLElement | null;
+  if (!active || active === document.body) return focusInitial();
+  const sec = sectionOf(active);
+  if (!sec) return focusInitial();
+
+  const sections = allSections();
+  const idx = sections.indexOf(sec);
+  if (idx < 0) return focusInitial();
+
+  const nextSec = dir === "DOWN" ? sections[idx + 1] : sections[idx - 1];
+  if (!nextSec) return true; // Bord atteint
+
+  // Restaure mémoire ou prend premier focusable
+  const memory = SECTION_MEMORY.get(nextSec);
+  if (memory && nextSec.contains(memory) && document.contains(memory)) {
+    focusEl(memory);
+    return true;
+  }
+  const items = focusableInSection(nextSec);
+  if (items.length > 0) {
+    focusEl(items[0]);
+    return true;
+  }
+  return true;
+}
+
+function focusInitial(): boolean {
+  const sections = allSections();
+  for (const sec of sections) {
+    const items = focusableInSection(sec);
+    if (items.length > 0) {
+      focusEl(items[0]);
+      return true;
+    }
   }
   return false;
 }
@@ -176,11 +160,12 @@ function activateActive(): boolean {
 }
 
 function goBack(): boolean {
+  // Modal/trap close si présent
   const active = document.activeElement as HTMLElement | null;
-  const trap = findTrapContainer(active);
+  const trap = active?.closest<HTMLElement>("[data-tv-trap='modal']");
   if (trap) {
     const closeBtn = trap.querySelector<HTMLElement>(
-      '[data-tv-close], button[aria-label*="ermer" i], button[aria-label*="lose" i]',
+      '[data-tv-close], button[aria-label*="ermer" i], button[aria-label*="lose" i]'
     );
     if (closeBtn) {
       closeBtn.click();
@@ -195,35 +180,34 @@ function goBack(): boolean {
 }
 
 function onKeyDown(e: KeyboardEvent) {
-  if (!document.documentElement.classList.contains("tv")) return;
+  if (!isTV()) return;
+  if (e.defaultPrevented) return;
+
   const target = e.target as HTMLElement | null;
   const isEditable =
     target &&
     (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-  const k = e.key;
-  const tryAction = (action: TVKeyAction, fn: () => boolean) => {
-    if (!matchTVKey(k, action)) return false;
-    const handled = fn();
-    if (handled) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    return true;
-  };
-  if (e.defaultPrevented) return;
-  const keepH =
-    target?.hasAttribute("data-tv-keep-horizontal") ||
-    target?.closest("[data-tv-keep-horizontal]");
+
   if (!isEditable) {
-    if (tryAction("UP", () => moveFocus("UP"))) return;
-    if (tryAction("DOWN", () => moveFocus("DOWN"))) return;
-    if (!keepH) {
-      if (tryAction("LEFT", () => moveFocus("LEFT"))) return;
-      if (tryAction("RIGHT", () => moveFocus("RIGHT"))) return;
+    if (matchTVKeyEvent(e, "UP")) {
+      if (moveVertical("UP")) { e.preventDefault(); return; }
+    }
+    if (matchTVKeyEvent(e, "DOWN")) {
+      if (moveVertical("DOWN")) { e.preventDefault(); return; }
+    }
+    if (matchTVKeyEvent(e, "LEFT")) {
+      if (moveHorizontal("LEFT")) { e.preventDefault(); return; }
+    }
+    if (matchTVKeyEvent(e, "RIGHT")) {
+      if (moveHorizontal("RIGHT")) { e.preventDefault(); return; }
     }
   }
-  if (tryAction("ENTER", activateActive)) return;
-  if (tryAction("BACK", goBack)) return;
+  if (matchTVKeyEvent(e, "ENTER")) {
+    if (activateActive()) { e.preventDefault(); return; }
+  }
+  if (matchTVKeyEvent(e, "BACK")) {
+    if (goBack()) { e.preventDefault(); return; }
+  }
 }
 
 let installed = false;
@@ -244,12 +228,11 @@ export function uninstallSpatialNav() {
 export function useSpatialNav() {
   useEffect(() => {
     installSpatialNav();
-    // Délai plus long: laisse purgeDecorativeButtons (TVNavProvider) finir d'abord
+    // Focus initial après DOM stable (purge + render complet)
     const t = window.setTimeout(() => {
-      if (document.activeElement === document.body) focusFirstVisible();
-    }, 500);
-    return () => {
-      window.clearTimeout(t);
-    };
+      if (!isTV()) return;
+      if (document.activeElement === document.body) focusInitial();
+    }, 600);
+    return () => window.clearTimeout(t);
   }, []);
 }

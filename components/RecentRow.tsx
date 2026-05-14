@@ -25,7 +25,7 @@ export function RecentRow({ title, videos }: RecentRowProps) {
   if (videos.length === 0) return null;
 
   return (
-    <section className="relative mb-12">
+    <section data-tv-section="recent" className="relative mb-12">
       <div className="px-4 md:px-12 mb-4 flex items-center gap-3">
         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">{title}</h2>
         <span className="text-[10px] uppercase tracking-widest bg-[var(--accent)] text-white px-2 py-0.5 rounded font-bold">

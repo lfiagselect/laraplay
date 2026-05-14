@@ -65,12 +65,18 @@ export function DeviceVerifyClient({ initialCode = "" }: Props) {
         type="text"
         autoFocus
         value={code}
-        onChange={(e) => setCode(e.target.value.toUpperCase())}
+        onChange={(e) => {
+          // Strip tout sauf [A-Z0-9], puis insère tiret auto après 4 chars
+          const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+          const formatted = raw.length > 4 ? `${raw.slice(0, 4)}-${raw.slice(4)}` : raw;
+          setCode(formatted);
+        }}
         placeholder="XXXX-XXXX"
         maxLength={9}
         className="w-full bg-zinc-900 border-2 border-zinc-700 focus:border-[var(--accent)] text-white text-center text-3xl font-mono tracking-[0.2em] py-4 rounded-lg outline-none uppercase"
         autoComplete="off"
         autoCapitalize="characters"
+        inputMode="text"
       />
 
       {error && (

@@ -29,7 +29,7 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
   };
 
   return (
-    <section className="relative group/row mb-12">
+    <section data-tv-section={`row-${title}`} className="relative group/row mb-12">
       <div className="flex items-baseline justify-between px-4 md:px-12 mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
           {title}

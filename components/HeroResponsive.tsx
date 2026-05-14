@@ -38,7 +38,7 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
   }
 
   return (
-    <div className="relative">
+    <div data-tv-section="hero" className="relative">
       {/* Vidéo hero — visible tant que non terminée/passée */}
       <div
         className={`transition-opacity duration-700 ${

@@ -24,7 +24,7 @@ export function EraRow({ title, eras }: EraRowProps) {
   };
 
   return (
-    <section className="relative group/row mb-12">
+    <section data-tv-section="eras" className="relative group/row mb-12">
       <div className="px-4 md:px-12 mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
           {title}
@@ -45,6 +45,7 @@ export function EraRow({ title, eras }: EraRowProps) {
 
         <div
           ref={scrollRef}
+          data-row-scroller
           className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
         >
           {eras.map((era) => (
@@ -53,20 +54,7 @@ export function EraRow({ title, eras }: EraRowProps) {
               href={`/category/${slugify(era.name)}`}
               className="era-card relative shrink-0 w-[150px] sm:w-[180px] md:w-[260px] aspect-[2/3] rounded-lg overflow-hidden border-2 border-zinc-800 bg-zinc-900"
               aria-label={era.name}
-              onFocus={(e) => {
-                if (typeof document === "undefined") return;
-                if (!document.documentElement.classList.contains("tv")) return;
-                try {
-                  const target = e.currentTarget as HTMLElement;
-                  const parent = target.parentElement;
-                  if (!parent) return;
-                  const tr = target.getBoundingClientRect();
-                  const pr = parent.getBoundingClientRect();
-                  const targetCenter = tr.left + tr.width / 2;
-                  const parentCenter = pr.left + pr.width / 2;
-                  parent.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
-                } catch {}
-              }}
+              // onFocus scroll géré centralement par lib/spatial-nav focusEl()
             >
               {era.image ? (
                 // eslint-disable-next-line @next/next/no-img-element

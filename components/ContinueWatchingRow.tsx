@@ -71,7 +71,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
   };
 
   return (
-    <section className="relative group/row mb-12">
+    <section data-tv-section="continue" className="relative group/row mb-12">
       <div className="px-4 md:px-12 mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
           Continuer à regarder
@@ -89,6 +89,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
 
         <div
           ref={scrollRef}
+          data-row-scroller
           className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
         >
           {entries.map(({ video, position, duration }) => {

@@ -30,13 +30,22 @@ export function LoginTVClient() {
     (async () => {
       try {
         const res = await fetch("/api/auth/device/start", { method: "POST" });
-        if (!res.ok) throw new Error("start_failed");
+        if (!res.ok) {
+          let body = "";
+          try { body = await res.text(); } catch {}
+          throw new Error(`start_failed:${res.status}:${body.slice(0, 120)}`);
+        }
         const json: DeviceStartResponse = await res.json();
+        if (!json.device_code || !json.user_code) {
+          throw new Error("start_invalid_response");
+        }
         setData(json);
         setStatus("pending");
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[LoginTV] device/start failed:", msg);
         setStatus("error");
-        setErrorMsg("Impossible d'initialiser la connexion. Réessayez.");
+        setErrorMsg(`Erreur init connexion: ${msg}`);
       }
     })();
   }, []);

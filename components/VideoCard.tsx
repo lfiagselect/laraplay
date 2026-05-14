@@ -71,23 +71,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         onClick={() => open(video.id)}
         // touch-action: manipulation élimine le délai 300ms sur mobile
         style={{ touchAction: "manipulation" }}
-        onFocus={(e) => {
-          if (typeof document !== "undefined" && document.documentElement.classList.contains("tv")) {
-            // Scroll horizontal SEULEMENT (inline:center) — pas de scroll vertical
-            // pour eviter de bouger Hero+boutons hors viewport
-            try {
-              const target = e.currentTarget;
-              const parent = target.closest<HTMLElement>("[data-row-scroller]");
-              if (parent) {
-                const tr = target.getBoundingClientRect();
-                const pr = parent.getBoundingClientRect();
-                const targetCenter = tr.left + tr.width / 2;
-                const parentCenter = pr.left + pr.width / 2;
-                parent.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
-              }
-            } catch {}
-          }
-        }}
+        // onFocus scroll géré centralement par lib/spatial-nav focusEl()
         className={[
           "relative block aspect-video w-full overflow-hidden rounded-md bg-[var(--bg-elevated)] text-left",
           "transition-[transform,box-shadow] duration-200 ease-out will-change-transform",

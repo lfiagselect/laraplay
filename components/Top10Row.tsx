@@ -38,7 +38,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
   };
 
   return (
-    <section className="relative group/row mb-12">
+    <section data-tv-section="top10" className="relative group/row mb-12">
       <div className="px-4 md:px-12 mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">{title}</h2>
       </div>
@@ -57,6 +57,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
 
         <div
           ref={scrollRef}
+          data-row-scroller
           className="no-scrollbar flex gap-2 overflow-x-auto scroll-smooth px-4 md:px-12 py-6"
         >
           {top10.map((video, idx) => (
@@ -114,20 +115,7 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
       type="button"
       onClick={onOpen}
       style={{ touchAction: "manipulation" }}
-      onFocus={(e) => {
-        if (typeof document === "undefined") return;
-        if (!document.documentElement.classList.contains("tv")) return;
-        try {
-          const target = e.currentTarget as HTMLElement;
-          const parent = target.parentElement;
-          if (!parent) return;
-          const tr = target.getBoundingClientRect();
-          const pr = parent.getBoundingClientRect();
-          const targetCenter = tr.left + tr.width / 2;
-          const parentCenter = pr.left + pr.width / 2;
-          parent.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
-        } catch {}
-      }}
+      // onFocus scroll géré centralement par lib/spatial-nav focusEl()
       className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
     >
       {/* Mobile : glow doux */}

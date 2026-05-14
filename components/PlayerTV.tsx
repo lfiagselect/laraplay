@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { getEntry, saveProgress } from "@/lib/watch-progress";
 import { track, startTimer } from "@/lib/perf";
-import { matchTVKey } from "@/lib/tv";
+import { matchTVKeyEvent } from "@/lib/tv";
 
 type PlayerState = "idle" | "loading" | "ready" | "playing" | "paused" | "buffering" | "error";
 
@@ -280,26 +280,26 @@ export function PlayerTV({
       showControls();
 
       // MediaPlayPause natif TV remote
-      if (matchTVKey(e.key, "PLAY") || matchTVKey(e.key, "PAUSE")) {
+      if (matchTVKeyEvent(e, "PLAY") || matchTVKeyEvent(e, "PAUSE")) {
         e.preventDefault();
         if (v.paused) v.play().catch(() => {});
         else v.pause();
         return;
       }
       // Stop → pause + retour 0
-      if (matchTVKey(e.key, "STOP")) {
+      if (matchTVKeyEvent(e, "STOP")) {
         e.preventDefault();
         v.pause();
         try { v.currentTime = 0; } catch {}
         return;
       }
       // Rewind / Fast Forward natif → ±10s
-      if (matchTVKey(e.key, "REWIND")) {
+      if (matchTVKeyEvent(e, "REWIND")) {
         e.preventDefault();
         try { v.currentTime = Math.max(0, v.currentTime - SKIP_SEC); } catch {}
         return;
       }
-      if (matchTVKey(e.key, "FORWARD")) {
+      if (matchTVKeyEvent(e, "FORWARD")) {
         e.preventDefault();
         try { v.currentTime = Math.min(v.duration || Infinity, v.currentTime + SKIP_SEC); } catch {}
         return;

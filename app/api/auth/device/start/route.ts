@@ -34,15 +34,24 @@ function getPublicOrigin(req: Request): string {
 }
 
 export async function POST(req: Request) {
-  const session = await createDeviceSession();
-  const origin = getPublicOrigin(req);
+  try {
+    const session = await createDeviceSession();
+    const origin = getPublicOrigin(req);
 
-  return NextResponse.json({
-    device_code: session.deviceCode,
-    user_code: session.userCode,
-    verification_uri: `${origin}/d`,
-    verification_uri_complete: `${origin}/d?device=${encodeURIComponent(session.userCode)}`,
-    expires_in: DEVICE_FLOW_CONFIG.expiresInSec,
-    interval: DEVICE_FLOW_CONFIG.pollIntervalSec,
-  });
+    return NextResponse.json({
+      device_code: session.deviceCode,
+      user_code: session.userCode,
+      verification_uri: `${origin}/d`,
+      verification_uri_complete: `${origin}/d?device=${encodeURIComponent(session.userCode)}`,
+      expires_in: DEVICE_FLOW_CONFIG.expiresInSec,
+      interval: DEVICE_FLOW_CONFIG.pollIntervalSec,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[device/start] failed:", msg);
+    return NextResponse.json(
+      { error: "device_start_failed", detail: msg.slice(0, 200) },
+      { status: 500 }
+    );
+  }
 }
