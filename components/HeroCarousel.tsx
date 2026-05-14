@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useTV } from "@/lib/tv-client";
 
 export interface HeroCarouselSlide {
   image: string;
@@ -25,6 +26,7 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
   const router = useRouter();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartX = useRef<number | null>(null);
+  const isTV = useTV();
 
   useEffect(() => {
     if (slides.length <= 1) return;
@@ -98,8 +100,8 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
       {/* Gradient bas léger pour transition vers rows */}
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0b0b0b] via-black/30 to-transparent pointer-events-none z-20" />
 
-      {/* Flèches navigation desktop — visibles au hover du carousel */}
-      {slides.length > 1 && (
+      {/* Flèches navigation desktop — visibles au hover. Render zero TV. */}
+      {slides.length > 1 && !isTV && (
         <>
           <button
             type="button"

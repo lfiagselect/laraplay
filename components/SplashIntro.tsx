@@ -16,6 +16,11 @@ export function SplashIntro() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Skip splash sur TV (animations lourdes + bouton Passer perturbe nav D-pad)
+    if (document.documentElement.classList.contains("tv")) {
+      setVisible(false);
+      return;
+    }
     const last = localStorage.getItem(KEY);
     if (last === today()) {
       setVisible(false);

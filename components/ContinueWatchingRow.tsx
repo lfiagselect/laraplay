@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { getContinueWatching, removeEntry } from "@/lib/watch-progress";
 import { useVideoModal } from "./ModalProvider";
+import { useTV } from "@/lib/tv-client";
 
 interface Entry {
   video: VideoFile;
@@ -20,6 +21,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const { open } = useVideoModal();
+  const isTV = useTV();
 
   const refresh = async () => {
     const wls = getContinueWatching(userEmail);
@@ -79,13 +81,18 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
       </div>
 
       <div className="relative">
-        <button
-          onClick={() => scroll("left")}
-          className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
-          aria-label="Précédent"
-        >
-          <ChevronLeft className="w-8 h-8 text-white" />
-        </button>
+        {!isTV && (
+          <button
+            onClick={() => scroll("left")}
+            tabIndex={-1}
+            data-no-focus
+            aria-hidden="true"
+            className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
+            aria-label="Précédent"
+          >
+            <ChevronLeft className="w-8 h-8 text-white" />
+          </button>
+        )}
 
         <div
           ref={scrollRef}
@@ -159,13 +166,18 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
           })}
         </div>
 
-        <button
-          onClick={() => scroll("right")}
-          className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
-          aria-label="Suivant"
-        >
-          <ChevronRight className="w-8 h-8 text-white" />
-        </button>
+        {!isTV && (
+          <button
+            onClick={() => scroll("right")}
+            tabIndex={-1}
+            data-no-focus
+            aria-hidden="true"
+            className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
+            aria-label="Suivant"
+          >
+            <ChevronRight className="w-8 h-8 text-white" />
+          </button>
+        )}
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { slugify } from "@/lib/catalog-meta";
+import { useTV } from "@/lib/tv-client";
 
 interface EraRowProps {
   title: string;
@@ -15,6 +16,7 @@ interface EraRowProps {
 
 export function EraRow({ title, eras }: EraRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isTV = useTV();
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -32,16 +34,18 @@ export function EraRow({ title, eras }: EraRowProps) {
       </div>
 
       <div className="relative">
-        <button
-          onClick={() => scroll("left")}
-          tabIndex={-1}
-          data-no-focus
-          aria-hidden="true"
-          className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
-          aria-label="Précédent"
-        >
-          <ChevronLeft className="w-8 h-8 text-white" />
-        </button>
+        {!isTV && (
+          <button
+            onClick={() => scroll("left")}
+            tabIndex={-1}
+            data-no-focus
+            aria-hidden="true"
+            className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
+            aria-label="Précédent"
+          >
+            <ChevronLeft className="w-8 h-8 text-white" />
+          </button>
+        )}
 
         <div
           ref={scrollRef}
@@ -84,16 +88,18 @@ export function EraRow({ title, eras }: EraRowProps) {
           ))}
         </div>
 
-        <button
-          onClick={() => scroll("right")}
-          tabIndex={-1}
-          data-no-focus
-          aria-hidden="true"
-          className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
-          aria-label="Suivant"
-        >
-          <ChevronRight className="w-8 h-8 text-white" />
-        </button>
+        {!isTV && (
+          <button
+            onClick={() => scroll("right")}
+            tabIndex={-1}
+            data-no-focus
+            aria-hidden="true"
+            className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
+            aria-label="Suivant"
+          >
+            <ChevronRight className="w-8 h-8 text-white" />
+          </button>
+        )}
       </div>
     </section>
   );

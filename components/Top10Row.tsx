@@ -7,6 +7,7 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { useVideoModal } from "./ModalProvider";
+import { useTV } from "@/lib/tv-client";
 
 interface Top10RowProps {
   title: string;
@@ -27,6 +28,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const top10 = videos.slice(0, 10);
   const { open } = useVideoModal();
+  const isTV = useTV();
 
   if (top10.length === 0) return null;
 
@@ -44,16 +46,18 @@ export function Top10Row({ title, videos }: Top10RowProps) {
       </div>
 
       <div className="relative">
-        <button
-          onClick={() => scroll("left")}
-          tabIndex={-1}
-          data-no-focus
-          aria-hidden="true"
-          className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
-          aria-label="Pr\u00e9c\u00e9dent"
-        >
-          <ChevronLeft className="w-8 h-8 text-white" />
-        </button>
+        {!isTV && (
+          <button
+            onClick={() => scroll("left")}
+            tabIndex={-1}
+            data-no-focus
+            aria-hidden="true"
+            className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+            aria-label="Pr\u00e9c\u00e9dent"
+          >
+            <ChevronLeft className="w-8 h-8 text-white" />
+          </button>
+        )}
 
         <div
           ref={scrollRef}
@@ -72,16 +76,18 @@ export function Top10Row({ title, videos }: Top10RowProps) {
           ))}
         </div>
 
-        <button
-          onClick={() => scroll("right")}
-          tabIndex={-1}
-          data-no-focus
-          aria-hidden="true"
-          className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
-          aria-label="Suivant"
-        >
-          <ChevronRight className="w-8 h-8 text-white" />
-        </button>
+        {!isTV && (
+          <button
+            onClick={() => scroll("right")}
+            tabIndex={-1}
+            data-no-focus
+            aria-hidden="true"
+            className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+            aria-label="Suivant"
+          >
+            <ChevronRight className="w-8 h-8 text-white" />
+          </button>
+        )}
       </div>
     </section>
   );
