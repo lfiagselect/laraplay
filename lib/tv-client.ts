@@ -48,7 +48,13 @@ export function detectTVClient(): boolean {
 export function useTV(): boolean {
   const [isTV, setIsTV] = useState(false);
   useEffect(() => {
-    setIsTV(detectTVClient());
+    const tv = detectTVClient();
+    setIsTV(tv);
+    // Force classe html.tv côté client si override ?tv=1 ou heuristique runtime détecte TV
+    // mais que le server-side UA n'a pas matché.
+    if (tv && typeof document !== "undefined") {
+      document.documentElement.classList.add("tv");
+    }
   }, []);
   return isTV;
 }

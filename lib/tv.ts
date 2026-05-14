@@ -3,7 +3,7 @@
 // Client utilities (useTV hook): voir lib/tv-client.ts
 
 const TV_UA_REGEX =
-  /Tizen|Web0S|webOS|AFT[A-Z]|CrKey|Chromecast|AppleTV|GoogleTV|SMART-TV|SmartTV|HbbTV|NetCast|VIERA|BRAVIA|DTV|POV_TV|PhilipsTV|Roku|Xbox|PlayStation|NintendoBrowser/i;
+  /Tizen|Web0S|webOS|AFT[A-Z]|Silk\/|CrKey|Chromecast|AppleTV|GoogleTV|SMART-TV|SmartTV|HbbTV|NetCast|VIERA|BRAVIA|DTV|POV_TV|PhilipsTV|Roku|Xbox|PlayStation|NintendoBrowser/i;
 
 export function detectTVServer(userAgent: string | null | undefined): boolean {
   if (!userAgent) return false;
