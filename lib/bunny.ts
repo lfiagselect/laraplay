@@ -81,8 +81,14 @@ async function fetchAllVideos(): Promise<BunnyVideo[]> {
   return all;
 }
 
-function thumbnailUrl(guid: string): string {
-  return `https://${PULL_ZONE}/${guid}/thumbnail.jpg`;
+function thumbnailUrl(guid: string, version?: string): string {
+  // Cache-bust query string: si dateUploaded fourni → URL change après re-encode/edit
+  // permet refresh thumb sur clic admin "Rafraîchir Bunny" sans purge CDN manuelle
+  const base = `https://${PULL_ZONE}/${guid}/thumbnail.jpg`;
+  if (!version) return base;
+  // Hash court pour query (8 chars de timestamp ISO)
+  const tag = version.replace(/[^0-9]/g, "").slice(0, 10);
+  return tag ? `${base}?v=${tag}` : base;
 }
 
 export async function listAllVideos(): Promise<VideoFile[]> {
@@ -91,8 +97,12 @@ export async function listAllVideos(): Promise<VideoFile[]> {
     fetchAllCollections(),
   ]);
 
+  // Cache-bust thumb: timestamp courant lors du fetch catalog
+  // → admin "Rafraîchir Bunny" invalide cache → nouveau fetch → nouveau timestamp → nouvelles URL thumbs
+  // → browser refetch images au lieu de servir vieille version cache
+  const thumbVersion = Date.now().toString();
   return videos.map((v) => {
-    const thumb = PULL_ZONE ? thumbnailUrl(v.guid) : undefined;
+    const thumb = PULL_ZONE ? thumbnailUrl(v.guid, thumbVersion) : undefined;
     const durationMs = v.length ? String(v.length * 1000) : undefined;
     return {
       id: v.guid,
