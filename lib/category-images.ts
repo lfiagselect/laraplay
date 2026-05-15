@@ -35,6 +35,7 @@ const FILE_BY_CATEGORY: Record<string, string> = {
   "Lara Fabian au Cinéma": "Lara_Fabian_au_Cinma",
   "The Voice 2026": "The_Voice_2026",
   "La Voix - Saison 6": "La_Voix_-_Saison_6",
+  "La Voix - Saison 7": "La_Voix_-_Saison_7",
   "Star Academie 2025": "Star_Acadmie_2025",
   "Star Academy France": "Star_Acadmie_2025", // fallback temporaire — pas de vignette dédiée
   "The Voice Kids 2024": "The_Voice_Kids_2024",

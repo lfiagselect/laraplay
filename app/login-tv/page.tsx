@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default function LoginTVPage() {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-6 py-4 md:px-8">
+    <div className="login-tv-page min-h-screen bg-black flex items-center justify-center px-6 py-4 md:px-8">
       <LoginTVClient />
     </div>
   );
