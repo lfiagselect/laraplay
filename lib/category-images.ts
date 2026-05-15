@@ -26,7 +26,7 @@ const FILE_BY_CATEGORY: Record<string, string> = {
   "2015 - 2016 Ma Vie dans La Tienne": "2015_-_2016_Ma_Vie_dans_La_Tienne",
   "2017 - 2018 Camouflage": "2017_-_2018_Camouflage",
   "2019 - 2021 Papillon": "2019_-_2021_Papillon",
-  "2024 - Aujourd’hui": "2024_-_Aujourdhui",
+  "2024 - Aujourd'hui": "2024_-_Aujourdhui",
 
   // Thématiques
   "L'Effet Lara - 2026": "LEffet_Lara_-_2026",

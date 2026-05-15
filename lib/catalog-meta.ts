@@ -32,7 +32,7 @@ export const ERAS: string[] = [
   "2015 - 2016 Ma Vie dans La Tienne",
   "2017 - 2018 Camouflage",
   "2019 - 2021 Papillon",
-  "2024 - Aujourd’hui",
+  "2024 - Aujourd'hui",
 ];
 
 export function slugify(name: string): string {
