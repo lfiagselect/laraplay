@@ -112,6 +112,8 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
               >
                 <button
                   type="button"
+                  data-focusable
+                  data-tv-row-item
                   onClick={() => open(video.id)}
                   className="block w-full text-left"
                 >

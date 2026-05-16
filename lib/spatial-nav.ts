@@ -1,8 +1,4 @@
 // LARAPLAY — Spatial Navigation D-pad TV (V2 row-focus model).
-// Inspiré Netflix TV: sections verticales avec UN focusable actif chacune.
-// LEFT/RIGHT déplace dans section, UP/DOWN saute entre sections.
-// Mémoire par section: revenant à une section restaure dernier chip focused.
-// Pas de calcul géométrique fragile → robuste cross-TV.
 
 "use client";
 
@@ -57,6 +53,29 @@ function focusableInSection(section: HTMLElement): HTMLElement[] {
   return visibleFocusables(section);
 }
 
+function activeFocusable(): HTMLElement | null {
+  const active = document.activeElement as HTMLElement | null;
+  if (!active || active === document.body) return null;
+  if (active.matches(FOCUSABLE_SELECTOR)) return active;
+  return active.closest<HTMLElement>(FOCUSABLE_SELECTOR);
+}
+
+function centerInRow(el: HTMLElement, rowScroller: HTMLElement) {
+  const tr = el.getBoundingClientRect();
+  const pr = rowScroller.getBoundingClientRect();
+  const delta = (tr.left + tr.width / 2) - (pr.left + pr.width / 2);
+  const targetLeft = rowScroller.scrollLeft + delta;
+  try {
+    if (typeof rowScroller.scrollTo === "function") {
+      rowScroller.scrollTo({ left: targetLeft, behavior: "smooth" });
+    } else {
+      rowScroller.scrollLeft = targetLeft;
+    }
+  } catch {
+    rowScroller.scrollLeft = targetLeft;
+  }
+}
+
 function focusEl(el: HTMLElement) {
   try {
     el.focus({ preventScroll: true });
@@ -67,24 +86,7 @@ function focusEl(el: HTMLElement) {
   if (sec) SECTION_MEMORY.set(sec, el);
   const rowScroller = el.closest<HTMLElement>("[data-row-scroller]");
   if (rowScroller) {
-    try {
-      const tr = el.getBoundingClientRect();
-      const pr = rowScroller.getBoundingClientRect();
-      const targetCenter = tr.left + tr.width / 2;
-      const parentCenter = pr.left + pr.width / 2;
-      const delta = targetCenter - parentCenter;
-      if (typeof rowScroller.scrollBy === "function") {
-        rowScroller.scrollBy({ left: delta, behavior: "smooth" });
-      } else {
-        rowScroller.scrollLeft += delta;
-      }
-    } catch {
-      try {
-        const tr = el.getBoundingClientRect();
-        const pr = rowScroller.getBoundingClientRect();
-        rowScroller.scrollLeft += (tr.left + tr.width / 2) - (pr.left + pr.width / 2);
-      } catch {}
-    }
+    try { centerInRow(el, rowScroller); } catch {}
   }
   const sec2 = sectionOf(el);
   if (sec2) {
@@ -101,38 +103,32 @@ function focusEl(el: HTMLElement) {
 }
 
 function moveHorizontal(dir: "LEFT" | "RIGHT"): boolean {
-  const active = document.activeElement as HTMLElement | null;
-  if (!active || active === document.body) return focusInitial();
+  const active = activeFocusable();
+  if (!active) return focusInitial();
   const sec = sectionOf(active);
   if (!sec) return false;
-  const items = focusableInSection(sec);
+  const rowScroller = active.closest<HTMLElement>("[data-row-scroller]");
+  const items = rowScroller ? visibleFocusables(rowScroller) : focusableInSection(sec);
   if (items.length === 0) return false;
-  const idx = items.indexOf(active);
+  let idx = items.indexOf(active);
   if (idx < 0) {
-    focusEl(items[0]);
-    return true;
+    idx = dir === "RIGHT" ? -1 : items.length;
   }
-  const next = dir === "RIGHT" ? items[idx + 1] : items[idx - 1];
-  if (next) {
-    focusEl(next);
-    return true;
-  }
+  const nextIndex = dir === "RIGHT" ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
+  focusEl(items[nextIndex]);
   return true;
 }
 
 function moveVertical(dir: "UP" | "DOWN"): boolean {
-  const active = document.activeElement as HTMLElement | null;
-  if (!active || active === document.body) return focusInitial();
+  const active = activeFocusable();
+  if (!active) return focusInitial();
   const sec = sectionOf(active);
   if (!sec) return focusInitial();
-
   const sections = allSections();
   const idx = sections.indexOf(sec);
   if (idx < 0) return focusInitial();
-
   const nextSec = dir === "DOWN" ? sections[idx + 1] : sections[idx - 1];
   if (!nextSec) return true;
-
   const memory = SECTION_MEMORY.get(nextSec);
   if (memory && nextSec.contains(memory) && document.contains(memory)) {
     focusEl(memory);
@@ -159,8 +155,8 @@ function focusInitial(): boolean {
 }
 
 function activateActive(): boolean {
-  const active = document.activeElement as HTMLElement | null;
-  if (!active || active === document.body) return false;
+  const active = activeFocusable();
+  if (!active) return false;
   active.click();
   return true;
 }
@@ -187,12 +183,10 @@ function goBack(): boolean {
 function onKeyDown(e: KeyboardEvent) {
   if (!isTV()) return;
   if (e.defaultPrevented) return;
-
   const target = e.target as HTMLElement | null;
   const isEditable =
     target &&
     (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-
   if (!isEditable) {
     if (matchTVKeyEvent(e, "UP")) {
       if (moveVertical("UP")) { e.preventDefault(); return; }
@@ -221,13 +215,13 @@ export function installSpatialNav() {
   if (installed) return;
   if (typeof window === "undefined") return;
   installed = true;
-  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keydown", onKeyDown, true);
 }
 
 export function uninstallSpatialNav() {
   if (!installed) return;
   installed = false;
-  window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("keydown", onKeyDown, true);
 }
 
 export function useSpatialNav() {

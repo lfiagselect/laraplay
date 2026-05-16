@@ -53,7 +53,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
             data-no-focus
             aria-hidden="true"
             className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
-            aria-label="Pr\u00e9c\u00e9dent"
+            aria-label="Précédent"
           >
             <ChevronLeft className="w-8 h-8 text-white" />
           </button>
@@ -104,8 +104,6 @@ interface Top10CardProps {
 function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
 
-  // Glow desktop : 3 couches intenses
-  // Glow mobile : 1 couche très douce pour garder la lisibilité du chiffre
   const glowDesktop = [
     "0 0 20px rgba(229,9,20,0.6)",
     "0 0 45px rgba(229,9,20,0.35)",
@@ -113,18 +111,15 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
   ].join(", ");
   const glowMobile = "0 0 12px rgba(229,9,20,0.25)";
 
-  // On choisit via CSS custom property injectée inline,
-  // mais textShadow JS ne gère pas les media queries —
-  // on utilise deux <span> : un visible mobile, un visible desktop.
   return (
     <button
       type="button"
+      data-focusable
+      data-tv-row-item
       onClick={onOpen}
       style={{ touchAction: "manipulation" }}
-      // onFocus scroll géré centralement par lib/spatial-nav focusEl()
       className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
     >
-      {/* Mobile : glow doux */}
       <span
         aria-hidden="true"
         className="md:hidden top10-rank text-[110px] sm:text-[150px] font-black leading-none select-none flex-shrink-0"
@@ -140,7 +135,6 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
         {rank}
       </span>
 
-      {/* Desktop : glow intense */}
       <span
         aria-hidden="true"
         className="hidden md:inline top10-rank text-[220px] font-black leading-none select-none flex-shrink-0"
@@ -156,7 +150,6 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
         {rank}
       </span>
 
-      {/* Card vidéo */}
       <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-200 group-hover/card:scale-105 group-hover/card:z-10">
         {thumbSrc ? (
           // eslint-disable-next-line @next/next/no-img-element

@@ -1,8 +1,4 @@
 // LARAPLAY — Carte vidéo. Clic = ouvre modal info.
-// Hover desktop: scale 1.12, delay 200ms, gradient bottom, actions rondes, metadata.
-// Mobile: aucun hover (touch).
-// PERF: touch-action manipulation élimine le délai 300ms mobile.
-//       transition uniquement sur color/opacity (pas sur transform au repos).
 
 "use client";
 
@@ -48,8 +44,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onEnter = () => {
-    // Preload metadata modal (cheap JSON fetch /api/video/[id])
-    // Stream warmup retiré: vidéos sur Bunny CDN, pas besoin Range request Drive
     preload(video.id);
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
@@ -68,10 +62,9 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
       <button
         type="button"
         data-focusable
+        data-tv-row-item
         onClick={() => open(video.id)}
-        // touch-action: manipulation élimine le délai 300ms sur mobile
         style={{ touchAction: "manipulation" }}
-        // onFocus scroll géré centralement par lib/spatial-nav focusEl()
         className={[
           "relative block aspect-video w-full overflow-hidden rounded-md bg-[var(--bg-elevated)] text-left",
           "transition-[transform,box-shadow] duration-200 ease-out will-change-transform",
@@ -96,7 +89,6 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
           ].join(" ")}
         />
 
-        {/* Feedback tactile mobile */}
         <div className="absolute inset-0 bg-black/30 opacity-0 group-active:opacity-100 md:hidden flex items-center justify-center transition-opacity duration-75">
           <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
         </div>
@@ -122,7 +114,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         <div className={["hidden md:block absolute left-3 right-3 bottom-12 transition-opacity duration-200", isHover ? "opacity-100" : "opacity-0"].join(" ")}>
           <h3 className="text-white text-sm font-semibold line-clamp-1 drop-shadow-lg">{cleanName}</h3>
           <p className="text-[var(--text-secondary)] text-xs mt-0.5 line-clamp-1">
-            {[year, video.category].filter(Boolean).join(" \u00b7 ")}
+            {[year, video.category].filter(Boolean).join(" · ")}
           </p>
         </div>
       </button>
