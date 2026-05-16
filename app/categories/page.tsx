@@ -3,21 +3,18 @@
 
 import { Header } from "@/components/Header";
 import Link from "next/link";
-import { getCatalog, slugify, ERAS } from "@/lib/catalog";
+import { getCatalog, slugify, ERAS, categoryMatches } from "@/lib/catalog";
 import { landscapeImage } from "@/lib/category-images";
 
 export const revalidate = 3600;
 
 export default async function CategoriesPage() {
   const catalog = await getCatalog();
-  const eraSet = new Set(ERAS);
-
   const cats = Array.from(catalog.byCategory.entries())
-    .filter(([name]) => !eraSet.has(name) && name !== "Racine")
+    .filter(([name]) => !ERAS.some((era) => categoryMatches(name, era)) && name !== "Racine")
     .map(([name, videos]) => ({
       name,
       count: videos.length,
-      // webp pour grille thumbnails (~50ko/img vs ~800ko PNG)
       image: landscapeImage(name, "webp"),
     }))
     .sort((a, b) => b.count - a.count);
@@ -49,16 +46,13 @@ export default async function CategoriesPage() {
                     loading="lazy"
                     decoding="async"
                   />
-                  {/* Gradient bas pour lisibilité titre */}
                   <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/95 via-black/55 to-transparent pointer-events-none" />
-                  {/* Gradient haut subtle pour le badge count */}
                   <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
                 </>
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-black" />
               )}
 
-              {/* Titre incrusté style premium */}
               <div className="absolute inset-x-0 bottom-0 p-4 md:p-5 z-10">
                 <h2 className="era-title text-white drop-shadow-2xl">
                   {c.name}

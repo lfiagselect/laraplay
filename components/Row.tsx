@@ -8,12 +8,12 @@ import { VideoCard } from "./VideoCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTV } from "@/lib/tv-client";
+import { TVRowArrows } from "./TVRowArrows";
 
 interface RowProps {
   title: string;
   videos: VideoFile[];
   href?: string;
-  /** Vignette catégorie (utilisée comme thumbnail des vidéos qui en sont dépourvues) */
   categoryImage?: string | null;
 }
 
@@ -69,6 +69,8 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
             <VideoCard key={v.id} video={v} fallbackImage={categoryImage ?? null} />
           ))}
         </div>
+
+        <TVRowArrows scrollRef={scrollRef} />
 
         {!isTV && (
           <button

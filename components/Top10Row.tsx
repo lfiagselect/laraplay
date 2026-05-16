@@ -1,5 +1,4 @@
 // LARAPLAY — Rangée Top 10 avec chiffres géants derrière cards.
-// Glow rouge : intense sur desktop, doux sur mobile (lisibilité).
 
 "use client";
 
@@ -8,6 +7,7 @@ import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { VideoFile } from "@/lib/drive";
 import { useVideoModal } from "./ModalProvider";
 import { useTV } from "@/lib/tv-client";
+import { TVRowArrows } from "./TVRowArrows";
 
 interface Top10RowProps {
   title: string;
@@ -76,6 +76,8 @@ export function Top10Row({ title, videos }: Top10RowProps) {
           ))}
         </div>
 
+        <TVRowArrows scrollRef={scrollRef} />
+
         {!isTV && (
           <button
             onClick={() => scroll("right")}
@@ -103,7 +105,6 @@ interface Top10CardProps {
 
 function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
-
   const glowDesktop = [
     "0 0 20px rgba(229,9,20,0.6)",
     "0 0 45px rgba(229,9,20,0.35)",
@@ -134,7 +135,6 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
       >
         {rank}
       </span>
-
       <span
         aria-hidden="true"
         className="hidden md:inline top10-rank text-[220px] font-black leading-none select-none flex-shrink-0"
@@ -149,28 +149,19 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
       >
         {rank}
       </span>
-
       <div className="relative w-[130px] sm:w-[160px] md:w-[200px] aspect-[2/3] rounded-md overflow-hidden bg-zinc-900 shadow-2xl transition-transform duration-200 group-hover/card:scale-105 group-hover/card:z-10">
         {thumbSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumbSrc}
-            alt={cleanName}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-          />
+          <img src={thumbSrc} alt={cleanName} className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
             <Play className="w-10 h-10 text-zinc-600" />
           </div>
         )}
-
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center">
           <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
         </div>
-
         <div className="absolute bottom-2 left-2 right-2">
           <p className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">{cleanName}</p>
           {duration && <p className="text-[10px] text-zinc-300 mt-1">{duration}</p>}

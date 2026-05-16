@@ -44,6 +44,18 @@ export function slugify(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+export function categoryKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+export function categoryMatches(a: string, b: string): boolean {
+  return a === b || slugify(a) === slugify(b) || categoryKey(a) === categoryKey(b);
+}
+
 export function unslugify(slug: string, candidates: string[]): string | null {
-  return candidates.find((c) => slugify(c) === slug) ?? null;
+  return candidates.find((c) => slugify(c) === slug || categoryKey(c) === categoryKey(slug)) ?? null;
 }

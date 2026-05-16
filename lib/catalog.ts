@@ -2,7 +2,7 @@
 import "server-only";
 import { listAllVideos, type VideoFile } from "./bunny";
 
-export { THEMATIC_ROWS, ERAS, slugify, unslugify } from "./catalog-meta";
+export { THEMATIC_ROWS, ERAS, slugify, unslugify, categoryKey, categoryMatches } from "./catalog-meta";
 export type { VideoFile };
 
 export interface Catalog {

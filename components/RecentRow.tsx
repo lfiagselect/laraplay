@@ -1,9 +1,11 @@
 // LARAPLAY – Rangée "Ajouts récents" (4 dernières vidéos Bunny)
 "use client";
 
+import { useRef } from "react";
 import { Play } from "lucide-react";
 import type { VideoFile } from "@/lib/bunny";
 import { useVideoModal } from "./ModalProvider";
+import { TVRowArrows } from "./TVRowArrows";
 
 interface RecentRowProps {
   title: string;
@@ -21,6 +23,7 @@ function formatDuration(ms?: string): string | null {
 }
 
 export function RecentRow({ title, videos }: RecentRowProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { open } = useVideoModal();
   if (videos.length === 0) return null;
 
@@ -33,7 +36,12 @@ export function RecentRow({ title, videos }: RecentRowProps) {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 md:px-12">
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          data-row-scroller
+          className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
+        >
         {videos.map((video) => {
           const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
           const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
@@ -43,8 +51,10 @@ export function RecentRow({ title, videos }: RecentRowProps) {
             <button
               key={video.id}
               type="button"
+              data-focusable
+              data-tv-row-item
               onClick={() => open(video.id)}
-              className="relative group aspect-video rounded-md overflow-hidden bg-zinc-900 shadow-lg hover:scale-105 transition-transform duration-200 text-left"
+              className="relative group shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] aspect-video rounded-md overflow-hidden bg-zinc-900 shadow-lg hover:scale-105 transition-transform duration-200 text-left"
             >
               {thumbSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -60,7 +70,6 @@ export function RecentRow({ title, videos }: RecentRowProps) {
                 </div>
               )}
 
-              {/* Badge NOUVEAU */}
               <div className="absolute top-2 left-2 bg-[var(--accent)] text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
                 Nouveau
               </div>
@@ -80,6 +89,8 @@ export function RecentRow({ title, videos }: RecentRowProps) {
             </button>
           );
         })}
+        </div>
+        <TVRowArrows scrollRef={scrollRef} />
       </div>
     </section>
   );

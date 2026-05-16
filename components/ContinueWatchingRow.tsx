@@ -1,5 +1,5 @@
 // LARAPLAY — Rangée "Continuer à regarder"
-// Lit IDs localStorage côté client, fetch metadata via API. Pas de bundle inline.
+// Lit IDs localStorage côté client, fetch metadata via API.
 
 "use client";
 
@@ -9,6 +9,7 @@ import type { VideoFile } from "@/lib/drive";
 import { getContinueWatching, removeEntry } from "@/lib/watch-progress";
 import { useVideoModal } from "./ModalProvider";
 import { useTV } from "@/lib/tv-client";
+import { TVRowArrows } from "./TVRowArrows";
 
 interface Entry {
   video: VideoFile;
@@ -120,12 +121,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
                   <div className="aspect-video bg-zinc-800 relative overflow-hidden">
                     {thumb ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumb}
-                        alt={cleanName}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
+                      <img src={thumb} alt={cleanName} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
                         <Play className="w-12 h-12 text-zinc-500" />
@@ -135,10 +131,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
                       <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700/80">
-                      <div
-                        className="h-full bg-red-600"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-full bg-red-600" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                   <div className="p-2.5">
@@ -167,6 +160,8 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
             );
           })}
         </div>
+
+        <TVRowArrows scrollRef={scrollRef} />
 
         {!isTV && (
           <button

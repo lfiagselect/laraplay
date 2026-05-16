@@ -2,7 +2,7 @@
 
 import { Header } from "@/components/Header";
 import { CategoryFilters } from "@/components/CategoryFilters";
-import { getCatalog, ERAS, THEMATIC_ROWS, slugify, unslugify } from "@/lib/catalog";
+import { getCatalog, ERAS, THEMATIC_ROWS, categoryMatches, slugify, unslugify } from "@/lib/catalog";
 import { landscapeImage } from "@/lib/category-images";
 import { notFound } from "next/navigation";
 
@@ -21,12 +21,11 @@ export default async function CategoryPage({
 
   const categorySlug = slugify(categoryName);
   const matchingCategoryName = [...catalog.byCategory.keys()].find(
-    (name) => slugify(name) === categorySlug
+    (name) => categoryMatches(name, categoryName) || slugify(name) === categorySlug
   );
-  const videos =
-    catalog.byCategory.get(categoryName) ??
-    (matchingCategoryName ? catalog.byCategory.get(matchingCategoryName) : undefined) ??
-    [];
+  const videos = [...catalog.byCategory]
+    .filter(([name]) => categoryMatches(name, categoryName) || slugify(name) === categorySlug)
+    .flatMap(([, list]) => list);
   const heroImage = landscapeImage(matchingCategoryName ?? categoryName, "png");
 
   return (

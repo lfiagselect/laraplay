@@ -2,7 +2,7 @@
 
 import { Header } from "@/components/Header";
 import Link from "next/link";
-import { getCatalog, slugify, ERAS } from "@/lib/catalog";
+import { getCatalog, slugify, ERAS, categoryMatches } from "@/lib/catalog";
 import { posterImage } from "@/lib/category-images";
 
 export const revalidate = 3600;
@@ -11,8 +11,9 @@ export default async function ErasPage() {
   const catalog = await getCatalog();
   const eras = ERAS.map((name) => ({
     name,
-    count: catalog.byCategory.get(name)?.length ?? 0,
-    // webp pour grille thumbnails (~50ko/img vs ~800ko PNG)
+    count: [...catalog.byCategory]
+      .filter(([categoryName]) => categoryMatches(categoryName, name))
+      .reduce((total, [, videos]) => total + videos.length, 0),
     image: posterImage(name, "webp"),
   }));
 

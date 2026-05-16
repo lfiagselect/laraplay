@@ -1,13 +1,10 @@
 // LARAPLAY — Mapping catégorie → vignette
-// Vignettes situées dans public/categories/categories-v2/ (paysage 16:9)
-// et public/categories/categories-v2-poster/ (portrait 3:4).
-// Format webp prioritaire (léger), png fallback.
+import { categoryKey } from "./catalog-meta";
 
 const LANDSCAPE_DIR = "/categories/categories-v2";
 const POSTER_DIR = "/categories/categories-v2-poster";
 
 const FILE_BY_CATEGORY: Record<string, string> = {
-  // Ères
   "1985 - 1990 Les débuts": "1985_-_1990_Les_dbuts",
   "1991 - 1993 Lara Fabian (Français)": "1991_-_1993_Lara_Fabian_Franais",
   "1994 - 1995 Carpe Diem": "1994_-_1995_Carpe_Diem",
@@ -24,7 +21,6 @@ const FILE_BY_CATEGORY: Record<string, string> = {
   "2019 - 2021 Papillon": "2019_-_2021_Papillon",
   "2024 - Aujourd'hui": "2024_-_Aujourdhui",
 
-  // Thématiques
   "L'Effet Lara - 2026": "LEffet_Lara_-_2026",
   "Lara Fabian - Concerts": "Lara_Fabian_-_Concerts",
   "Lara Fabian Documentaires": "Lara_Fabian_Documentaires",
@@ -40,23 +36,12 @@ const FILE_BY_CATEGORY: Record<string, string> = {
   "Lara Fabian - Livres": "Lara_Fabian_-_Livres",
 };
 
-function normalizeCategoryName(category: string): string {
-  return category
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[‘’`´]/g, "'")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
 function fileForCategory(category: string): string | null {
   const exact = FILE_BY_CATEGORY[category];
   if (exact) return exact;
-
-  const normalized = normalizeCategoryName(category);
+  const normalized = categoryKey(category);
   const entry = Object.entries(FILE_BY_CATEGORY).find(
-    ([name]) => normalizeCategoryName(name) === normalized
+    ([name]) => categoryKey(name) === normalized
   );
   return entry?.[1] ?? null;
 }

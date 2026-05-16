@@ -8,7 +8,7 @@ import { Top10Row } from "@/components/Top10Row";
 import { RecentRow } from "@/components/RecentRow";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { SplashIntro } from "@/components/SplashIntro";
-import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
+import { getCatalog, ERAS, THEMATIC_ROWS, categoryMatches, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
 import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
 import { auth } from "@/auth";
@@ -20,13 +20,11 @@ function Divider() {
 }
 
 function videosForCategory<T>(byCategory: Map<string, T[]>, category: string): T[] {
-  const direct = byCategory.get(category);
-  if (direct) return direct;
-  const categorySlug = slugify(category);
+  const matches: T[] = [];
   for (const [name, videos] of byCategory) {
-    if (slugify(name) === categorySlug) return videos;
+    if (categoryMatches(name, category)) matches.push(...videos);
   }
-  return [];
+  return matches;
 }
 
 export default async function Home() {

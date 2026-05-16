@@ -1,5 +1,4 @@
 // LARAPLAY — Rangée "Choisissez votre ère".
-// Carte = poster pleine intégrale. Titre déjà incrusté dans image.
 
 "use client";
 
@@ -8,6 +7,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { slugify } from "@/lib/catalog-meta";
 import { useTV } from "@/lib/tv-client";
+import { TVRowArrows } from "./TVRowArrows";
 
 interface EraRowProps {
   title: string;
@@ -72,19 +72,18 @@ export function EraRow({ title, eras }: EraRowProps) {
               ) : (
                 <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900 to-black" />
               )}
-
               <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/95 via-black/60 to-transparent pointer-events-none" />
-
               <h3 className="era-title absolute bottom-3 left-3 right-3 text-white drop-shadow-2xl pointer-events-none">
                 {era.name}
               </h3>
-
               <span className="absolute top-2 right-2 z-10 text-[10px] text-white bg-black/70 backdrop-blur px-2 py-0.5 rounded">
                 {era.count}
               </span>
             </Link>
           ))}
         </div>
+
+        <TVRowArrows scrollRef={scrollRef} />
 
         {!isTV && (
           <button
