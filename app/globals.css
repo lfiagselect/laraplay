@@ -342,6 +342,14 @@ html.tv [data-row-scroller] {
   padding-bottom: 1.25rem !important;
 }
 
+.tv-row-arrow {
+  display: none;
+}
+
+html.tv .tv-row-arrow {
+  display: flex;
+}
+
 html.tv [data-mobile-tabbar] { display: none !important; }
 html.tv [data-mobile-menu] { display: none !important; }
 html.tv [data-mobile-drag-handle] { display: none !important; }
@@ -521,11 +529,7 @@ html.tv section button[aria-label="Suivant"] {
   opacity: 0.6 !important;
 }
 
-/* Row flèches restent cachées TV (D-pad navigue cards directement) */
-html.tv [data-row-scroller] ~ button[aria-label="Précédent"],
-html.tv [data-row-scroller] ~ button[aria-label="Suivant"] {
-  display: none !important;
-}
+/* Les flèches TV custom .tv-row-arrow restent visibles; seuls les anciens boutons pointer-only restent exclus. */
 
 /* ============ TV — DEFINITIF: cache TOUS scroll arrows + son ============ */
 /* Plus haute spécificité possible — domine n'importe quel override Tailwind */
