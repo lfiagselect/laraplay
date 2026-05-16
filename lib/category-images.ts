@@ -6,10 +6,6 @@
 const LANDSCAPE_DIR = "/categories/categories-v2";
 const POSTER_DIR = "/categories/categories-v2-poster";
 
-/**
- * Map: nom catégorie exact (issu Drive) → nom fichier sans extension.
- * Conservation des noms encodés pour matcher fichiers réels.
- */
 const FILE_BY_CATEGORY: Record<string, string> = {
   // Ères
   "1985 - 1990 Les débuts": "1985_-_1990_Les_dbuts",
@@ -37,23 +33,39 @@ const FILE_BY_CATEGORY: Record<string, string> = {
   "La Voix - Saison 6": "La_Voix_-_Saison_6",
   "La Voix - Saison 7": "La_Voix_-_Saison_7",
   "Star Academie 2025": "Star_Acadmie_2025",
-  "Star Academy France": "Star_Acadmie_2025", // fallback temporaire — pas de vignette dédiée
+  "Star Academy France": "Star_Acadmie_2025",
   "The Voice Kids 2024": "The_Voice_Kids_2024",
   "Lara Fabian aux Enfoirés": "Lara_Fabian_aux_Enfoirs",
   "Lara Fabian - Divers": "Lara_Fabian_-_Divers",
   "Lara Fabian - Livres": "Lara_Fabian_-_Livres",
 };
 
-/**
- * Format image:
- * - "webp" (default): léger ~50ko, parfait pour cartes/listes
- * - "png": haute résolution ~800ko, pour bandeau hero (1 seule image, qualité max)
- */
+function normalizeCategoryName(category: string): string {
+  return category
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[‘’`´]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function fileForCategory(category: string): string | null {
+  const exact = FILE_BY_CATEGORY[category];
+  if (exact) return exact;
+
+  const normalized = normalizeCategoryName(category);
+  const entry = Object.entries(FILE_BY_CATEGORY).find(
+    ([name]) => normalizeCategoryName(name) === normalized
+  );
+  return entry?.[1] ?? null;
+}
+
 export function landscapeImage(
   category: string,
   format: "webp" | "png" = "webp"
 ): string | null {
-  const file = FILE_BY_CATEGORY[category];
+  const file = fileForCategory(category);
   if (!file) return null;
   return `${LANDSCAPE_DIR}/${file}.${format}`;
 }
@@ -62,7 +74,7 @@ export function posterImage(
   category: string,
   format: "webp" | "png" = "webp"
 ): string | null {
-  const file = FILE_BY_CATEGORY[category];
+  const file = fileForCategory(category);
   if (!file) return null;
   return `${POSTER_DIR}/${file}.${format}`;
 }

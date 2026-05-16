@@ -299,8 +299,6 @@ html.tv *:focus-visible {
     0 0 0 6px rgba(229, 9, 20, 0.35),
     0 0 24px rgba(229, 9, 20, 0.55);
   border-radius: 6px;
-  z-index: 50;
-  position: relative;
 }
 
 html.tv :focus:not(:focus-visible) {
@@ -405,6 +403,49 @@ html.tv [tabindex="0"]:focus {
   outline: 2px solid var(--accent) !important;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+
+/* Login TV: évite CSS Grid/filtres fragiles sur anciens WebOS/Tizen et garde le code visible. */
+html.tv .login-tv-page {
+  min-height: 100vh;
+  padding: var(--tv-safe-y) var(--tv-safe-x) !important;
+  overflow: hidden;
+}
+
+html.tv .tv-login-panel {
+  max-width: min(1100px, 92vw) !important;
+}
+
+html.tv .tv-login-grid {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  text-align: left;
+}
+
+html.tv .tv-login-qr-img {
+  width: clamp(150px, 18vw, 230px) !important;
+  height: clamp(150px, 18vw, 230px) !important;
+}
+
+html.tv .tv-login-url {
+  max-width: 56vw;
+  white-space: normal !important;
+  word-break: break-word;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+html.tv .tv-login-code {
+  font-size: clamp(2.75rem, 6vw, 5.5rem) !important;
+  letter-spacing: 0.08em !important;
+}
+
+html.tv .tv-login-status {
+  flex-basis: 100%;
 }
 
 /* ============ TV — Hide pointer-only UI ============ */

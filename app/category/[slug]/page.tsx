@@ -2,7 +2,7 @@
 
 import { Header } from "@/components/Header";
 import { CategoryFilters } from "@/components/CategoryFilters";
-import { getCatalog, ERAS, THEMATIC_ROWS, unslugify } from "@/lib/catalog";
+import { getCatalog, ERAS, THEMATIC_ROWS, slugify, unslugify } from "@/lib/catalog";
 import { landscapeImage } from "@/lib/category-images";
 import { notFound } from "next/navigation";
 
@@ -19,8 +19,15 @@ export default async function CategoryPage({
   const categoryName = unslugify(slug, candidates);
   if (!categoryName) notFound();
 
-  const videos = catalog.byCategory.get(categoryName) ?? [];
-  const heroImage = landscapeImage(categoryName, "png");
+  const categorySlug = slugify(categoryName);
+  const matchingCategoryName = [...catalog.byCategory.keys()].find(
+    (name) => slugify(name) === categorySlug
+  );
+  const videos =
+    catalog.byCategory.get(categoryName) ??
+    (matchingCategoryName ? catalog.byCategory.get(matchingCategoryName) : undefined) ??
+    [];
+  const heroImage = landscapeImage(matchingCategoryName ?? categoryName, "png");
 
   return (
     <div className="min-h-screen bg-black">
@@ -35,9 +42,7 @@ export default async function CategoryPage({
               alt={categoryName}
               className="absolute inset-0 w-full h-full object-contain"
             />
-            {/* Gradient sombre bas pour lisibilité titre */}
             <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
-            {/* Titre overlay */}
             <div className="absolute inset-x-0 bottom-0 px-4 md:px-12 pb-6 max-w-[1600px] mx-auto">
               <h1 className="era-title text-white drop-shadow-2xl text-3xl md:text-5xl">
                 {categoryName}

@@ -9,10 +9,6 @@
 import { useEffect } from "react";
 import { matchTVKeyEvent } from "./tv";
 
-// Sections = conteneurs marqués `data-tv-section`. Ordre DOM = ordre vertical.
-// Chaque section contient des focusables (button, a[href]) marqués naturellement.
-// Le composant child onFocus handler peut faire scroll local (déjà en place sur cards).
-
 const SECTION_ATTR = "data-tv-section";
 const FOCUSABLE_SELECTOR = [
   "a[href]:not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
@@ -21,7 +17,6 @@ const FOCUSABLE_SELECTOR = [
   "input:not([disabled]):not([type='hidden'])",
 ].join(",");
 
-// Mémoire focus par section (clé = section element)
 const SECTION_MEMORY = new WeakMap<HTMLElement, HTMLElement>();
 
 function isTV(): boolean {
@@ -33,7 +28,7 @@ function visibleFocusables(root: HTMLElement | Document = document): HTMLElement
   return nodes.filter((el) => {
     if (el.hidden) return false;
     const cs = window.getComputedStyle(el);
-    if (cs.display === "none" || cs.visibility === "hidden") return false;
+    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) return false;
     return true;
@@ -62,12 +57,14 @@ function focusableInSection(section: HTMLElement): HTMLElement[] {
   return visibleFocusables(section);
 }
 
-/** Focus un élément + mémorise dans sa section + scroll horizontal local si dans row scroller */
 function focusEl(el: HTMLElement) {
-  el.focus({ preventScroll: true });
+  try {
+    el.focus({ preventScroll: true });
+  } catch {
+    el.focus();
+  }
   const sec = sectionOf(el);
   if (sec) SECTION_MEMORY.set(sec, el);
-  // Scroll horizontal local (row scroller) sans bouger page
   const rowScroller = el.closest<HTMLElement>("[data-row-scroller]");
   if (rowScroller) {
     try {
@@ -75,10 +72,20 @@ function focusEl(el: HTMLElement) {
       const pr = rowScroller.getBoundingClientRect();
       const targetCenter = tr.left + tr.width / 2;
       const parentCenter = pr.left + pr.width / 2;
-      rowScroller.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
-    } catch {}
+      const delta = targetCenter - parentCenter;
+      if (typeof rowScroller.scrollBy === "function") {
+        rowScroller.scrollBy({ left: delta, behavior: "smooth" });
+      } else {
+        rowScroller.scrollLeft += delta;
+      }
+    } catch {
+      try {
+        const tr = el.getBoundingClientRect();
+        const pr = rowScroller.getBoundingClientRect();
+        rowScroller.scrollLeft += (tr.left + tr.width / 2) - (pr.left + pr.width / 2);
+      } catch {}
+    }
   }
-  // Scroll vertical section dans viewport si hors verticalement
   const sec2 = sectionOf(el);
   if (sec2) {
     const sr = sec2.getBoundingClientRect();
@@ -86,7 +93,9 @@ function focusEl(el: HTMLElement) {
     if (sr.top < 0 || sr.bottom > vh) {
       try {
         sec2.scrollIntoView({ block: "center", behavior: "smooth" });
-      } catch {}
+      } catch {
+        sec2.scrollIntoView();
+      }
     }
   }
 }
@@ -100,7 +109,6 @@ function moveHorizontal(dir: "LEFT" | "RIGHT"): boolean {
   if (items.length === 0) return false;
   const idx = items.indexOf(active);
   if (idx < 0) {
-    // Active hors section actuelle — focus premier
     focusEl(items[0]);
     return true;
   }
@@ -109,7 +117,6 @@ function moveHorizontal(dir: "LEFT" | "RIGHT"): boolean {
     focusEl(next);
     return true;
   }
-  // Bord atteint: stay (pas wrap, pas saute section)
   return true;
 }
 
@@ -124,9 +131,8 @@ function moveVertical(dir: "UP" | "DOWN"): boolean {
   if (idx < 0) return focusInitial();
 
   const nextSec = dir === "DOWN" ? sections[idx + 1] : sections[idx - 1];
-  if (!nextSec) return true; // Bord atteint
+  if (!nextSec) return true;
 
-  // Restaure mémoire ou prend premier focusable
   const memory = SECTION_MEMORY.get(nextSec);
   if (memory && nextSec.contains(memory) && document.contains(memory)) {
     focusEl(memory);
@@ -160,7 +166,6 @@ function activateActive(): boolean {
 }
 
 function goBack(): boolean {
-  // Modal/trap close si présent
   const active = document.activeElement as HTMLElement | null;
   const trap = active?.closest<HTMLElement>("[data-tv-trap='modal']");
   if (trap) {
@@ -228,7 +233,6 @@ export function uninstallSpatialNav() {
 export function useSpatialNav() {
   useEffect(() => {
     installSpatialNav();
-    // Focus initial après DOM stable (purge + render complet)
     const t = window.setTimeout(() => {
       if (!isTV()) return;
       if (document.activeElement === document.body) focusInitial();

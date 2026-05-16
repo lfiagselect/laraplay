@@ -9,7 +9,7 @@ import { RecentRow } from "@/components/RecentRow";
 import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
-import { posterImage } from "@/lib/category-images";
+import { landscapeImage, posterImage } from "@/lib/category-images";
 import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
 import { auth } from "@/auth";
 
@@ -19,13 +19,23 @@ function Divider() {
   return <hr className="row-divider" aria-hidden="true" />;
 }
 
+function videosForCategory<T>(byCategory: Map<string, T[]>, category: string): T[] {
+  const direct = byCategory.get(category);
+  if (direct) return direct;
+  const categorySlug = slugify(category);
+  for (const [name, videos] of byCategory) {
+    if (slugify(name) === categorySlug) return videos;
+  }
+  return [];
+}
+
 export default async function Home() {
   const [catalog, session] = await Promise.all([getCatalog(), auth()]);
   const userEmail = session?.user?.email ?? null;
 
   const eras = ERAS.map((name) => ({
     name,
-    count: catalog.byCategory.get(name)?.length ?? 0,
+    count: videosForCategory(catalog.byCategory, name).length,
     image: posterImage(name, "png"),
   })).filter((e) => e.count > 0);
 
@@ -42,14 +52,12 @@ export default async function Home() {
     sections.push(<ContinueWatchingRow key="continue" userEmail={userEmail} />);
   }
 
-  // Ajouts récents — 4 dernières vidéos Bunny
   if (catalog.recentAdds.length > 0) {
     sections.push(
       <RecentRow key="recent" title="Ajouts récents" videos={catalog.recentAdds} />
     );
   }
 
-  // Top 10 basé sur les vues Bunny
   if (catalog.top10.length > 0) {
     sections.push(
       <Top10Row key="top10" title="Top 10 sur LARAPLAY aujourd'hui" videos={catalog.top10} />
@@ -61,10 +69,16 @@ export default async function Home() {
   }
 
   for (const cat of THEMATIC_ROWS) {
-    const vids = catalog.byCategory.get(cat) ?? [];
+    const vids = videosForCategory(catalog.byCategory, cat);
     if (vids.length === 0) continue;
     sections.push(
-      <Row key={cat} title={cat} videos={vids.slice(0, 20)} href={`/category/${slugify(cat)}`} />
+      <Row
+        key={cat}
+        title={cat}
+        videos={vids.slice(0, 20)}
+        href={`/category/${slugify(cat)}`}
+        categoryImage={landscapeImage(cat)}
+      />
     );
   }
 
