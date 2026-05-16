@@ -1,11 +1,10 @@
 // LARAPLAY — Page login minimaliste
-// Logo LARAPLAY rouge style Netflix monumental + bouton Google. Fond noir.
-// TV: redirect server-side vers /login-tv (Device Flow).
 
 import { signIn } from "@/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { detectTVServer } from "@/lib/tv";
+import { LoginTVRedirect } from "@/components/LoginTVRedirect";
 
 export default async function LoginPage({
   searchParams,
@@ -19,6 +18,7 @@ export default async function LoginPage({
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 py-8">
+      <LoginTVRedirect />
       <div className="w-full max-w-sm flex flex-col items-center">
         <h1 className="logo-wordmark text-6xl md:text-7xl mb-12 select-none">
           LARAPLAY
@@ -71,6 +71,12 @@ async function LoginForm({
         </svg>
         Continuer avec Google
       </button>
+      <a
+        href="/login-tv"
+        className="mt-4 flex items-center justify-center text-sm text-zinc-400 hover:text-white underline underline-offset-4"
+      >
+        Connexion TV / code écran
+      </a>
     </form>
   );
 }

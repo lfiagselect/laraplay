@@ -22,14 +22,13 @@ export function LoginTVClient() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const startedRef = useRef(false);
 
-  // 1. Bootstrap device_code au mount
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
 
     (async () => {
       try {
-        const res = await fetch("/api/auth/device/start", { method: "POST" });
+        const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
         if (!res.ok) {
           let body = "";
           try { body = await res.text(); } catch {}
@@ -50,7 +49,6 @@ export function LoginTVClient() {
     })();
   }, []);
 
-  // 2. Poll loop
   useEffect(() => {
     if (!data || status !== "pending") return;
     let cancelled = false;
@@ -61,6 +59,7 @@ export function LoginTVClient() {
       try {
         const res = await fetch("/api/auth/device/poll", {
           method: "POST",
+          cache: "no-store",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ device_code: data.device_code }),
         });
@@ -69,12 +68,12 @@ export function LoginTVClient() {
 
         if (json.status === "approved") {
           setStatus("approved");
-          // Finalise signIn via Credentials provider "device"
-          await signIn("device", {
+          const signInResult = await signIn("device", {
             device_code: data.device_code,
-            redirect: true,
+            redirect: false,
             callbackUrl: "/",
           });
+          window.location.assign(signInResult?.url ?? "/");
           return;
         }
         if (json.status === "expired") {
@@ -85,7 +84,6 @@ export function LoginTVClient() {
           setStatus("denied");
           return;
         }
-        // pending / slow_down → reschedule
       } catch {
         // network blip → continue polling
       }
@@ -99,18 +97,16 @@ export function LoginTVClient() {
     };
   }, [data, status]);
 
-  // Reload pour nouveau code si expired
   const restart = () => {
     setData(null);
     setStatus("loading");
     setErrorMsg(null);
     startedRef.current = false;
-    // Re-trigger bootstrap effect
     setTimeout(() => {
       startedRef.current = true;
       (async () => {
         try {
-          const res = await fetch("/api/auth/device/start", { method: "POST" });
+          const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
           if (!res.ok) throw new Error("start_failed");
           const json: DeviceStartResponse = await res.json();
           setData(json);
@@ -152,7 +148,6 @@ export function LoginTVClient() {
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&bgcolor=18181b&color=ffffff&data=${encodeURIComponent(fullUrl)}`;
         return (
           <div className="tv-login-grid grid md:grid-cols-[auto_1fr] gap-6 md:gap-10 items-center text-left">
-            {/* Bloc gauche: QR code */}
             <div className="flex flex-col items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -163,7 +158,6 @@ export function LoginTVClient() {
               <p className="text-xs text-zinc-500 uppercase tracking-wide">Scannez</p>
             </div>
 
-            {/* Bloc droit: URL + Code stacked */}
             <div className="space-y-4">
               <div className="space-y-2">
                 <p className="text-sm md:text-base text-zinc-400 uppercase tracking-wide">
@@ -190,7 +184,6 @@ export function LoginTVClient() {
               </div>
             </div>
 
-            {/* Status bar pleine largeur */}
             <div className="tv-login-status md:col-span-2 flex items-center justify-center gap-3 mt-2 text-zinc-400 text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>En attente de connexion…</span>

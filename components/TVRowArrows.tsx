@@ -1,6 +1,4 @@
 // LARAPLAY — Flèches de navigation TV pour rails horizontaux.
-// Elles sont affichées sur TV dès qu'un rail peut continuer à gauche/droite,
-// comme l'affordance Netflix TV. La navigation reste pilotée par le D-pad.
 
 "use client";
 
@@ -38,32 +36,61 @@ export function TVRowArrows({ scrollRef }: TVRowArrowsProps) {
     };
   }, [scrollRef]);
 
+  const scrollByPage = (dir: "left" | "right") => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const delta = scroller.clientWidth * 0.82 * (dir === "left" ? -1 : 1);
+    try {
+      if (typeof scroller.scrollBy === "function") {
+        scroller.scrollBy({ left: delta, behavior: "smooth" });
+      } else {
+        scroller.scrollLeft += delta;
+      }
+    } catch {
+      scroller.scrollLeft += delta;
+    }
+  };
+
   return (
     <>
-      <div
+      <button
+        type="button"
         data-tv-row-arrow="left"
-        aria-hidden="true"
+        tabIndex={-1}
+        disabled={!canScrollLeft}
+        aria-label="Parcourir la rangée vers la gauche"
+        onClick={(e) => {
+          e.stopPropagation();
+          scrollByPage("left");
+        }}
         className={[
-          "tv-row-arrow pointer-events-none absolute left-0 top-0 bottom-0 z-30 w-16",
+          "tv-row-arrow absolute left-0 top-0 bottom-0 z-30 w-16",
           "items-center justify-start pl-3 bg-gradient-to-r from-black/85 via-black/35 to-transparent",
-          "transition-opacity duration-150",
-          canScrollLeft ? "opacity-100" : "opacity-0",
+          "transition-opacity duration-150 disabled:pointer-events-none",
+          canScrollLeft ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
         ].join(" ")}
       >
         <ChevronLeft className="w-10 h-10 text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]" />
-      </div>
-      <div
+      </button>
+      <button
+        type="button"
         data-tv-row-arrow="right"
-        aria-hidden="true"
+        tabIndex={-1}
+        disabled={!canScrollRight}
+        aria-label="Parcourir la rangée vers la droite"
+        onClick={(e) => {
+          e.stopPropagation();
+          scrollByPage("right");
+        }}
         className={[
-          "tv-row-arrow pointer-events-none absolute right-0 top-0 bottom-0 z-30 w-16",
+          "tv-row-arrow absolute right-0 top-0 bottom-0 z-30 w-16",
           "items-center justify-end pr-3 bg-gradient-to-l from-black/85 via-black/35 to-transparent",
-          "transition-opacity duration-150",
-          canScrollRight ? "opacity-100" : "opacity-0",
+          "transition-opacity duration-150 disabled:pointer-events-none",
+          canScrollRight ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
         ].join(" ")}
       >
         <ChevronRight className="w-10 h-10 text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]" />
-      </div>
+      </button>
     </>
   );
 }
