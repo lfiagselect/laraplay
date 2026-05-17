@@ -13,7 +13,7 @@ export default async function LoginPage({
 }) {
   const hdrs = await headers();
   if (detectTVServer(hdrs.get("user-agent"))) {
-    redirect("/login-tv");
+    redirect("/login-basic");
   }
 
   return (
@@ -72,7 +72,7 @@ async function LoginForm({
         Continuer avec Google
       </button>
       <a
-        href="/login-tv"
+        href="/login-basic"
         className="mt-4 flex items-center justify-center text-sm text-zinc-400 hover:text-white underline underline-offset-4"
       >
         Connexion TV / code écran

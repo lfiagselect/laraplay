@@ -1,7 +1,7 @@
 // LARAPLAY — Détection TV server-safe (PAS "use client").
 
 const TV_UA_REGEX =
-  /Tizen|SamsungBrowser.*TV|Samsung.*TV|Web0S|WebOS|webOS|webOSTV|webOS\.TV|WebAppManager|LG Browser|LG NetCast|LG[ _-]?(?:Smart)?TV|AFT[A-Z]|Silk\/|CrKey|Chromecast|AppleTV|GoogleTV|SMART-TV|SmartTV|HbbTV|NetCast|VIERA|BRAVIA|DTV|POV_TV|PhilipsTV|Roku|Xbox|PlayStation|NintendoBrowser/i;
+  /Tizen|SamsungBrowser.*TV|Samsung.*TV|Web0S|WebOS|webOS|webOSTV|webOS\.TV|WebAppManager|LG Browser|LG NetCast|LG[ _-]?(?:Smart)?TV|AFT[A-Z]|Silk\/|CrKey|Chromecast|AppleTV|GoogleTV|SMART-TV|SmartTV|HbbTV|NetCast|VIERA|BRAVIA|DTV|POV_TV|PhilipsTV|Hisense|VIDAA|Vewd|Opera TV|Roku|Xbox|PlayStation|NintendoBrowser/i;
 
 export function detectTVServer(userAgent: string | null | undefined): boolean {
   if (!userAgent) return false;
