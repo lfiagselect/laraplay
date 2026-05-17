@@ -25,6 +25,7 @@ const FILE_BY_CATEGORY: Record<string, string> = {
   "Lara Fabian - Concerts": "Lara_Fabian_-_Concerts",
   "Lara Fabian Documentaires": "Lara_Fabian_Documentaires",
   "Lara Fabian au Cinéma": "Lara_Fabian_au_Cinma",
+  "The Voice 2020": "The_Voice_2020",
   "The Voice 2026": "The_Voice_2026",
   "La Voix - Saison 6": "La_Voix_-_Saison_6",
   "La Voix - Saison 7": "La_Voix_-_Saison_7",
