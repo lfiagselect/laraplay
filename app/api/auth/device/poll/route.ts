@@ -14,33 +14,60 @@ import { getByDeviceCode, canPoll } from "@/lib/device-flow";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
-  let body: { device_code?: string } = {};
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  res.headers.set("cache-control", "no-store, no-cache, max-age=0, must-revalidate");
+  res.headers.set("pragma", "no-cache");
+  res.headers.set("expires", "0");
+  return res;
+}
+
+async function readDeviceCode(req: Request): Promise<string | null> {
   try {
-    body = await req.json();
+    if (req.method === "GET") {
+      return new URL(req.url).searchParams.get("device_code");
+    }
+    const body = await req.json();
+    return typeof body?.device_code === "string" ? body.device_code : null;
   } catch {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    return null;
   }
-  const deviceCode = body.device_code;
-  if (!deviceCode || typeof deviceCode !== "string") {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+}
+
+async function handlePoll(req: Request) {
+  const deviceCode = await readDeviceCode(req);
+  if (!deviceCode) {
+    return jsonNoStore({ error: "invalid_request" }, { status: 400 });
   }
 
   const session = await getByDeviceCode(deviceCode);
   if (!session) {
-    return NextResponse.json({ status: "expired" });
+    return jsonNoStore({ status: "expired" });
   }
 
-  if (!(await canPoll(deviceCode))) {
-    return NextResponse.json({ status: "slow_down" }, { status: 429 });
-  }
-
+  // Ne jamais throttler un état terminal: sur vieux navigateurs TV, une réponse
+  // 429 ou mise en cache peut laisser l'écran bloqué sur "En attente".
   if (session.status === "approved") {
-    return NextResponse.json({
+    return jsonNoStore({
       status: "approved",
       email: session.email,
     });
   }
+  if (session.status === "expired" || session.status === "denied") {
+    return jsonNoStore({ status: session.status });
+  }
 
-  return NextResponse.json({ status: session.status });
+  if (!(await canPoll(deviceCode))) {
+    return jsonNoStore({ status: "slow_down" }, { status: 429 });
+  }
+
+  return jsonNoStore({ status: session.status });
+}
+
+export async function GET(req: Request) {
+  return handlePoll(req);
+}
+
+export async function POST(req: Request) {
+  return handlePoll(req);
 }

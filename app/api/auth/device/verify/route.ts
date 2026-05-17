@@ -12,45 +12,53 @@ import { isAuthorized } from "@/lib/whitelist";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  res.headers.set("cache-control", "no-store, no-cache, max-age=0, must-revalidate");
+  res.headers.set("pragma", "no-cache");
+  res.headers.set("expires", "0");
+  return res;
+}
+
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.email) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
+    return jsonNoStore({ error: "unauthenticated" }, { status: 401 });
   }
   const email = session.user.email;
 
   // Re-check whitelist (sécurité défense)
   const wl = await isAuthorized(email);
   if (!wl) {
-    return NextResponse.json({ error: "not_whitelisted" }, { status: 403 });
+    return jsonNoStore({ error: "not_whitelisted" }, { status: 403 });
   }
 
   let body: { user_code?: string } = {};
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    return jsonNoStore({ error: "invalid_request" }, { status: 400 });
   }
   const userCode = body.user_code;
   if (!userCode || typeof userCode !== "string") {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+    return jsonNoStore({ error: "invalid_request" }, { status: 400 });
   }
 
   const found = await getByUserCode(userCode);
   if (!found) {
-    return NextResponse.json({ error: "invalid_code" }, { status: 404 });
+    return jsonNoStore({ error: "invalid_code" }, { status: 404 });
   }
   if (found.status === "expired") {
-    return NextResponse.json({ error: "expired" }, { status: 410 });
+    return jsonNoStore({ error: "expired" }, { status: 410 });
   }
   if (found.status === "approved") {
-    return NextResponse.json({ ok: true, already: true });
+    return jsonNoStore({ ok: true, already: true });
   }
 
   const updated = await approveDevice(userCode, email);
   if (!updated || updated.status !== "approved") {
-    return NextResponse.json({ error: "approval_failed" }, { status: 500 });
+    return jsonNoStore({ error: "approval_failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, email });
+  return jsonNoStore({ ok: true, email });
 }

@@ -9,6 +9,14 @@ import { createDeviceSession, DEVICE_FLOW_CONFIG } from "@/lib/device-flow";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+function jsonNoStore(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  res.headers.set("cache-control", "no-store, no-cache, max-age=0, must-revalidate");
+  res.headers.set("pragma", "no-cache");
+  res.headers.set("expires", "0");
+  return res;
+}
+
 /**
  * Détermine l'origine publique du site, en respectant les proxys (Render, Vercel, etc.).
  * Ordre de priorité :
@@ -38,7 +46,7 @@ export async function POST(req: Request) {
     const session = await createDeviceSession();
     const origin = getPublicOrigin(req);
 
-    return NextResponse.json({
+    return jsonNoStore({
       device_code: session.deviceCode,
       user_code: session.userCode,
       verification_uri: `${origin}/d`,
@@ -49,7 +57,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[device/start] failed:", msg);
-    return NextResponse.json(
+    return jsonNoStore(
       { error: "device_start_failed", detail: msg.slice(0, 200) },
       { status: 500 }
     );

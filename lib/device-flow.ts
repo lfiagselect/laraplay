@@ -58,6 +58,14 @@ function genDeviceCode(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function normalizeUserCode(userCode: string): string {
+  const normalized = userCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  const compact = normalized.replace(/-/g, "");
+  return compact.length === USER_CODE_LEN
+    ? compact.slice(0, 4) + "-" + compact.slice(4)
+    : normalized;
+}
+
 function rowToSession(row: string[]): DeviceSession | null {
   if (!row[0] || !row[1]) return null;
   try {
@@ -101,13 +109,14 @@ async function findRowByDeviceCode(deviceCode: string): Promise<number> {
 
 /** Trouve ligne réelle Sheet (1-indexed) pour un user_code donné. -1 si absent. */
 async function findRowByUserCode(userCode: string): Promise<number> {
+  const wanted = normalizeUserCode(userCode);
   const sheets = getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId(),
     range: `${deviceTab()}!A2:B`,
   });
   const rows = res.data.values ?? [];
-  const idx = rows.findIndex((r) => String(r[1] ?? "") === userCode);
+  const idx = rows.findIndex((r) => normalizeUserCode(String(r[1] ?? "")) === wanted);
   return idx >= 0 ? idx + 2 : -1;
 }
 
@@ -156,11 +165,7 @@ export async function getByDeviceCode(deviceCode: string): Promise<DeviceSession
 }
 
 export async function getByUserCode(userCode: string): Promise<DeviceSession | null> {
-  const normalized = userCode.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
-  const withDash =
-    normalized.length === USER_CODE_LEN
-      ? normalized.slice(0, 4) + "-" + normalized.slice(4)
-      : normalized;
+  const wanted = normalizeUserCode(userCode);
 
   const sheets = getSheets();
   const res = await sheets.spreadsheets.values.get({
@@ -168,7 +173,7 @@ export async function getByUserCode(userCode: string): Promise<DeviceSession | n
     range: `${deviceTab()}!A2:G`,
   });
   const rows = res.data.values ?? [];
-  const row = rows.find((r) => String(r[1] ?? "") === withDash);
+  const row = rows.find((r) => normalizeUserCode(String(r[1] ?? "")) === wanted);
   if (!row) return null;
   const s = rowToSession(row);
   if (!s) return null;
@@ -203,7 +208,7 @@ export async function canPoll(deviceCode: string): Promise<boolean> {
 }
 
 export async function approveDevice(userCode: string, email: string): Promise<DeviceSession | null> {
-  const row = await findRowByUserCode(userCode.trim().toUpperCase());
+  const row = await findRowByUserCode(userCode);
   if (row < 0) return null;
 
   const sheets = getSheets();
@@ -241,7 +246,7 @@ export async function approveDevice(userCode: string, email: string): Promise<De
 }
 
 export async function denyDevice(userCode: string): Promise<DeviceSession | null> {
-  const row = await findRowByUserCode(userCode.trim().toUpperCase());
+  const row = await findRowByUserCode(userCode);
   if (row < 0) return null;
 
   const sheets = getSheets();

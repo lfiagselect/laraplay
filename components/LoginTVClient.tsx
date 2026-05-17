@@ -29,6 +29,69 @@ function shortVerificationUrl(uri: string): string {
   return withoutHash.replace(/\/$/, "");
 }
 
+function withCacheBust(path: string): string {
+  const sep = path.indexOf("?") >= 0 ? "&" : "?";
+  return `${path}${sep}_=${Date.now()}`;
+}
+
+function xhrJsonRequest<T>(url: string, payload: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+    xhr.timeout = 15000;
+    xhr.setRequestHeader("content-type", "application/json");
+    xhr.setRequestHeader("cache-control", "no-store, no-cache, max-age=0");
+    xhr.setRequestHeader("pragma", "no-cache");
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState !== 4) return;
+      try {
+        const json = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+        if ((xhr.status < 200 || xhr.status >= 300) && json.status !== "slow_down") {
+          reject(new Error(json.error || `request_failed:${xhr.status}`));
+          return;
+        }
+        resolve(json as T);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    xhr.onerror = () => reject(new Error("network_error"));
+    xhr.ontimeout = () => reject(new Error("network_timeout"));
+    xhr.send(payload);
+  });
+}
+
+function tvJsonRequest<T>(path: string, body: unknown): Promise<T> {
+  const url = withCacheBust(path);
+  const payload = JSON.stringify(body);
+
+  // XHR fallback pour vieux moteurs WebOS/Tizen où `fetch` peut être absent
+  // ou présent mais instable sur les POST JSON répétés.
+  if (typeof fetch !== "function") {
+    return xhrJsonRequest<T>(url, payload);
+  }
+
+  return fetch(url, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "content-type": "application/json",
+      "cache-control": "no-store, no-cache, max-age=0",
+      pragma: "no-cache",
+    },
+    body: payload,
+  })
+    .then(async (res) => {
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+      if (!res.ok && json.status !== "slow_down") {
+        throw new Error(json.error || `request_failed:${res.status}`);
+      }
+      return json as T;
+    })
+    .catch(() => xhrJsonRequest<T>(url, payload));
+}
+
 export function LoginTVClient({ initialData = null, initialError = null }: LoginTVClientProps) {
   const [data, setData] = useState<DeviceStartResponse | null>(initialData);
   const [status, setStatus] = useState<PollStatus>(
@@ -39,13 +102,7 @@ export function LoginTVClient({ initialData = null, initialError = null }: Login
 
   const startOnClient = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
-      if (!res.ok) {
-        let body = "";
-        try { body = await res.text(); } catch {}
-        throw new Error(`start_failed:${res.status}:${body.slice(0, 120)}`);
-      }
-      const json: DeviceStartResponse = await res.json();
+      const json = await tvJsonRequest<DeviceStartResponse>("/api/auth/device/start", {});
       if (!json.device_code || !json.user_code) {
         throw new Error("start_invalid_response");
       }
@@ -77,13 +134,9 @@ export function LoginTVClient({ initialData = null, initialError = null }: Login
     const poll = async () => {
       if (cancelled) return;
       try {
-        const res = await fetch("/api/auth/device/poll", {
-          method: "POST",
-          cache: "no-store",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ device_code: data.device_code }),
+        const json = await tvJsonRequest<{ status?: string }>("/api/auth/device/poll", {
+          device_code: data.device_code,
         });
-        const json = await res.json();
         if (cancelled) return;
 
         if (json.status === "approved") {
