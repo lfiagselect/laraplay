@@ -1,12 +1,12 @@
-// LARAPLAY — Client TV login. Génère device_code au mount, poll status, finalise signIn.
+// LARAPLAY — Client TV login. Affiche un device_code pré-généré côté serveur, poll status, finalise signIn.
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 
-interface DeviceStartResponse {
+export interface DeviceStartResponse {
   device_code: string;
   user_code: string;
   verification_uri: string;
@@ -16,38 +16,58 @@ interface DeviceStartResponse {
 
 type PollStatus = "loading" | "pending" | "approved" | "expired" | "denied" | "error";
 
-export function LoginTVClient() {
-  const [data, setData] = useState<DeviceStartResponse | null>(null);
-  const [status, setStatus] = useState<PollStatus>("loading");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const startedRef = useRef(false);
+interface LoginTVClientProps {
+  initialData?: DeviceStartResponse | null;
+  initialError?: string | null;
+}
 
+function shortVerificationUrl(uri: string): string {
+  // Evite `new URL()` côté client: certains navigateurs TV LG/Samsung anciens ont
+  // des implémentations incomplètes malgré les polyfills Next.
+  const withoutQuery = uri.split("?")[0] ?? uri;
+  const withoutHash = withoutQuery.split("#")[0] ?? withoutQuery;
+  return withoutHash.replace(/\/$/, "");
+}
+
+export function LoginTVClient({ initialData = null, initialError = null }: LoginTVClientProps) {
+  const [data, setData] = useState<DeviceStartResponse | null>(initialData);
+  const [status, setStatus] = useState<PollStatus>(
+    initialData ? "pending" : initialError ? "error" : "loading"
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(initialError);
+  const startedRef = useRef(Boolean(initialData || initialError));
+
+  const startOnClient = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
+      if (!res.ok) {
+        let body = "";
+        try { body = await res.text(); } catch {}
+        throw new Error(`start_failed:${res.status}:${body.slice(0, 120)}`);
+      }
+      const json: DeviceStartResponse = await res.json();
+      if (!json.device_code || !json.user_code) {
+        throw new Error("start_invalid_response");
+      }
+      setData(json);
+      setStatus("pending");
+      setErrorMsg(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[LoginTV] device/start failed:", msg);
+      setStatus("error");
+      setErrorMsg(`Erreur init connexion: ${msg}`);
+    }
+  }, []);
+
+  // Fallback uniquement si la page n'a pas réussi à pré-générer le code côté serveur.
+  // Sur LG WebOS/Tizen, rester sur un écran SSR `Préparation…` est fatal si l'effet ne
+  // démarre pas; la voie nominale doit donc déjà afficher le code avant hydratation.
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
-
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
-        if (!res.ok) {
-          let body = "";
-          try { body = await res.text(); } catch {}
-          throw new Error(`start_failed:${res.status}:${body.slice(0, 120)}`);
-        }
-        const json: DeviceStartResponse = await res.json();
-        if (!json.device_code || !json.user_code) {
-          throw new Error("start_invalid_response");
-        }
-        setData(json);
-        setStatus("pending");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[LoginTV] device/start failed:", msg);
-        setStatus("error");
-        setErrorMsg(`Erreur init connexion: ${msg}`);
-      }
-    })();
-  }, []);
+    void startOnClient();
+  }, [startOnClient]);
 
   useEffect(() => {
     if (!data || status !== "pending") return;
@@ -101,22 +121,7 @@ export function LoginTVClient() {
     setData(null);
     setStatus("loading");
     setErrorMsg(null);
-    startedRef.current = false;
-    setTimeout(() => {
-      startedRef.current = true;
-      (async () => {
-        try {
-          const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
-          if (!res.ok) throw new Error("start_failed");
-          const json: DeviceStartResponse = await res.json();
-          setData(json);
-          setStatus("pending");
-        } catch {
-          setStatus("error");
-          setErrorMsg("Impossible d'initialiser la connexion. Réessayez.");
-        }
-      })();
-    }, 100);
+    void startOnClient();
   };
 
   return (
@@ -144,7 +149,7 @@ export function LoginTVClient() {
       )}
 
       {status === "pending" && data && (() => {
-        const fullUrl = `${new URL(data.verification_uri).origin}/d`;
+        const fullUrl = shortVerificationUrl(data.verification_uri);
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=1&bgcolor=18181b&color=ffffff&data=${encodeURIComponent(fullUrl)}`;
         return (
           <div className="tv-login-grid grid md:grid-cols-[auto_1fr] gap-6 md:gap-10 items-center text-left">
