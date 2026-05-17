@@ -1,0 +1,2045 @@
+diff --git a/app/categories/page.tsx b/app/categories/page.tsx
+index 540b18e85fcff68cbae91daad3dccd4ded64e2ce..b055c138b60092a225a822af38893d47b7287720 100644
+--- a/app/categories/page.tsx
++++ b/app/categories/page.tsx
+@@ -1,41 +1,39 @@
+ // LARAPLAY — Page index catégories thématiques.
+ // Titre incrusté sur vignette, police Bebas Neue style streaming premium.
+
+ import { Header } from "@/components/Header";
+ import Link from "next/link";
+-import { getCatalog, slugify, ERAS } from "@/lib/catalog";
++import { getCatalog, slugify, ERAS, categoryMatches } from "@/lib/catalog";
+ import { landscapeImage } from "@/lib/category-images";
+
+ export const revalidate = 3600;
+
+ export default async function CategoriesPage() {
+   const catalog = await getCatalog();
+-  const eraSet = new Set(ERAS);
+-
+   const cats = Array.from(catalog.byCategory.entries())
+-    .filter(([name]) => !eraSet.has(name) && name !== "Racine")
++    .filter(([name]) => !ERAS.some((era) => categoryMatches(name, era)) && name !== "Racine")
+     .map(([name, videos]) => ({
+       name,
+       count: videos.length,
+       // webp pour grille thumbnails (~50ko/img vs ~800ko PNG)
+       image: landscapeImage(name, "webp"),
+     }))
+     .sort((a, b) => b.count - a.count);
+
+   return (
+     <div className="min-h-screen bg-[var(--bg-main)]">
+       <Header />
+
+       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
+         <h1 className="text-3xl md:text-4xl font-bold text-white mb-8">
+           Catégories
+         </h1>
+
+         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+           {cats.map((c) => (
+             <Link
+               key={c.name}
+               href={`/category/${slugify(c.name)}`}
+               className="era-card group relative aspect-video rounded-lg overflow-hidden bg-[var(--bg-elevated)] shadow-lg"
+               aria-label={c.name}
+             >
+diff --git a/app/category/[slug]/page.tsx b/app/category/[slug]/page.tsx
+index a379660b33df3edc43eb4072a0eb94fbc65545b3..6c0712f6721ee75cb3311be503108bd28b38928a 100644
+--- a/app/category/[slug]/page.tsx
++++ b/app/category/[slug]/page.tsx
+@@ -1,48 +1,54 @@
+ // LARAPLAY — Page catégorie unique. Header sticky + bandeau hero sous + grille filtrée.
+
+ import { Header } from "@/components/Header";
+ import { CategoryFilters } from "@/components/CategoryFilters";
+-import { getCatalog, ERAS, THEMATIC_ROWS, unslugify } from "@/lib/catalog";
++import { getCatalog, ERAS, THEMATIC_ROWS, categoryMatches, slugify, unslugify } from "@/lib/catalog";
+ import { landscapeImage } from "@/lib/category-images";
+ import { notFound } from "next/navigation";
+
+ export const revalidate = 3600;
+
+ export default async function CategoryPage({
+   params,
+ }: {
+   params: Promise<{ slug: string }>;
+ }) {
+   const { slug } = await params;
+   const catalog = await getCatalog();
+   const candidates = [...ERAS, ...THEMATIC_ROWS, ...catalog.byCategory.keys()];
+   const categoryName = unslugify(slug, candidates);
+   if (!categoryName) notFound();
+
+-  const videos = catalog.byCategory.get(categoryName) ?? [];
+-  const heroImage = landscapeImage(categoryName, "png");
++  const categorySlug = slugify(categoryName);
++  const matchingCategoryName = [...catalog.byCategory.keys()].find(
++    (name) => categoryMatches(name, categoryName) || slugify(name) === categorySlug
++  );
++  const videos = [...catalog.byCategory]
++    .filter(([name]) => categoryMatches(name, categoryName) || slugify(name) === categorySlug)
++    .flatMap(([, list]) => list);
++  const heroImage = landscapeImage(matchingCategoryName ?? categoryName, "png");
+
+   return (
+     <div className="min-h-screen bg-black">
+       <Header />
+
+       <section className="relative w-full overflow-hidden bg-black">
+         {heroImage ? (
+           <div className="relative w-full aspect-video max-h-[60vh] mx-auto">
+             {/* eslint-disable-next-line @next/next/no-img-element */}
+             <img
+               src={heroImage}
+               alt={categoryName}
+               className="absolute inset-0 w-full h-full object-contain"
+             />
+             {/* Gradient sombre bas pour lisibilité titre */}
+             <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+             {/* Titre overlay */}
+             <div className="absolute inset-x-0 bottom-0 px-4 md:px-12 pb-6 max-w-[1600px] mx-auto">
+               <h1 className="era-title text-white drop-shadow-2xl text-3xl md:text-5xl">
+                 {categoryName}
+               </h1>
+               <p className="text-sm text-zinc-300 mt-2">
+                 {videos.length} vidéo{videos.length > 1 ? "s" : ""}
+               </p>
+             </div>
+diff --git a/app/eras/page.tsx b/app/eras/page.tsx
+index 12a5cd586682e5902e45e79c8f81198ca32c66a1..9107700e51211aaa906bffbc4a94da68a5fbcce1 100644
+--- a/app/eras/page.tsx
++++ b/app/eras/page.tsx
+@@ -1,39 +1,41 @@
+ // LARAPLAY — Page index ères chronologiques. Titre incrusté dans poster.
+
+ import { Header } from "@/components/Header";
+ import Link from "next/link";
+-import { getCatalog, slugify, ERAS } from "@/lib/catalog";
++import { getCatalog, slugify, ERAS, categoryMatches } from "@/lib/catalog";
+ import { posterImage } from "@/lib/category-images";
+
+ export const revalidate = 3600;
+
+ export default async function ErasPage() {
+   const catalog = await getCatalog();
+   const eras = ERAS.map((name) => ({
+     name,
+-    count: catalog.byCategory.get(name)?.length ?? 0,
++    count: [...catalog.byCategory]
++      .filter(([categoryName]) => categoryMatches(categoryName, name))
++      .reduce((total, [, videos]) => total + videos.length, 0),
+     // webp pour grille thumbnails (~50ko/img vs ~800ko PNG)
+     image: posterImage(name, "webp"),
+   }));
+
+   return (
+     <div className="min-h-screen bg-black">
+       <Header />
+
+       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
+         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+           Choisissez votre ère
+         </h1>
+         <p className="text-zinc-400 mb-8">
+           La discographie chronologique de Lara Fabian
+         </p>
+
+         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+           {eras.map((era) => (
+             <Link
+               key={era.name}
+               href={`/category/${slugify(era.name)}`}
+               className="era-card relative aspect-[2/3] rounded-lg overflow-hidden border-2 border-zinc-800 bg-zinc-900"
+               aria-label={era.name}
+             >
+               {era.image ? (
+diff --git a/app/globals.css b/app/globals.css
+index 4d1f436b421bca313b9002fc553977d82e8885ca..fd17cc48bc271ad5115a5c67db4f387c516dbce5 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -277,77 +277,101 @@ html.tv .backdrop-blur-md,
+ html.tv .backdrop-blur-lg {
+   backdrop-filter: none !important;
+   -webkit-backdrop-filter: none !important;
+   background-color: rgba(20, 20, 20, 0.95) !important;
+ }
+
+ /* Désactive scale hover VideoCard (pas de pointer hover sur TV) */
+ html.tv .video-card,
+ html.tv [data-tv-no-hover-scale] {
+   transition: outline 0.15s ease-out, box-shadow 0.15s ease-out !important;
+ }
+ html.tv .video-card:hover,
+ html.tv [data-tv-no-hover-scale]:hover {
+   transform: none !important;
+ }
+
+ /* Focus visible ring rouge épais — feedback D-pad universel */
+ html.tv *:focus,
+ html.tv *:focus-visible {
+   outline: 3px solid var(--accent);
+   outline-offset: 4px;
+   box-shadow:
+     0 0 0 6px rgba(229, 9, 20, 0.35),
+     0 0 24px rgba(229, 9, 20, 0.55);
+   border-radius: 6px;
+-  z-index: 50;
+-  position: relative;
+ }
+
+-html.tv :focus:not(:focus-visible) {
+-  outline: none;
+-  box-shadow: none;
+-}
++/* Sur TV, le focus vient souvent d'un script D-pad: ne pas masquer :focus
++   sous prétexte que :focus-visible ne matche pas sur certains WebKit TV. */
+
+ html.tv button,
+ html.tv a[role="button"],
+ html.tv [role="button"],
+ html.tv [tabindex="0"] {
+   min-height: var(--tv-target);
+   min-width: var(--tv-target);
+ }
+
+ html.tv .text-xs { font-size: 0.95rem !important; }
+ html.tv .text-sm { font-size: 1.05rem !important; }
+ html.tv .text-base { font-size: 1.15rem !important; }
+ html.tv .text-lg { font-size: 1.3rem !important; }
+
+ html.tv [data-row-scroller] {
+   scroll-behavior: smooth;
+   scroll-padding-inline: 10vw;
+ }
+
++/* Rails Netflix-like: carte focalisée agrandie et toujours visible au D-pad. */
++html.tv [data-tv-row-item] {
++  transform-origin: center center;
++  transition: transform 140ms ease-out, outline-color 140ms ease-out, box-shadow 140ms ease-out !important;
++}
++
++html.tv [data-tv-row-item]:focus {
++  transform: scale(1.08);
++  outline: 3px solid var(--accent) !important;
++  outline-offset: 3px !important;
++  box-shadow:
++    0 0 0 6px rgba(229, 9, 20, 0.30),
++    0 12px 34px rgba(0, 0, 0, 0.70) !important;
++}
++
++html.tv [data-row-scroller] {
++  padding-top: 1.25rem !important;
++  padding-bottom: 1.25rem !important;
++}
++
++.tv-row-arrow {
++  display: none;
++}
++
++html.tv .tv-row-arrow {
++  display: flex;
++}
++
+ html.tv [data-mobile-tabbar] { display: none !important; }
+ html.tv [data-mobile-menu] { display: none !important; }
+ html.tv [data-mobile-drag-handle] { display: none !important; }
+ html.tv [data-card-hover-only] { display: none !important; }
+
+ html.tv [data-header-shell] {
+   position: sticky;
+   top: 0;
+ }
+
+ html.tv .animate-ken-burns,
+ html.tv .animate-hero-zoom {
+   animation-duration: 30s !important;
+ }
+
+ html.tv .skeleton-shimmer {
+   animation-duration: 2.5s !important;
+ }
+
+ @media (prefers-reduced-motion: reduce) {
+   html.tv .animate-ken-burns,
+   html.tv .animate-hero-zoom,
+   html.tv .animate-hero-fade-up,
+   html.tv .skeleton-shimmer {
+     animation: none !important;
+@@ -385,50 +409,93 @@ html.tv section > div > h2 {
+ /* Hero title scale down TV */
+ html.tv .hero-title {
+   font-size: clamp(2rem, 4.5vw, 4rem) !important;
+ }
+
+ /* Era title réduit TV */
+ html.tv .era-title {
+   font-size: clamp(0.95rem, 1.4vw, 1.35rem) !important;
+ }
+
+ /* Carousel indicateurs encore plus fins TV */
+ html.tv [aria-label^="Aller à la diapositive"] {
+   height: 2px !important;
+ }
+
+ /* Focus ring TV — net + accent rouge */
+ html.tv [data-focusable]:focus,
+ html.tv a:focus,
+ html.tv button:focus,
+ html.tv [tabindex="0"]:focus {
+   outline: 2px solid var(--accent) !important;
+   outline-offset: 2px;
+   border-radius: 4px;
+ }
+
++
++/* Login TV: évite CSS Grid/filtres fragiles sur anciens WebOS/Tizen et garde le code visible. */
++html.tv .login-tv-page {
++  min-height: 100vh;
++  padding: var(--tv-safe-y) var(--tv-safe-x) !important;
++  overflow: hidden;
++}
++
++html.tv .tv-login-panel {
++  max-width: min(1100px, 92vw) !important;
++}
++
++html.tv .tv-login-grid {
++  display: flex !important;
++  align-items: center;
++  justify-content: center;
++  gap: 2rem;
++  flex-wrap: wrap;
++  text-align: left;
++}
++
++html.tv .tv-login-qr-img {
++  width: clamp(150px, 18vw, 230px) !important;
++  height: clamp(150px, 18vw, 230px) !important;
++}
++
++html.tv .tv-login-url {
++  max-width: 56vw;
++  white-space: normal !important;
++  word-break: break-word;
++  overflow: visible !important;
++  text-overflow: clip !important;
++}
++
++html.tv .tv-login-code {
++  font-size: clamp(2.75rem, 6vw, 5.5rem) !important;
++  letter-spacing: 0.08em !important;
++}
++
++html.tv .tv-login-status {
++  flex-basis: 100%;
++}
++
+ /* ============ TV — Hide pointer-only UI ============ */
+ /* Cache flèches scroll Row (D-pad navigue cards directement) */
+ html.tv [aria-label="Précédent"],
+ html.tv [aria-label="Suivant"] {
+   display: none !important;
+ }
+
+ /* Cache flèches navigation carousel hero (auto-rotate + indicateurs suffisent) */
+ html.tv section button[aria-label="Précédent"],
+ html.tv section button[aria-label="Suivant"] {
+   display: none !important;
+ }
+
+ /* Indicateurs carousel: barres TV plus fines + plus discretes */
+ html.tv [aria-label^="Aller à la diapositive"] {
+   height: 2px !important;
+ }
+
+ /* ============ TV — Scale down v2 (plus agressif) ============ */
+ html.tv {
+   font-size: 13px; /* -18.75% partout */
+ }
+
+ /* Cards width plus petites TV — override Tailwind */
+ html.tv [data-row-scroller] > article {
+@@ -440,55 +507,51 @@ html.tv section[class*="aspect-video"] {
+   /* No-op si ratio défini */
+ }
+
+ /* ============ TV — Top10 + Era cards plus compactes ============ */
+ /* Cards Top10 portrait + chiffre rang réduits TV */
+ html.tv .top10-rank {
+   font-size: 140px !important;
+ }
+ html.tv [class*="aspect-[2/3]"] {
+   width: 140px !important; /* etait 200px (Top10) / 260px (Era) */
+ }
+
+ /* Titre rangée plus discret aussi */
+ html.tv section > div.flex h2,
+ html.tv section > div.px-4 h2 {
+   font-size: 1rem !important; /* 16px (etait 18px apres mon ajustement, etait 1.5rem avant) */
+ }
+
+ /* Carousel hero: flèches visibles TV (au lieu de hover-only) */
+ html.tv section button[aria-label="Précédent"],
+ html.tv section button[aria-label="Suivant"] {
+   display: flex !important;
+   opacity: 0.6 !important;
+ }
+
+-/* Row flèches restent cachées TV (D-pad navigue cards directement) */
+-html.tv [data-row-scroller] ~ button[aria-label="Précédent"],
+-html.tv [data-row-scroller] ~ button[aria-label="Suivant"] {
+-  display: none !important;
+-}
++/* Les flèches TV custom .tv-row-arrow restent visibles; seuls les anciens boutons pointer-only restent exclus. */
+
+ /* ============ TV — DEFINITIF: cache TOUS scroll arrows + son ============ */
+ /* Plus haute spécificité possible — domine n'importe quel override Tailwind */
+ html.tv button[aria-hidden="true"],
+ html.tv button[data-no-focus],
+ html.tv [aria-label="Précédent"],
+ html.tv [aria-label="Suivant"] {
+   display: none !important;
+   visibility: hidden !important;
+   pointer-events: none !important;
+ }
+
+ /* Bouton son Hero: rester visible mais non focusable D-pad */
+ html.tv button[aria-label*="son" i] {
+   display: flex !important;
+   visibility: visible !important;
+   pointer-events: auto !important;
+ }
+
+ /* Désactive outline focus rouge sur boutons cachés (anti-fantôme) */
+ html.tv button[aria-hidden="true"]:focus,
+ html.tv [aria-label="Précédent"]:focus,
+ html.tv [aria-label="Suivant"]:focus {
+   outline: none !important;
+ }
+diff --git a/app/login/page.tsx b/app/login/page.tsx
+index 78e2d43e3cc45ce9a22f2cde5dcd83da5877f1d7..6ffbce6322ef1dc90b248adebe6291e6353005bd 100644
+--- a/app/login/page.tsx
++++ b/app/login/page.tsx
+@@ -1,46 +1,48 @@
+ // LARAPLAY — Page login minimaliste
+ // Logo LARAPLAY rouge style Netflix monumental + bouton Google. Fond noir.
+ // TV: redirect server-side vers /login-tv (Device Flow).
+
+ import { signIn } from "@/auth";
+ import { headers } from "next/headers";
+ import { redirect } from "next/navigation";
+ import { detectTVServer } from "@/lib/tv";
++import { LoginTVRedirect } from "@/components/LoginTVRedirect";
+
+ export default async function LoginPage({
+   searchParams,
+ }: {
+   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+ }) {
+   const hdrs = await headers();
+   if (detectTVServer(hdrs.get("user-agent"))) {
+     redirect("/login-tv");
+   }
+
+   return (
+     <div className="min-h-screen bg-black flex items-center justify-center px-6 py-8">
++      <LoginTVRedirect />
+       <div className="w-full max-w-sm flex flex-col items-center">
+         <h1 className="logo-wordmark text-6xl md:text-7xl mb-12 select-none">
+           LARAPLAY
+         </h1>
+
+         <div className="w-full">
+           <LoginForm searchParamsPromise={searchParams} />
+         </div>
+
+         <p className="mt-10 text-[11px] text-zinc-600 text-center leading-relaxed">
+           Plateforme privée · Accès uniquement sur invitation
+         </p>
+       </div>
+     </div>
+   );
+ }
+
+ async function LoginForm({
+   searchParamsPromise,
+ }: {
+   searchParamsPromise: Promise<{ callbackUrl?: string; error?: string }>;
+ }) {
+   const params = await searchParamsPromise;
+   const callbackUrl = params.callbackUrl ?? "/";
+   const error = params.error;
+@@ -49,28 +51,34 @@ async function LoginForm({
+     <form
+       action={async () => {
+         "use server";
+         await signIn("google", { redirectTo: callbackUrl });
+       }}
+     >
+       {error && (
+         <div className="mb-5 p-3 bg-red-950/60 border border-red-800/60 text-red-300 text-sm rounded-lg text-center">
+           {error === "AccessDenied"
+             ? "Accès refusé. Cet email n'est pas autorisé."
+             : `Erreur : ${error}`}
+         </div>
+       )}
+       <button
+         type="submit"
+         className="w-full flex items-center justify-center gap-3 bg-white text-zinc-900 font-bold py-3.5 px-4 rounded-lg hover:bg-zinc-100 active:scale-[0.98] shadow-lg transition-all"
+       >
+         <svg className="w-5 h-5" viewBox="0 0 24 24">
+           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+         </svg>
+         Continuer avec Google
+       </button>
++      <a
++        href="/login-tv"
++        className="mt-4 flex items-center justify-center text-sm text-zinc-400 hover:text-white underline underline-offset-4"
++      >
++        Connexion TV / code écran
++      </a>
+     </form>
+   );
+ }
+diff --git a/app/page.tsx b/app/page.tsx
+index 591cacd4b7cd93d3cea7f61a27192f681bd7b07d..27e4a65378c764ae7d41f69650eb2f961edcc624 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -1,86 +1,100 @@
+ // LARAPLAY – Page accueil.
+
+ import { Header } from "@/components/Header";
+ import { HeroResponsive } from "@/components/HeroResponsive";
+ import { Row } from "@/components/Row";
+ import { EraRow } from "@/components/EraRow";
+ import { Top10Row } from "@/components/Top10Row";
+ import { RecentRow } from "@/components/RecentRow";
+ import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
+ import { SplashIntro } from "@/components/SplashIntro";
+-import { getCatalog, ERAS, THEMATIC_ROWS, slugify } from "@/lib/catalog";
+-import { posterImage } from "@/lib/category-images";
++import { getCatalog, ERAS, THEMATIC_ROWS, categoryMatches, slugify } from "@/lib/catalog";
++import { landscapeImage, posterImage } from "@/lib/category-images";
+ import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
+ import { auth } from "@/auth";
+
+ export const revalidate = 3600;
+
+ function Divider() {
+   return <hr className="row-divider" aria-hidden="true" />;
+ }
+
++function videosForCategory<T>(byCategory: Map<string, T[]>, category: string): T[] {
++  const matches: T[] = [];
++  for (const [name, videos] of byCategory) {
++    if (categoryMatches(name, category)) matches.push(...videos);
++  }
++  return matches;
++}
++
+ export default async function Home() {
+   const [catalog, session] = await Promise.all([getCatalog(), auth()]);
+   const userEmail = session?.user?.email ?? null;
+
+   const eras = ERAS.map((name) => ({
+     name,
+-    count: catalog.byCategory.get(name)?.length ?? 0,
++    count: videosForCategory(catalog.byCategory, name).length,
+     image: posterImage(name, "png"),
+   })).filter((e) => e.count > 0);
+
+   const hero = HERO_VIDEOS[0];
+   const heroCategory = "L'Effet Lara - 2026";
+   const heroVideoForInfo = catalog.byCategory.get(heroCategory)?.[0]?.id;
+   const heroFinal = heroVideoForInfo
+     ? { ...hero, ctaInfoVideoId: heroVideoForInfo }
+     : hero;
+
+   const sections: React.ReactNode[] = [];
+
+   if (userEmail) {
+     sections.push(<ContinueWatchingRow key="continue" userEmail={userEmail} />);
+   }
+
+   // Ajouts récents — 4 dernières vidéos Bunny
+   if (catalog.recentAdds.length > 0) {
+     sections.push(
+       <RecentRow key="recent" title="Ajouts récents" videos={catalog.recentAdds} />
+     );
+   }
+
+   // Top 10 basé sur les vues Bunny
+   if (catalog.top10.length > 0) {
+     sections.push(
+       <Top10Row key="top10" title="Top 10 sur LARAPLAY aujourd'hui" videos={catalog.top10} />
+     );
+   }
+
+   if (eras.length > 0) {
+     sections.push(<EraRow key="eras" title="Choisissez votre ère" eras={eras} />);
+   }
+
+   for (const cat of THEMATIC_ROWS) {
+-    const vids = catalog.byCategory.get(cat) ?? [];
++    const vids = videosForCategory(catalog.byCategory, cat);
+     if (vids.length === 0) continue;
+     sections.push(
+-      <Row key={cat} title={cat} videos={vids.slice(0, 20)} href={`/category/${slugify(cat)}`} />
++      <Row
++        key={cat}
++        title={cat}
++        videos={vids.slice(0, 20)}
++        href={`/category/${slugify(cat)}`}
++        categoryImage={landscapeImage(cat)}
++      />
+     );
+   }
+
+   return (
+     <div className="min-h-screen bg-black">
+       <SplashIntro />
+       <Header />
+       <HeroResponsive hero={heroFinal} carouselSlides={HERO_CAROUSEL_SLIDES} />
+       <main className="relative pt-10 md:pt-8 pb-24">
+         {sections.map((section, i) => (
+           <div key={i}>
+             {section}
+             {i < sections.length - 1 && <Divider />}
+           </div>
+         ))}
+       </main>
+     </div>
+   );
+ }
+\ No newline at end of file
+diff --git a/components/ContinueWatchingRow.tsx b/components/ContinueWatchingRow.tsx
+index 5362720b7203583f21dc60a80b237abd5237412d..9428671b9dd056f4874011dceabc25eff88ebb84 100644
+--- a/components/ContinueWatchingRow.tsx
++++ b/components/ContinueWatchingRow.tsx
+@@ -1,36 +1,37 @@
+ // LARAPLAY — Rangée "Continuer à regarder"
+ // Lit IDs localStorage côté client, fetch metadata via API. Pas de bundle inline.
+
+ "use client";
+
+ import { useEffect, useRef, useState } from "react";
+ import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
+ import type { VideoFile } from "@/lib/drive";
+ import { getContinueWatching, removeEntry } from "@/lib/watch-progress";
+ import { useVideoModal } from "./ModalProvider";
+ import { useTV } from "@/lib/tv-client";
++import { TVRowArrows } from "./TVRowArrows";
+
+ interface Entry {
+   video: VideoFile;
+   position: number;
+   duration: number;
+ }
+
+ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
+   const scrollRef = useRef<HTMLDivElement>(null);
+   const [entries, setEntries] = useState<Entry[]>([]);
+   const [hydrated, setHydrated] = useState(false);
+   const { open } = useVideoModal();
+   const isTV = useTV();
+
+   const refresh = async () => {
+     const wls = getContinueWatching(userEmail);
+     if (wls.length === 0) {
+       setEntries([]);
+       return;
+     }
+     try {
+       const res = await fetch("/api/videos-by-ids", {
+         method: "POST",
+         headers: { "content-type": "application/json" },
+         body: JSON.stringify({ ids: wls.map((e) => e.videoId) }),
+@@ -90,50 +91,52 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
+             className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
+             aria-label="Précédent"
+           >
+             <ChevronLeft className="w-8 h-8 text-white" />
+           </button>
+         )}
+
+         <div
+           ref={scrollRef}
+           data-row-scroller
+           className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
+         >
+           {entries.map(({ video, position, duration }) => {
+             const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
+             const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+             const pct = Math.min(100, Math.max(0, (position / duration) * 100));
+             const remaining = Math.max(0, Math.floor((duration - position) / 60));
+
+             return (
+               <div
+                 key={video.id}
+                 className="video-card group block w-[260px] md:w-[300px] shrink-0 rounded-md overflow-hidden bg-zinc-900 relative"
+               >
+                 <button
+                   type="button"
++                  data-focusable
++                  data-tv-row-item
+                   onClick={() => open(video.id)}
+                   className="block w-full text-left"
+                 >
+                   <div className="aspect-video bg-zinc-800 relative overflow-hidden">
+                     {thumb ? (
+                       // eslint-disable-next-line @next/next/no-img-element
+                       <img
+                         src={thumb}
+                         alt={cleanName}
+                         className="w-full h-full object-cover"
+                         loading="lazy"
+                       />
+                     ) : (
+                       <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                         <Play className="w-12 h-12 text-zinc-500" />
+                       </div>
+                     )}
+                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                       <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
+                     </div>
+                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700/80">
+                       <div
+                         className="h-full bg-red-600"
+                         style={{ width: `${pct}%` }}
+                       />
+@@ -144,41 +147,43 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
+                       {cleanName}
+                     </h3>
+                     <p className="text-xs text-zinc-500 mt-1">
+                       {remaining > 0 ? `${remaining} min restantes` : "Bientôt fini"}
+                     </p>
+                   </div>
+                 </button>
+                 <button
+                   type="button"
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     removeEntry(userEmail, video.id);
+                     refresh();
+                   }}
+                   className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition z-10"
+                   aria-label="Retirer de la liste"
+                   title="Retirer"
+                 >
+                   <X className="w-4 h-4 text-white" />
+                 </button>
+               </div>
+             );
+           })}
+         </div>
+
++        <TVRowArrows scrollRef={scrollRef} />
++
+         {!isTV && (
+           <button
+             onClick={() => scroll("right")}
+             tabIndex={-1}
+             data-no-focus
+             aria-hidden="true"
+             className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
+             aria-label="Suivant"
+           >
+             <ChevronRight className="w-8 h-8 text-white" />
+           </button>
+         )}
+       </div>
+     </section>
+   );
+ }
+diff --git a/components/EraRow.tsx b/components/EraRow.tsx
+index 95a83bed1d666e0998dc2d123b501735572eda92..167154339dafbe3956a29110c24dc4515beaa191 100644
+--- a/components/EraRow.tsx
++++ b/components/EraRow.tsx
+@@ -1,106 +1,111 @@
+ // LARAPLAY — Rangée "Choisissez votre ère".
+ // Carte = poster pleine intégrale. Titre déjà incrusté dans image.
+
+ "use client";
+
+ import { useRef } from "react";
+ import Link from "next/link";
+ import { ChevronLeft, ChevronRight } from "lucide-react";
+ import { slugify } from "@/lib/catalog-meta";
+ import { useTV } from "@/lib/tv-client";
++import { TVRowArrows } from "./TVRowArrows";
+
+ interface EraRowProps {
+   title: string;
+   eras: { name: string; count: number; image: string | null }[];
+ }
+
+ export function EraRow({ title, eras }: EraRowProps) {
+   const scrollRef = useRef<HTMLDivElement>(null);
+   const isTV = useTV();
+
+   const scroll = (dir: "left" | "right") => {
+     const el = scrollRef.current;
+     if (!el) return;
+     const amount = el.clientWidth * 0.8;
+     el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+   };
+
+   return (
+     <section data-tv-section="eras" className="relative group/row mb-12">
+       <div className="px-4 md:px-12 mb-4">
+         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+           {title}
+         </h2>
+       </div>
+
+       <div className="relative">
+         {!isTV && (
+           <button
+             onClick={() => scroll("left")}
+             tabIndex={-1}
+             data-no-focus
+             aria-hidden="true"
+             className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition"
+             aria-label="Précédent"
+           >
+             <ChevronLeft className="w-8 h-8 text-white" />
+           </button>
+         )}
+
+         <div
+           ref={scrollRef}
+           data-row-scroller
+           className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
+         >
+           {eras.map((era) => (
+             <Link
+               key={era.name}
+               href={`/category/${slugify(era.name)}`}
++              data-focusable
++              data-tv-row-item
+               className="era-card relative shrink-0 w-[150px] sm:w-[180px] md:w-[260px] aspect-[2/3] rounded-lg overflow-hidden border-2 border-zinc-800 bg-zinc-900"
+               aria-label={era.name}
+               // onFocus scroll géré centralement par lib/spatial-nav focusEl()
+             >
+               {era.image ? (
+                 // eslint-disable-next-line @next/next/no-img-element
+                 <img
+                   src={era.image}
+                   alt={era.name}
+                   className="absolute inset-0 w-full h-full object-cover"
+                   loading="lazy"
+                 />
+               ) : (
+                 <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-900 to-black" />
+               )}
+
+               {/* Gradient sombre bas pour lisibilité titre */}
+               <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/95 via-black/60 to-transparent pointer-events-none" />
+
+               {/* Titre overlay */}
+               <h3 className="era-title absolute bottom-3 left-3 right-3 text-white drop-shadow-2xl pointer-events-none">
+                 {era.name}
+               </h3>
+
+               {/* Badge count discret coin haut droit */}
+               <span className="absolute top-2 right-2 z-10 text-[10px] text-white bg-black/70 backdrop-blur px-2 py-0.5 rounded">
+                 {era.count}
+               </span>
+             </Link>
+           ))}
+         </div>
+
++        <TVRowArrows scrollRef={scrollRef} />
++
+         {!isTV && (
+           <button
+             onClick={() => scroll("right")}
+             tabIndex={-1}
+             data-no-focus
+             aria-hidden="true"
+             className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition"
+             aria-label="Suivant"
+           >
+             <ChevronRight className="w-8 h-8 text-white" />
+           </button>
+         )}
+       </div>
+     </section>
+   );
+ }
+diff --git a/components/LoginTVClient.tsx b/components/LoginTVClient.tsx
+index f0bc3ee12559296652e15951978b1919f5ee66c8..c1ec9707cf44c41ad874acccd1055aa7d1875aba 100644
+--- a/components/LoginTVClient.tsx
++++ b/components/LoginTVClient.tsx
+@@ -7,132 +7,134 @@ import { signIn } from "next-auth/react";
+ import { Loader2 } from "lucide-react";
+
+ interface DeviceStartResponse {
+   device_code: string;
+   user_code: string;
+   verification_uri: string;
+   expires_in: number;
+   interval: number;
+ }
+
+ type PollStatus = "loading" | "pending" | "approved" | "expired" | "denied" | "error";
+
+ export function LoginTVClient() {
+   const [data, setData] = useState<DeviceStartResponse | null>(null);
+   const [status, setStatus] = useState<PollStatus>("loading");
+   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+   const startedRef = useRef(false);
+
+   // 1. Bootstrap device_code au mount
+   useEffect(() => {
+     if (startedRef.current) return;
+     startedRef.current = true;
+
+     (async () => {
+       try {
+-        const res = await fetch("/api/auth/device/start", { method: "POST" });
++        const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
+         if (!res.ok) {
+           let body = "";
+           try { body = await res.text(); } catch {}
+           throw new Error(`start_failed:${res.status}:${body.slice(0, 120)}`);
+         }
+         const json: DeviceStartResponse = await res.json();
+         if (!json.device_code || !json.user_code) {
+           throw new Error("start_invalid_response");
+         }
+         setData(json);
+         setStatus("pending");
+       } catch (err) {
+         const msg = err instanceof Error ? err.message : String(err);
+         console.error("[LoginTV] device/start failed:", msg);
+         setStatus("error");
+         setErrorMsg(`Erreur init connexion: ${msg}`);
+       }
+     })();
+   }, []);
+
+   // 2. Poll loop
+   useEffect(() => {
+     if (!data || status !== "pending") return;
+     let cancelled = false;
+     const intervalMs = Math.max(4_000, data.interval * 1000);
+
+     const poll = async () => {
+       if (cancelled) return;
+       try {
+         const res = await fetch("/api/auth/device/poll", {
+           method: "POST",
++          cache: "no-store",
+           headers: { "content-type": "application/json" },
+           body: JSON.stringify({ device_code: data.device_code }),
+         });
+         const json = await res.json();
+         if (cancelled) return;
+
+         if (json.status === "approved") {
+           setStatus("approved");
+           // Finalise signIn via Credentials provider "device"
+-          await signIn("device", {
++          const signInResult = await signIn("device", {
+             device_code: data.device_code,
+-            redirect: true,
++            redirect: false,
+             callbackUrl: "/",
+           });
++          window.location.assign(signInResult?.url ?? "/");
+           return;
+         }
+         if (json.status === "expired") {
+           setStatus("expired");
+           return;
+         }
+         if (json.status === "denied") {
+           setStatus("denied");
+           return;
+         }
+         // pending / slow_down → reschedule
+       } catch {
+         // network blip → continue polling
+       }
+       if (!cancelled) setTimeout(poll, intervalMs);
+     };
+
+     const t = setTimeout(poll, intervalMs);
+     return () => {
+       cancelled = true;
+       clearTimeout(t);
+     };
+   }, [data, status]);
+
+   // Reload pour nouveau code si expired
+   const restart = () => {
+     setData(null);
+     setStatus("loading");
+     setErrorMsg(null);
+     startedRef.current = false;
+     // Re-trigger bootstrap effect
+     setTimeout(() => {
+       startedRef.current = true;
+       (async () => {
+         try {
+-          const res = await fetch("/api/auth/device/start", { method: "POST" });
++          const res = await fetch("/api/auth/device/start", { method: "POST", cache: "no-store" });
+           if (!res.ok) throw new Error("start_failed");
+           const json: DeviceStartResponse = await res.json();
+           setData(json);
+           setStatus("pending");
+         } catch {
+           setStatus("error");
+           setErrorMsg("Impossible d'initialiser la connexion. Réessayez.");
+         }
+       })();
+     }, 100);
+   };
+
+   return (
+     <div className="tv-login-panel w-full max-w-5xl text-center">
+       <h1 className="logo-wordmark text-4xl md:text-5xl mb-4 select-none">LARAPLAY</h1>
+
+       {status === "loading" && (
+         <div className="flex flex-col items-center gap-3 text-zinc-400">
+           <Loader2 className="w-10 h-10 animate-spin text-[var(--accent)]" />
+           <p className="text-lg">Préparation…</p>
+         </div>
+       )}
+
+       {status === "error" && (
+         <div className="space-y-4">
+diff --git a/components/LoginTVRedirect.tsx b/components/LoginTVRedirect.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..76b35e78bdd84bcafb4c24df078c3db5e81d2c85
+--- /dev/null
++++ b/components/LoginTVRedirect.tsx
+@@ -0,0 +1,17 @@
++// LARAPLAY — Redirection client de secours vers le Device Flow TV.
++// Certains navigateurs LG/Samsung masquent ou modifient l'UA côté proxy: si le
++// serveur ne redirige pas /login vers /login-tv, on corrige côté client.
++
++"use client";
++
++import { useEffect } from "react";
++import { detectTVClient } from "@/lib/tv-client";
++
++export function LoginTVRedirect() {
++  useEffect(() => {
++    if (!detectTVClient()) return;
++    window.location.replace("/login-tv");
++  }, []);
++
++  return null;
++}
+diff --git a/components/RecentRow.tsx b/components/RecentRow.tsx
+index c64e256cc7f4cb3e777c223742070d51d5af01e8..d28f3678ce3a026e3359708af12ec7db19985a61 100644
+--- a/components/RecentRow.tsx
++++ b/components/RecentRow.tsx
+@@ -1,86 +1,98 @@
+ // LARAPLAY – Rangée "Ajouts récents" (4 dernières vidéos Bunny)
+ "use client";
+
++import { useRef } from "react";
+ import { Play } from "lucide-react";
+ import type { VideoFile } from "@/lib/bunny";
+ import { useVideoModal } from "./ModalProvider";
++import { TVRowArrows } from "./TVRowArrows";
+
+ interface RecentRowProps {
+   title: string;
+   videos: VideoFile[];
+ }
+
+ function formatDuration(ms?: string): string | null {
+   if (!ms) return null;
+   const total = Math.floor(Number(ms) / 1000);
+   if (!total) return null;
+   const h = Math.floor(total / 3600);
+   const m = Math.floor((total % 3600) / 60);
+   if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
+   return `${m}min`;
+ }
+
+ export function RecentRow({ title, videos }: RecentRowProps) {
++  const scrollRef = useRef<HTMLDivElement>(null);
+   const { open } = useVideoModal();
+   if (videos.length === 0) return null;
+
+   return (
+     <section data-tv-section="recent" className="relative mb-12">
+       <div className="px-4 md:px-12 mb-4 flex items-center gap-3">
+         <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">{title}</h2>
+         <span className="text-[10px] uppercase tracking-widest bg-[var(--accent)] text-white px-2 py-0.5 rounded font-bold">
+           Nouveau
+         </span>
+       </div>
+
+-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 md:px-12">
++      <div className="relative">
++        <div
++          ref={scrollRef}
++          data-row-scroller
++          className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
++        >
+         {videos.map((video) => {
+           const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
+           const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
+           const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
+
+           return (
+             <button
+               key={video.id}
+               type="button"
++              data-focusable
++              data-tv-row-item
+               onClick={() => open(video.id)}
+-              className="relative group aspect-video rounded-md overflow-hidden bg-zinc-900 shadow-lg hover:scale-105 transition-transform duration-200 text-left"
++              className="relative group shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] aspect-video rounded-md overflow-hidden bg-zinc-900 shadow-lg hover:scale-105 transition-transform duration-200 text-left"
+             >
+               {thumbSrc ? (
+                 // eslint-disable-next-line @next/next/no-img-element
+                 <img
+                   src={thumbSrc}
+                   alt={cleanName}
+                   className="absolute inset-0 w-full h-full object-cover"
+                   loading="lazy"
+                 />
+               ) : (
+                 <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                   <Play className="w-8 h-8 text-zinc-600" />
+                 </div>
+               )}
+
+               {/* Badge NOUVEAU */}
+               <div className="absolute top-2 left-2 bg-[var(--accent)] text-white text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">
+                 Nouveau
+               </div>
+
+               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+
+               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                 <Play className="w-10 h-10 text-white drop-shadow-lg" fill="currentColor" />
+               </div>
+
+               <div className="absolute bottom-2 left-2 right-2">
+                 <p className="text-xs font-semibold text-white line-clamp-2 leading-tight drop-shadow-lg">
+                   {cleanName}
+                 </p>
+                 {duration && <p className="text-[10px] text-zinc-300 mt-0.5">{duration}</p>}
+               </div>
+             </button>
+           );
+         })}
++        </div>
++        <TVRowArrows scrollRef={scrollRef} />
++      </div>
+     </section>
+   );
+ }
+\ No newline at end of file
+diff --git a/components/Row.tsx b/components/Row.tsx
+index d346085b0f2869a3138a714124023cf44a596cc6..313004737ff0ea8f122e71e57f5d1a50a21a9678 100644
+--- a/components/Row.tsx
++++ b/components/Row.tsx
+@@ -1,35 +1,36 @@
+ // LARAPLAY — Rangée horizontale scrollable type Netflix.
+
+ "use client";
+
+ import { useRef } from "react";
+ import type { VideoFile } from "@/lib/drive";
+ import { VideoCard } from "./VideoCard";
+ import { ChevronLeft, ChevronRight } from "lucide-react";
+ import Link from "next/link";
+ import { useTV } from "@/lib/tv-client";
++import { TVRowArrows } from "./TVRowArrows";
+
+ interface RowProps {
+   title: string;
+   videos: VideoFile[];
+   href?: string;
+   /** Vignette catégorie (utilisée comme thumbnail des vidéos qui en sont dépourvues) */
+   categoryImage?: string | null;
+ }
+
+ export function Row({ title, videos, href, categoryImage }: RowProps) {
+   const scrollRef = useRef<HTMLDivElement>(null);
+   const isTV = useTV();
+
+   if (videos.length === 0) return null;
+
+   const scroll = (dir: "left" | "right") => {
+     const el = scrollRef.current;
+     if (!el) return;
+     const amount = el.clientWidth * 0.8;
+     el.scrollBy({ left: dir === "left" ? -amount : amount, behavior: "smooth" });
+   };
+
+   return (
+     <section data-tv-section={`row-${title}`} className="relative group/row mb-12">
+       <div className="flex items-baseline justify-between px-4 md:px-12 mb-4">
+@@ -48,41 +49,43 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
+
+       <div className="relative">
+         {!isTV && (
+           <button
+             onClick={() => scroll("left")}
+             aria-label="Précédent"
+             tabIndex={-1}
+             data-no-focus
+             aria-hidden="true"
+             className="absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-black/80 to-transparent items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition hidden md:flex"
+           >
+             <ChevronLeft className="w-8 h-8 text-white" />
+           </button>
+         )}
+
+         <div
+           ref={scrollRef}
+           data-row-scroller
+           className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
+         >
+           {videos.map((v) => (
+             <VideoCard key={v.id} video={v} fallbackImage={categoryImage ?? null} />
+           ))}
+         </div>
+
++        <TVRowArrows scrollRef={scrollRef} />
++
+         {!isTV && (
+           <button
+             onClick={() => scroll("right")}
+             aria-label="Suivant"
+             tabIndex={-1}
+             data-no-focus
+             aria-hidden="true"
+             className="absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-black/80 to-transparent items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition hidden md:flex"
+           >
+             <ChevronRight className="w-8 h-8 text-white" />
+           </button>
+         )}
+       </div>
+     </section>
+   );
+ }
+diff --git a/components/TVRowArrows.tsx b/components/TVRowArrows.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..63afd086cf1cc7d62cc0bfb83058c6ef16a12ad2
+--- /dev/null
++++ b/components/TVRowArrows.tsx
+@@ -0,0 +1,98 @@
++// LARAPLAY — Flèches de navigation TV pour rails horizontaux.
++// Elles sont affichées sur TV dès qu'un rail peut continuer à gauche/droite,
++// comme l'affordance Netflix TV. La navigation reste pilotée par le D-pad.
++
++"use client";
++
++import { useEffect, useState, type RefObject } from "react";
++import { ChevronLeft, ChevronRight } from "lucide-react";
++
++interface TVRowArrowsProps {
++  scrollRef: RefObject<HTMLElement | null>;
++}
++
++export function TVRowArrows({ scrollRef }: TVRowArrowsProps) {
++  const [canScrollLeft, setCanScrollLeft] = useState(false);
++  const [canScrollRight, setCanScrollRight] = useState(false);
++
++  useEffect(() => {
++    const scroller = scrollRef.current;
++    if (!scroller) return;
++
++    const update = () => {
++      const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
++      const currentLeft = scroller.scrollLeft;
++      setCanScrollLeft(currentLeft > 4);
++      setCanScrollRight(currentLeft < maxLeft - 4);
++    };
++
++    update();
++    const timers = [40, 250, 800].map((delay) => window.setTimeout(update, delay));
++    scroller.addEventListener("scroll", update, { passive: true });
++    window.addEventListener("resize", update);
++
++    return () => {
++      timers.forEach((timer) => window.clearTimeout(timer));
++      scroller.removeEventListener("scroll", update);
++      window.removeEventListener("resize", update);
++    };
++  }, [scrollRef]);
++
++  const scrollByPage = (dir: "left" | "right") => {
++    const scroller = scrollRef.current;
++    if (!scroller) return;
++    const delta = scroller.clientWidth * 0.82 * (dir === "left" ? -1 : 1);
++    try {
++      if (typeof scroller.scrollBy === "function") {
++        scroller.scrollBy({ left: delta, behavior: "smooth" });
++      } else {
++        scroller.scrollLeft += delta;
++      }
++    } catch {
++      scroller.scrollLeft += delta;
++    }
++  };
++
++  return (
++    <>
++      <button
++        type="button"
++        data-tv-row-arrow="left"
++        tabIndex={-1}
++        disabled={!canScrollLeft}
++        aria-label="Parcourir la rangée vers la gauche"
++        onClick={(e) => {
++          e.stopPropagation();
++          scrollByPage("left");
++        }}
++        className={[
++          "tv-row-arrow absolute left-0 top-0 bottom-0 z-30 w-16",
++          "items-center justify-start pl-3 bg-gradient-to-r from-black/85 via-black/35 to-transparent",
++          "transition-opacity duration-150 disabled:pointer-events-none",
++          canScrollLeft ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
++        ].join(" ")}
++      >
++        <ChevronLeft className="w-10 h-10 text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]" />
++      </button>
++      <button
++        type="button"
++        data-tv-row-arrow="right"
++        tabIndex={-1}
++        disabled={!canScrollRight}
++        aria-label="Parcourir la rangée vers la droite"
++        onClick={(e) => {
++          e.stopPropagation();
++          scrollByPage("right");
++        }}
++        className={[
++          "tv-row-arrow absolute right-0 top-0 bottom-0 z-30 w-16",
++          "items-center justify-end pr-3 bg-gradient-to-l from-black/85 via-black/35 to-transparent",
++          "transition-opacity duration-150 disabled:pointer-events-none",
++          canScrollRight ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
++        ].join(" ")}
++      >
++        <ChevronRight className="w-10 h-10 text-white drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]" />
++      </button>
++    </>
++  );
++}
+diff --git a/components/Top10Row.tsx b/components/Top10Row.tsx
+index 735bc73bcfa5193362d68c0fff8e049a6a5b113f..4b490833d8dbab620457deb536dcdb5b464275b9 100644
+--- a/components/Top10Row.tsx
++++ b/components/Top10Row.tsx
+@@ -1,35 +1,36 @@
+ // LARAPLAY — Rangée Top 10 avec chiffres géants derrière cards.
+ // Glow rouge : intense sur desktop, doux sur mobile (lisibilité).
+
+ "use client";
+
+ import { useRef } from "react";
+ import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+ import type { VideoFile } from "@/lib/drive";
+ import { useVideoModal } from "./ModalProvider";
+ import { useTV } from "@/lib/tv-client";
++import { TVRowArrows } from "./TVRowArrows";
+
+ interface Top10RowProps {
+   title: string;
+   videos: VideoFile[];
+ }
+
+ function formatDuration(ms?: string): string | null {
+   if (!ms) return null;
+   const total = Math.floor(Number(ms) / 1000);
+   if (!total) return null;
+   const h = Math.floor(total / 3600);
+   const m = Math.floor((total % 3600) / 60);
+   if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
+   return `${m}min`;
+ }
+
+ export function Top10Row({ title, videos }: Top10RowProps) {
+   const scrollRef = useRef<HTMLDivElement>(null);
+   const top10 = videos.slice(0, 10);
+   const { open } = useVideoModal();
+   const isTV = useTV();
+
+   if (top10.length === 0) return null;
+
+   const scroll = (dir: "left" | "right") => {
+@@ -54,93 +55,97 @@ export function Top10Row({ title, videos }: Top10RowProps) {
+             aria-hidden="true"
+             className="absolute left-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-r from-black/80 to-transparent flex items-center justify-start pl-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+             aria-label="Précédent"
+           >
+             <ChevronLeft className="w-8 h-8 text-white" />
+           </button>
+         )}
+
+         <div
+           ref={scrollRef}
+           data-row-scroller
+           className="no-scrollbar flex gap-2 overflow-x-auto scroll-smooth px-4 md:px-12 py-6"
+         >
+           {top10.map((video, idx) => (
+             <Top10Card
+               key={video.id}
+               video={video}
+               rank={idx + 1}
+               duration={formatDuration(video.videoMediaMetadata?.durationMillis)}
+               cleanName={video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "")}
+               onOpen={() => open(video.id)}
+             />
+           ))}
+         </div>
+
++        <TVRowArrows scrollRef={scrollRef} />
++
+         {!isTV && (
+           <button
+             onClick={() => scroll("right")}
+             tabIndex={-1}
+             data-no-focus
+             aria-hidden="true"
+             className="absolute right-0 top-0 bottom-0 z-30 w-12 bg-gradient-to-l from-black/80 to-transparent flex items-center justify-end pr-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+             aria-label="Suivant"
+           >
+             <ChevronRight className="w-8 h-8 text-white" />
+           </button>
+         )}
+       </div>
+     </section>
+   );
+ }
+
+ interface Top10CardProps {
+   video: VideoFile;
+   rank: number;
+   duration: string | null;
+   cleanName: string;
+   onOpen: () => void;
+ }
+
+ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
+   const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
+
+   // Glow desktop : 3 couches intenses
+   // Glow mobile : 1 couche très douce pour garder la lisibilité du chiffre
+   const glowDesktop = [
+     "0 0 20px rgba(229,9,20,0.6)",
+     "0 0 45px rgba(229,9,20,0.35)",
+     "0 0 80px rgba(229,9,20,0.15)",
+   ].join(", ");
+   const glowMobile = "0 0 12px rgba(229,9,20,0.25)";
+
+   // On choisit via CSS custom property injectée inline,
+   // mais textShadow JS ne gère pas les media queries —
+   // on utilise deux <span> : un visible mobile, un visible desktop.
+   return (
+     <button
+       type="button"
++      data-focusable
++      data-tv-row-item
+       onClick={onOpen}
+       style={{ touchAction: "manipulation" }}
+       // onFocus scroll géré centralement par lib/spatial-nav focusEl()
+       className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
+     >
+       {/* Mobile : glow doux */}
+       <span
+         aria-hidden="true"
+         className="md:hidden top10-rank text-[110px] sm:text-[150px] font-black leading-none select-none flex-shrink-0"
+         style={{
+           fontFamily: "var(--font-bebas), Impact, sans-serif",
+           color: "transparent",
+           WebkitTextStroke: "2px #e50914",
+           textShadow: glowMobile,
+           lineHeight: "0.85",
+           transform: "translateY(8px)",
+         }}
+       >
+         {rank}
+       </span>
+
+       {/* Desktop : glow intense */}
+       <span
+         aria-hidden="true"
+         className="hidden md:inline top10-rank text-[220px] font-black leading-none select-none flex-shrink-0"
+diff --git a/components/VideoCard.tsx b/components/VideoCard.tsx
+index a2d212ed5d9b0aa1553efd274fbd0a7ee21302b9..a1530f27f32232b5360a024b03064f9338821e83 100644
+--- a/components/VideoCard.tsx
++++ b/components/VideoCard.tsx
+@@ -46,50 +46,51 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
+
+   const [isHover, setIsHover] = useState(false);
+   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+   const onEnter = () => {
+     // Preload metadata modal (cheap JSON fetch /api/video/[id])
+     // Stream warmup retiré: vidéos sur Bunny CDN, pas besoin Range request Drive
+     preload(video.id);
+     if (hoverTimer.current) clearTimeout(hoverTimer.current);
+     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
+   };
+   const onLeave = () => {
+     if (hoverTimer.current) { clearTimeout(hoverTimer.current); hoverTimer.current = null; }
+     setIsHover(false);
+   };
+
+   return (
+     <article
+       onMouseEnter={onEnter}
+       onMouseLeave={onLeave}
+       className="group relative shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] overflow-visible"
+     >
+       <button
+         type="button"
+         data-focusable
++        data-tv-row-item
+         onClick={() => open(video.id)}
+         // touch-action: manipulation élimine le délai 300ms sur mobile
+         style={{ touchAction: "manipulation" }}
+         // onFocus scroll géré centralement par lib/spatial-nav focusEl()
+         className={[
+           "relative block aspect-video w-full overflow-hidden rounded-md bg-[var(--bg-elevated)] text-left",
+           "transition-[transform,box-shadow] duration-200 ease-out will-change-transform",
+           isHover ? "md:scale-[1.12] md:z-30 md:shadow-[0_18px_45px_rgba(0,0,0,.75)]" : "",
+         ].join(" ")}
+       >
+         {thumb ? (
+           // eslint-disable-next-line @next/next/no-img-element
+           <img src={thumb} alt={cleanName} className="w-full h-full object-cover" loading="lazy" />
+         ) : (
+           <div className="w-full h-full bg-gradient-to-br from-zinc-700 via-zinc-800 to-zinc-900 flex items-center justify-center">
+             <Play className="w-12 h-12 text-zinc-500" />
+           </div>
+         )}
+
+         <div
+           className={[
+             "pointer-events-none absolute inset-0 transition-opacity duration-200",
+             "bg-gradient-to-t from-black/95 via-black/40 to-transparent",
+             isHover ? "md:opacity-100" : "md:opacity-0",
+             "opacity-0",
+diff --git a/lib/catalog-meta.ts b/lib/catalog-meta.ts
+index 2d8c055aa3a190878f85e746d1071555db660c05..0375ff417685d74df73224f9fa6340c5d914377b 100644
+--- a/lib/catalog-meta.ts
++++ b/lib/catalog-meta.ts
+@@ -22,28 +22,40 @@ export const ERAS: string[] = [
+   "1991 - 1993 Lara Fabian (Français)",
+   "1994 - 1995 Carpe Diem",
+   "1996 - 1999 Pure",
+   "1999 -2001 Lara Fabian (Anglais)",
+   "2001 - 2003 Nue & ETI",
+   "2004 A Wonderful Life",
+   "2005 - 2008 9",
+   "2009 - 2010 TLFM & EWIM",
+   "2010 - 2012 Mademoiselle Zhivago",
+   "2013 - 2014 Le Secret",
+   "2015 - 2016 Ma Vie dans La Tienne",
+   "2017 - 2018 Camouflage",
+   "2019 - 2021 Papillon",
+   "2024 - Aujourd'hui",
+ ];
+
+ export function slugify(name: string): string {
+   return name
+     .normalize("NFD")
+     .replace(/[̀-ͯ]/g, "")
+     .toLowerCase()
+     .replace(/[^a-z0-9]+/g, "-")
+     .replace(/^-+|-+$/g, "");
+ }
+
++export function categoryKey(name: string): string {
++  return name
++    .normalize("NFD")
++    .replace(/[̀-ͯ]/g, "")
++    .toLowerCase()
++    .replace(/[^a-z0-9]+/g, "");
++}
++
++export function categoryMatches(a: string, b: string): boolean {
++  return a === b || slugify(a) === slugify(b) || categoryKey(a) === categoryKey(b);
++}
++
+ export function unslugify(slug: string, candidates: string[]): string | null {
+-  return candidates.find((c) => slugify(c) === slug) ?? null;
++  return candidates.find((c) => slugify(c) === slug || categoryKey(c) === categoryKey(slug)) ?? null;
+ }
+diff --git a/lib/catalog.ts b/lib/catalog.ts
+index 660f8fec706466240b741b38f1affddf36ce54fd..fe862177b3c793e16c6f7a8f256e55f403aaf7c6 100644
+--- a/lib/catalog.ts
++++ b/lib/catalog.ts
+@@ -1,30 +1,30 @@
+ // LARAPLAY – Catalogue (source : Bunny Stream API)
+ import "server-only";
+ import { listAllVideos, type VideoFile } from "./bunny";
+
+-export { THEMATIC_ROWS, ERAS, slugify, unslugify } from "./catalog-meta";
++export { THEMATIC_ROWS, ERAS, slugify, unslugify, categoryKey, categoryMatches } from "./catalog-meta";
+ export type { VideoFile };
+
+ export interface Catalog {
+   all: VideoFile[];
+   byCategory: Map<string, VideoFile[]>;
+   byId: Map<string, VideoFile>;
+   recents: VideoFile[];
+   top10: VideoFile[];
+   recentAdds: VideoFile[];
+   hero: VideoFile | null;
+ }
+
+ // Cache mémoire process — fonctionne sur Netlify
+ let cacheData: {
+   all: VideoFile[];
+   recents: VideoFile[];
+   top10: VideoFile[];
+   recentAdds: VideoFile[];
+   hero: VideoFile | null;
+ } | null = null;
+ let cacheExpiry = 0;
+ const CACHE_TTL = 3600 * 1000; // 1h
+
+ export function invalidateCatalogCache() {
+   cacheData = null;
+diff --git a/lib/category-images.ts b/lib/category-images.ts
+index f8c673f97eaad8e33efab88b8c4ef8ef8ce530c4..ae55ae6396f0c22b8daac2820f714f0c4bf65685 100644
+--- a/lib/category-images.ts
++++ b/lib/category-images.ts
+@@ -1,68 +1,81 @@
+ // LARAPLAY — Mapping catégorie → vignette
+ // Vignettes situées dans public/categories/categories-v2/ (paysage 16:9)
+ // et public/categories/categories-v2-poster/ (portrait 3:4).
+ // Format webp prioritaire (léger), png fallback.
+
++import { categoryKey } from "./catalog-meta";
++
+ const LANDSCAPE_DIR = "/categories/categories-v2";
+ const POSTER_DIR = "/categories/categories-v2-poster";
+
+ /**
+  * Map: nom catégorie exact (issu Drive) → nom fichier sans extension.
+  * Conservation des noms encodés pour matcher fichiers réels.
+  */
+ const FILE_BY_CATEGORY: Record<string, string> = {
+   // Ères
+   "1985 - 1990 Les débuts": "1985_-_1990_Les_dbuts",
+   "1991 - 1993 Lara Fabian (Français)": "1991_-_1993_Lara_Fabian_Franais",
+   "1994 - 1995 Carpe Diem": "1994_-_1995_Carpe_Diem",
+   "1996 - 1999 Pure": "1996_-_1999_Pure",
+   "1999 -2001 Lara Fabian (Anglais)": "1999_-2001_Lara_Fabian_Anglais",
+   "2001 - 2003 Nue & ETI": "2001_-_2003_Nue__ETI",
+   "2004 A Wonderful Life": "2004_A_Wonderful_Life",
+   "2005 - 2008 9": "2005_-_2008_9",
+   "2009 - 2010 TLFM & EWIM": "2009_-_2010_TLFM__EWIM",
+   "2010 - 2012 Mademoiselle Zhivago": "2010_-_2012_Mademoiselle_Zhivago",
+   "2013 - 2014 Le Secret": "2013_-_2014_Le_Secret",
+   "2015 - 2016 Ma Vie dans La Tienne": "2015_-_2016_Ma_Vie_dans_La_Tienne",
+   "2017 - 2018 Camouflage": "2017_-_2018_Camouflage",
+   "2019 - 2021 Papillon": "2019_-_2021_Papillon",
+   "2024 - Aujourd'hui": "2024_-_Aujourdhui",
+
+   // Thématiques
+   "L'Effet Lara - 2026": "LEffet_Lara_-_2026",
+   "Lara Fabian - Concerts": "Lara_Fabian_-_Concerts",
+   "Lara Fabian Documentaires": "Lara_Fabian_Documentaires",
+   "Lara Fabian au Cinéma": "Lara_Fabian_au_Cinma",
+   "The Voice 2026": "The_Voice_2026",
+   "La Voix - Saison 6": "La_Voix_-_Saison_6",
+   "La Voix - Saison 7": "La_Voix_-_Saison_7",
+   "Star Academie 2025": "Star_Acadmie_2025",
+   "Star Academy France": "Star_Acadmie_2025", // fallback temporaire — pas de vignette dédiée
+   "The Voice Kids 2024": "The_Voice_Kids_2024",
+   "Lara Fabian aux Enfoirés": "Lara_Fabian_aux_Enfoirs",
+   "Lara Fabian - Divers": "Lara_Fabian_-_Divers",
+   "Lara Fabian - Livres": "Lara_Fabian_-_Livres",
+ };
+
++function fileForCategory(category: string): string | null {
++  const exact = FILE_BY_CATEGORY[category];
++  if (exact) return exact;
++
++  const normalized = categoryKey(category);
++  const entry = Object.entries(FILE_BY_CATEGORY).find(
++    ([name]) => categoryKey(name) === normalized
++  );
++  return entry?.[1] ?? null;
++}
++
+ /**
+  * Format image:
+  * - "webp" (default): léger ~50ko, parfait pour cartes/listes
+  * - "png": haute résolution ~800ko, pour bandeau hero (1 seule image, qualité max)
+  */
+ export function landscapeImage(
+   category: string,
+   format: "webp" | "png" = "webp"
+ ): string | null {
+-  const file = FILE_BY_CATEGORY[category];
++  const file = fileForCategory(category);
+   if (!file) return null;
+   return `${LANDSCAPE_DIR}/${file}.${format}`;
+ }
+
+ export function posterImage(
+   category: string,
+   format: "webp" | "png" = "webp"
+ ): string | null {
+-  const file = FILE_BY_CATEGORY[category];
++  const file = fileForCategory(category);
+   if (!file) return null;
+   return `${POSTER_DIR}/${file}.${format}`;
+ }
+diff --git a/lib/spatial-nav.ts b/lib/spatial-nav.ts
+index a978d966b5a5db6b62920c6b568d95efb8b51125..5db259abbb52f64cc396788b0b7f7e8eabf0781e 100644
+--- a/lib/spatial-nav.ts
++++ b/lib/spatial-nav.ts
+@@ -11,172 +11,197 @@ import { matchTVKeyEvent } from "./tv";
+
+ // Sections = conteneurs marqués `data-tv-section`. Ordre DOM = ordre vertical.
+ // Chaque section contient des focusables (button, a[href]) marqués naturellement.
+ // Le composant child onFocus handler peut faire scroll local (déjà en place sur cards).
+
+ const SECTION_ATTR = "data-tv-section";
+ const FOCUSABLE_SELECTOR = [
+   "a[href]:not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
+   "button:not([disabled]):not([data-no-focus]):not([aria-hidden='true']):not([tabindex='-1'])",
+   "[data-focusable]:not([data-no-focus])",
+   "input:not([disabled]):not([type='hidden'])",
+ ].join(",");
+
+ // Mémoire focus par section (clé = section element)
+ const SECTION_MEMORY = new WeakMap<HTMLElement, HTMLElement>();
+
+ function isTV(): boolean {
+   return document.documentElement.classList.contains("tv");
+ }
+
+ function visibleFocusables(root: HTMLElement | Document = document): HTMLElement[] {
+   const nodes = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+   return nodes.filter((el) => {
+     if (el.hidden) return false;
+     const cs = window.getComputedStyle(el);
+-    if (cs.display === "none" || cs.visibility === "hidden") return false;
++    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
+     const r = el.getBoundingClientRect();
+     if (r.width === 0 && r.height === 0) return false;
+     return true;
+   });
+ }
+
+ function sectionOf(el: HTMLElement | null): HTMLElement | null {
+   let node: HTMLElement | null = el;
+   while (node && node !== document.body) {
+     if (node.hasAttribute(SECTION_ATTR)) return node;
+     node = node.parentElement;
+   }
+   return null;
+ }
+
+ function allSections(): HTMLElement[] {
+   return Array.from(document.querySelectorAll<HTMLElement>(`[${SECTION_ATTR}]`)).filter(
+     (s) => {
+       const cs = window.getComputedStyle(s);
+       return cs.display !== "none" && cs.visibility !== "hidden";
+     }
+   );
+ }
+
+ function focusableInSection(section: HTMLElement): HTMLElement[] {
+   return visibleFocusables(section);
+ }
+
++function activeFocusable(): HTMLElement | null {
++  const active = document.activeElement as HTMLElement | null;
++  if (!active || active === document.body) return null;
++  if (active.matches(FOCUSABLE_SELECTOR)) return active;
++  return active.closest<HTMLElement>(FOCUSABLE_SELECTOR);
++}
++
++function centerInRow(el: HTMLElement, rowScroller: HTMLElement) {
++  const tr = el.getBoundingClientRect();
++  const pr = rowScroller.getBoundingClientRect();
++  const delta = (tr.left + tr.width / 2) - (pr.left + pr.width / 2);
++  const targetLeft = rowScroller.scrollLeft + delta;
++
++  try {
++    if (typeof rowScroller.scrollTo === "function") {
++      rowScroller.scrollTo({ left: targetLeft, behavior: "smooth" });
++    } else {
++      rowScroller.scrollLeft = targetLeft;
++    }
++  } catch {
++    rowScroller.scrollLeft = targetLeft;
++  }
++}
++
+ /** Focus un élément + mémorise dans sa section + scroll horizontal local si dans row scroller */
+ function focusEl(el: HTMLElement) {
+-  el.focus({ preventScroll: true });
++  try {
++    el.focus({ preventScroll: true });
++  } catch {
++    el.focus();
++  }
+   const sec = sectionOf(el);
+   if (sec) SECTION_MEMORY.set(sec, el);
+   // Scroll horizontal local (row scroller) sans bouger page
+   const rowScroller = el.closest<HTMLElement>("[data-row-scroller]");
+   if (rowScroller) {
+     try {
+-      const tr = el.getBoundingClientRect();
+-      const pr = rowScroller.getBoundingClientRect();
+-      const targetCenter = tr.left + tr.width / 2;
+-      const parentCenter = pr.left + pr.width / 2;
+-      rowScroller.scrollBy({ left: targetCenter - parentCenter, behavior: "smooth" });
++      centerInRow(el, rowScroller);
+     } catch {}
+   }
+   // Scroll vertical section dans viewport si hors verticalement
+   const sec2 = sectionOf(el);
+   if (sec2) {
+     const sr = sec2.getBoundingClientRect();
+     const vh = window.innerHeight;
+     if (sr.top < 0 || sr.bottom > vh) {
+       try {
+         sec2.scrollIntoView({ block: "center", behavior: "smooth" });
+-      } catch {}
++      } catch {
++        sec2.scrollIntoView();
++      }
+     }
+   }
+ }
+
+ function moveHorizontal(dir: "LEFT" | "RIGHT"): boolean {
+-  const active = document.activeElement as HTMLElement | null;
+-  if (!active || active === document.body) return focusInitial();
++  const active = activeFocusable();
++  if (!active) return focusInitial();
+   const sec = sectionOf(active);
+   if (!sec) return false;
+-  const items = focusableInSection(sec);
++
++  // Netflix-like rows: LEFT/RIGHT only walks the cards inside the active horizontal rail.
++  const rowScroller = active.closest<HTMLElement>("[data-row-scroller]");
++  const items = rowScroller ? visibleFocusables(rowScroller) : focusableInSection(sec);
+   if (items.length === 0) return false;
+-  const idx = items.indexOf(active);
++
++  let idx = items.indexOf(active);
+   if (idx < 0) {
+-    // Active hors section actuelle — focus premier
+-    focusEl(items[0]);
+-    return true;
++    idx = dir === "RIGHT" ? -1 : items.length;
+   }
+-  const next = dir === "RIGHT" ? items[idx + 1] : items[idx - 1];
+-  if (next) {
+-    focusEl(next);
+-    return true;
+-  }
+-  // Bord atteint: stay (pas wrap, pas saute section)
++
++  const nextIndex = dir === "RIGHT" ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
++  focusEl(items[nextIndex]);
+   return true;
+ }
+
+ function moveVertical(dir: "UP" | "DOWN"): boolean {
+-  const active = document.activeElement as HTMLElement | null;
+-  if (!active || active === document.body) return focusInitial();
++  const active = activeFocusable();
++  if (!active) return focusInitial();
+   const sec = sectionOf(active);
+   if (!sec) return focusInitial();
+
+   const sections = allSections();
+   const idx = sections.indexOf(sec);
+   if (idx < 0) return focusInitial();
+
+   const nextSec = dir === "DOWN" ? sections[idx + 1] : sections[idx - 1];
+   if (!nextSec) return true; // Bord atteint
+
+   // Restaure mémoire ou prend premier focusable
+   const memory = SECTION_MEMORY.get(nextSec);
+   if (memory && nextSec.contains(memory) && document.contains(memory)) {
+     focusEl(memory);
+     return true;
+   }
+   const items = focusableInSection(nextSec);
+   if (items.length > 0) {
+     focusEl(items[0]);
+     return true;
+   }
+   return true;
+ }
+
+ function focusInitial(): boolean {
+   const sections = allSections();
+   for (const sec of sections) {
+     const items = focusableInSection(sec);
+     if (items.length > 0) {
+       focusEl(items[0]);
+       return true;
+     }
+   }
+   return false;
+ }
+
+ function activateActive(): boolean {
+-  const active = document.activeElement as HTMLElement | null;
+-  if (!active || active === document.body) return false;
++  const active = activeFocusable();
++  if (!active) return false;
+   active.click();
+   return true;
+ }
+
+ function goBack(): boolean {
+   // Modal/trap close si présent
+   const active = document.activeElement as HTMLElement | null;
+   const trap = active?.closest<HTMLElement>("[data-tv-trap='modal']");
+   if (trap) {
+     const closeBtn = trap.querySelector<HTMLElement>(
+       '[data-tv-close], button[aria-label*="ermer" i], button[aria-label*="lose" i]'
+     );
+     if (closeBtn) {
+       closeBtn.click();
+       return true;
+     }
+   }
+   if (window.history.length > 1) {
+     window.history.back();
+     return true;
+   }
+   return false;
+ }
+
+ function onKeyDown(e: KeyboardEvent) {
+@@ -194,45 +219,45 @@ function onKeyDown(e: KeyboardEvent) {
+     }
+     if (matchTVKeyEvent(e, "DOWN")) {
+       if (moveVertical("DOWN")) { e.preventDefault(); return; }
+     }
+     if (matchTVKeyEvent(e, "LEFT")) {
+       if (moveHorizontal("LEFT")) { e.preventDefault(); return; }
+     }
+     if (matchTVKeyEvent(e, "RIGHT")) {
+       if (moveHorizontal("RIGHT")) { e.preventDefault(); return; }
+     }
+   }
+   if (matchTVKeyEvent(e, "ENTER")) {
+     if (activateActive()) { e.preventDefault(); return; }
+   }
+   if (matchTVKeyEvent(e, "BACK")) {
+     if (goBack()) { e.preventDefault(); return; }
+   }
+ }
+
+ let installed = false;
+
+ export function installSpatialNav() {
+   if (installed) return;
+   if (typeof window === "undefined") return;
+   installed = true;
+-  window.addEventListener("keydown", onKeyDown);
++  window.addEventListener("keydown", onKeyDown, true);
+ }
+
+ export function uninstallSpatialNav() {
+   if (!installed) return;
+   installed = false;
+-  window.removeEventListener("keydown", onKeyDown);
++  window.removeEventListener("keydown", onKeyDown, true);
+ }
+
+ export function useSpatialNav() {
+   useEffect(() => {
+     installSpatialNav();
+     // Focus initial après DOM stable (purge + render complet)
+     const t = window.setTimeout(() => {
+       if (!isTV()) return;
+       if (document.activeElement === document.body) focusInitial();
+     }, 600);
+     return () => window.clearTimeout(t);
+   }, []);
+ }
+diff --git a/lib/tv.ts b/lib/tv.ts
+index 08b9904a062fbda485b833a96be5b8b8da76b6dd..c09e444d35fc947cff294c1accde9f0eff62755c 100644
+--- a/lib/tv.ts
++++ b/lib/tv.ts
+@@ -1,57 +1,58 @@
+ ﻿// LARAPLAY — Détection TV server-safe (PAS "use client").
+ // Server: detectTVServer(ua) → headers UA dans RootLayout/pages.
+ // Client utilities (useTV hook): voir lib/tv-client.ts
+
+ const TV_UA_REGEX =
+-  /Tizen|Web0S|webOS|AFT[A-Z]|Silk\/|CrKey|Chromecast|AppleTV|GoogleTV|SMART-TV|SmartTV|HbbTV|NetCast|VIERA|BRAVIA|DTV|POV_TV|PhilipsTV|Roku|Xbox|PlayStation|NintendoBrowser/i;
++  /Tizen|SamsungBrowser.*TV|Samsung.*TV|Web0S|WebOS|webOS|LG Browser|LG NetCast|AFT[A-Z]|Silk\/|CrKey|Chromecast|AppleTV|GoogleTV|SMART-TV|SmartTV|HbbTV|NetCast|VIERA|BRAVIA|DTV|POV_TV|PhilipsTV|Roku|Xbox|PlayStation|NintendoBrowser/i;
+
+ export function detectTVServer(userAgent: string | null | undefined): boolean {
+   if (!userAgent) return false;
+   return TV_UA_REGEX.test(userAgent);
+ }
+
+ export const TV_KEYS = {
+-  UP: ["ArrowUp"],
+-  DOWN: ["ArrowDown"],
+-  LEFT: ["ArrowLeft"],
+-  RIGHT: ["ArrowRight"],
+-  ENTER: ["Enter", " "],
++  UP: ["ArrowUp", "Up"],
++  DOWN: ["ArrowDown", "Down"],
++  LEFT: ["ArrowLeft", "Left"],
++  RIGHT: ["ArrowRight", "Right"],
++  ENTER: ["Enter", " ", "OK", "Accept", "Select"],
+   BACK: ["Backspace", "Escape", "GoBack", "BrowserBack", "XF86Back"],
+   PLAY: ["MediaPlayPause", "MediaPlay", "Play"],
+   PAUSE: ["MediaPause", "Pause"],
+   STOP: ["MediaStop", "Stop"],
+   REWIND: ["MediaRewind"],
+   FORWARD: ["MediaFastForward"],
+ } as const;
+
+ // Fallback keyCodes pour TVs anciennes (Tizen/WebOS) qui n'envoient pas KeyboardEvent.key
+ // Tizen: https://developer.samsung.com/smarttv/develop/guides/user-interaction/remote-control.html
+ // WebOS: https://webostv.developer.lge.com/develop/references/magic-remote
+ export const TV_KEYCODES: Record<TVKeyAction, number[]> = {
+   UP: [38],
+   DOWN: [40],
+   LEFT: [37],
+   RIGHT: [39],
+   ENTER: [13, 32],
+   BACK: [8, 27, 10009, 461],  // 10009=Tizen, 461=WebOS
+   PLAY: [415],
+   PAUSE: [19],
+   STOP: [413],
+   REWIND: [412],
+   FORWARD: [417],
+ };
+
+ export type TVKeyAction = keyof typeof TV_KEYS;
+
+ export function matchTVKey(key: string, action: TVKeyAction): boolean {
+   return (TV_KEYS[action] as readonly string[]).includes(key);
+ }
+
+ /** Match keyboard event (e.key OU e.keyCode fallback Tizen/WebOS). */
+ export function matchTVKeyEvent(e: KeyboardEvent, action: TVKeyAction): boolean {
+   if (matchTVKey(e.key, action)) return true;
++  if (matchTVKey(e.code, action)) return true;
+   if (TV_KEYCODES[action].includes(e.keyCode)) return true;
+   return false;
+ }
+
+ export { TV_UA_REGEX };
