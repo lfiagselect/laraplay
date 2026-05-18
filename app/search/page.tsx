@@ -35,7 +35,7 @@ export default async function SearchPage({
     <div className="min-h-screen bg-black">
       <Header />
 
-      <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 md:px-8 pt-20 md:pt-24 pb-8">
         <form action="/search" method="get" data-tv-section="search-form" className="mb-8 max-w-2xl">
           <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden focus-within:border-red-600 transition">
             <SearchIcon className="w-5 h-5 ml-4 text-zinc-400" />

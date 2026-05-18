@@ -32,7 +32,7 @@ export default async function CategoryPage({
     <div className="min-h-screen bg-black">
       <Header />
 
-      <section className="relative w-full overflow-hidden bg-black">
+      <section className="relative w-full overflow-hidden bg-black pt-16 md:pt-20">
         {heroImage ? (
           <div className="relative w-full aspect-video max-h-[60vh] mx-auto">
             {/* eslint-disable-next-line @next/next/no-img-element */}

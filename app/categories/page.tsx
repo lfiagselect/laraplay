@@ -23,7 +23,7 @@ export default async function CategoriesPage() {
     <div className="min-h-screen bg-[var(--bg-main)]">
       <Header />
 
-      <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 md:px-8 pt-20 md:pt-24 pb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-8">
           Catégories
         </h1>

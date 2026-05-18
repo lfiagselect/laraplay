@@ -14,7 +14,7 @@ export default async function MyListPage() {
   return (
     <div className="min-h-screen bg-black">
       <Header />
-      <main className="max-w-[1600px] mx-auto px-4 md:px-12 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 md:px-12 pt-20 md:pt-24 pb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
           Ma liste
         </h1>
