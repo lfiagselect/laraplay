@@ -36,7 +36,7 @@ export default async function SearchPage({
       <Header />
 
       <main className="max-w-[1600px] mx-auto px-4 md:px-8 py-8">
-        <form action="/search" method="get" className="mb-8 max-w-2xl">
+        <form action="/search" method="get" data-tv-section="search-form" className="mb-8 max-w-2xl">
           <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden focus-within:border-red-600 transition">
             <SearchIcon className="w-5 h-5 ml-4 text-zinc-400" />
             <input
@@ -65,7 +65,7 @@ export default async function SearchPage({
             {matches.length === 0 ? (
               <p className="text-zinc-500">Aucune vidéo ne correspond à ta recherche.</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div data-tv-section="search-results" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {matches.map((v) => (
                   <VideoCard key={v.id} video={v} />
                 ))}

@@ -12,6 +12,11 @@ function redirectNoStore(url: string | URL) {
   res.headers.set("cache-control", "no-store, no-cache, max-age=0, must-revalidate");
   res.headers.set("pragma", "no-cache");
   res.headers.set("expires", "0");
+  res.cookies.set("laraplay_legacy_tv", "1", {
+    path: "/",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365,
+  });
   return res;
 }
 

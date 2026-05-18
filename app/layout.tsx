@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
 import { ModalProvider } from "@/components/ModalProvider";
 import { BottomTabBar } from "@/components/BottomTabBar";
@@ -52,10 +52,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [session, hdrs] = await Promise.all([auth(), headers()]);
+  const [session, hdrs, cookieStore] = await Promise.all([auth(), headers(), cookies()]);
   const userEmail = session?.user?.email ?? null;
   const isAdmin = session?.user?.role === "admin";
-  const isTV = detectTVServer(hdrs.get("user-agent"));
+  const isTV = detectTVServer(hdrs.get("user-agent")) || cookieStore.get("laraplay_legacy_tv")?.value === "1";
 
   return (
     <html

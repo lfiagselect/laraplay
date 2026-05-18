@@ -16,15 +16,18 @@ interface HeroVideoProps {
 
 export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoSrc = BUNNY_PULL_ZONE && hero.bunnyId
+    ? `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_720p.mp4`
+    : undefined;
   const [muted, setMuted] = useState(true);
 
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !hero.bunnyId) return;
-    v.src = `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_720p.mp4`;
+    if (!v || !videoSrc) return;
+    if (v.src !== videoSrc) v.src = videoSrc;
     v.load();
     v.play().catch(() => {});
-  }, [hero.bunnyId]);
+  }, [videoSrc]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -51,14 +54,26 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   return (
     <section className="relative w-full overflow-hidden bg-black" style={{ minHeight: "56vw", maxHeight: "78vh" }}>
       <div className="absolute inset-0 animate-hero-zoom origin-center bg-black">
+        {hero.poster && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={hero.poster}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
         <video
           id="hero-video-el"
           ref={videoRef}
+          src={videoSrc}
+          poster={hero.poster}
           autoPlay
           muted
           playsInline
           preload="auto"
           onEnded={() => onEnded?.()}
+          onError={() => onEnded?.()}
           className="absolute inset-0 w-full h-full object-cover"
         />
       </div>

@@ -360,6 +360,8 @@ export function PlayerTV({
     >
       <video
         ref={videoRef}
+        src={src}
+        controls
         autoPlay
         playsInline
         preload="auto"

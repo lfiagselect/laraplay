@@ -10,7 +10,7 @@ import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { detectTVServer } from "@/lib/tv";
 import { bunnyStreamUrl } from "@/lib/bunny-sign";
 import Link from "next/link";
@@ -26,7 +26,7 @@ export default async function WatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [catalog, session, hdrs] = await Promise.all([getCatalog(), auth(), headers()]);
+  const [catalog, session, hdrs, cookieStore] = await Promise.all([getCatalog(), auth(), headers(), cookies()]);
 
   let video: VideoFile | null = catalog.byId.get(id) ?? null;
   if (!video) {
@@ -35,13 +35,13 @@ export default async function WatchPage({
   if (!video) notFound();
 
   const userEmail = session?.user?.email;
-  const isTV = detectTVServer(hdrs.get("user-agent"));
+  const isTV = detectTVServer(hdrs.get("user-agent")) || cookieStore.get("laraplay_legacy_tv")?.value === "1";
 
   if (isTV) {
-    // HLS playlist Bunny (adaptive bitrate) — URL signée si BUNNY_SECURITY_KEY défini
-    // Fallback API stream pour videos sans bunnyId (legacy Drive)
+    // MP4 direct pour TV/anciens navigateurs: plus largement supporté que HLS/MSE
+    // sur Tizen/WebOS/VIDAA/Vewd. URL signée si BUNNY_SECURITY_KEY défini.
     const streamSrc = video.bunnyId
-      ? bunnyStreamUrl(video.bunnyId, "playlist.m3u8") ?? `/api/stream/${video.id}`
+      ? bunnyStreamUrl(video.bunnyId, "play_720p.mp4") ?? `/api/stream/${video.id}`
       : `/api/stream/${video.id}`;
 
     return (

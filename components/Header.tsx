@@ -1,8 +1,7 @@
 // LARAPLAY — Header global. Logo + nav desktop + recherche + profil.
 // Burger mobile supprimé — navigation via BottomTabBar.
 
-import Link from "next/link";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { auth, signOut } from "@/auth";
 import { Logo } from "./Logo";
 import { Search, LogOut, ShieldCheck, Settings } from "lucide-react";
@@ -10,58 +9,58 @@ import { HeaderShell } from "./HeaderShell";
 import { detectTVServer } from "@/lib/tv";
 
 export async function Header() {
-  const [session, hdrs] = await Promise.all([auth(), headers()]);
+  const [session, hdrs, cookieStore] = await Promise.all([auth(), headers(), cookies()]);
   const isAdmin = session?.user?.role === "admin";
   const isLogged = !!session?.user?.email;
-  const isTV = detectTVServer(hdrs.get("user-agent"));
-  const logoutRedirect = isTV ? "/login-tv" : "/login";
+  const isTV = detectTVServer(hdrs.get("user-agent")) || cookieStore.get("laraplay_legacy_tv")?.value === "1";
+  const logoutRedirect = isTV ? "/login-basic" : "/login";
 
   return (
     <HeaderShell>
       <header data-tv-section="header" className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
-        <Link href="/" prefetch={false} className="shrink-0">
+        <a href="/" data-focusable className="shrink-0">
           <Logo size="md" />
-        </Link>
+        </a>
 
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-200">
-          <Link href="/" prefetch={false} className="hover:text-white transition">Accueil</Link>
-          <Link href="/categories" prefetch={false} className="hover:text-white transition">Catégories</Link>
-          <Link href="/eras" prefetch={false} className="hover:text-white transition">Ères</Link>
-          <Link href="/my-list" prefetch={false} className="hover:text-white transition">Ma liste</Link>
+          <a href="/" data-focusable className="hover:text-white transition">Accueil</a>
+          <a href="/categories" data-focusable className="hover:text-white transition">Catégories</a>
+          <a href="/eras" data-focusable className="hover:text-white transition">Ères</a>
+          <a href="/my-list" data-focusable className="hover:text-white transition">Ma liste</a>
           {isLogged && (
             isAdmin ? (
-              <Link
+              <a
                 href="/admin"
-                prefetch={false}
+                data-focusable
                 className="flex items-center gap-1.5 text-[var(--accent)] hover:text-white transition"
                 title="Administration"
               >
                 <ShieldCheck className="w-4 h-4" />
                 Admin
-              </Link>
+              </a>
             ) : (
-              <Link
+              <a
                 href="/settings"
-                prefetch={false}
+                data-focusable
                 className="flex items-center gap-1.5 text-zinc-300 hover:text-white transition"
                 title="Paramètres"
               >
                 <Settings className="w-4 h-4" />
                 Paramètres
-              </Link>
+              </a>
             )
           )}
         </nav>
 
         <div className="ml-auto flex items-center gap-2 md:gap-4">
-          <Link
+          <a
             href="/search"
-            prefetch={false}
+            data-focusable
             className="p-2 rounded hover:bg-white/10 transition"
             aria-label="Rechercher"
           >
             <Search className="w-5 h-5" />
-          </Link>
+          </a>
 
           {session?.user && (
             <div className="flex items-center gap-2 md:gap-3">
@@ -76,6 +75,7 @@ export async function Header() {
               >
                 <button
                   type="submit"
+                  data-focusable
                   className="p-2 rounded hover:bg-white/10 transition"
                   aria-label="Déconnexion"
                 >

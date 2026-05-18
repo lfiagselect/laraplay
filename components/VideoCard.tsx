@@ -6,6 +6,7 @@ import { useState, useRef } from "react";
 import type { VideoFile } from "@/lib/drive";
 import { Play, Plus, Info } from "lucide-react";
 import { useVideoModal } from "./ModalProvider";
+import { useTV } from "@/lib/tv-client";
 
 const HOVER_DELAY_MS = 200;
 
@@ -39,12 +40,17 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
     ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const { open, preload } = useVideoModal();
+  const isTV = useTV();
+
+  const runtimeIsTV = () =>
+    isTV ||
+    (typeof document !== "undefined" && document.documentElement.classList.contains("tv"));
 
   const [isHover, setIsHover] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onEnter = () => {
-    preload(video.id);
+    if (!runtimeIsTV()) preload(video.id);
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
   };
@@ -59,11 +65,15 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
       onMouseLeave={onLeave}
       className="group relative shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] overflow-visible"
     >
-      <button
-        type="button"
+      <a
+        href={`/watch/${video.id}`}
         data-focusable
         data-tv-row-item
-        onClick={() => open(video.id)}
+        onClick={(e) => {
+          if (runtimeIsTV()) return;
+          e.preventDefault();
+          open(video.id);
+        }}
         style={{ touchAction: "manipulation" }}
         className={[
           "relative block aspect-video w-full overflow-hidden rounded-md bg-[var(--bg-elevated)] text-left",
@@ -117,7 +127,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
             {[year, video.category].filter(Boolean).join(" · ")}
           </p>
         </div>
-      </button>
+      </a>
 
       <div className={["p-2.5 transition-opacity duration-200", "md:opacity-100", isHover ? "md:opacity-0" : ""].join(" ")}>
         <h3 className="text-sm font-medium text-zinc-100 line-clamp-2 leading-tight">{cleanName}</h3>

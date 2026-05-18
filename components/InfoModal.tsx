@@ -123,6 +123,14 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     if (playing) sheetRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [playing]);
 
+  const onPlay = () => {
+    if (isTV) {
+      router.push(`/watch/${video.id}`);
+      return;
+    }
+    setPlaying(true);
+  };
+
   const onToggleFav = () => {
     if (!userEmail) return;
     const next = toggleFavorite(userEmail, video.id);
@@ -314,7 +322,7 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                     <button
                       ref={playBtnRef}
                       data-focusable
-                      onClick={() => setPlaying(true)}
+                      onClick={onPlay}
                       className="flex items-center gap-2 bg-white text-black font-bold px-7 py-2.5 rounded hover:bg-zinc-200 transition-colors"
                     >
                       <Play className="w-5 h-5" fill="currentColor" />
