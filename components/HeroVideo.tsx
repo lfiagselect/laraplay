@@ -24,63 +24,19 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
   const videoSrc = BUNNY_PULL_ZONE && hero.bunnyId
     ? `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_720p.mp4`
     : undefined;
-  const isBillboard = billboardIndex !== undefined;
-  // En mode billboard: muted forcé (3 vidéos en cycle, gestion audio dédiée).
-  // En mode legacy: unmute auto sur première interaction utilisateur.
   const [muted, setMuted] = useState(true);
 
-  // Load + play robust: attache canplay listener, garantit play() après buffering.
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !videoSrc || !active) return;
-
-    let cancelled = false;
-
-    const tryPlay = () => {
-      if (cancelled || !v) return;
-      // play() retourne Promise rejected si bloqué autoplay policy.
-      // muted=true requis pour autoplay garanti tous browsers.
-      v.muted = true;
-      const p = v.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => {
-          // Retry une fois après 200ms (race condition cycle rapide)
-          if (cancelled) return;
-          setTimeout(() => {
-            if (!cancelled && v) {
-              v.muted = true;
-              v.play().catch(() => {});
-            }
-          }, 200);
-        });
-      }
-    };
-
-    // Set src + reload pour kick-start
-    if (v.src !== videoSrc) {
-      v.src = videoSrc;
-      v.load();
-    }
-
-    // Si readyState >= 2 (HAVE_CURRENT_DATA), play immédiat
-    if (v.readyState >= 2) {
-      tryPlay();
-    } else {
-      // Sinon attend canplay puis play
-      const onCanPlay = () => tryPlay();
-      v.addEventListener("canplay", onCanPlay, { once: true });
-      // Tente play immédiat aussi (certains browsers acceptent dès loadedmetadata)
-      tryPlay();
-      return () => {
-        cancelled = true;
-        v.removeEventListener("canplay", onCanPlay);
-      };
-    }
-
-    return () => { cancelled = true; };
+    if (!v || !videoSrc) return;
+    // Ne charge la vidéo QUE quand active (économise réseau, évite onError fantôme
+    // sur slots inactifs au mount initial du billboard).
+    if (!active) return;
+    if (v.src !== videoSrc) v.src = videoSrc;
+    v.load();
+    v.play().catch(() => {});
   }, [videoSrc, active]);
 
-  // Effect pause+mute quand inactive (cycle billboard)
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -88,16 +44,12 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
       try { v.pause(); v.muted = true; } catch {}
       return;
     }
-    // Active: applique muted state (toujours muted en billboard)
-    v.muted = isBillboard ? true : muted;
-    if (!muted && !isBillboard) {
-      v.play().catch(() => setMuted(true));
-    }
-  }, [muted, active, isBillboard]);
+    v.muted = muted;
+    if (!muted) v.play().catch(() => setMuted(true));
+    if (muted && v.paused) v.play().catch(() => {});
+  }, [muted, active]);
 
-  // Unmute auto sur user interaction — UNIQUEMENT en mode legacy (hero unique)
   useEffect(() => {
-    if (isBillboard) return;
     const activate = () => setMuted(false);
     const opts = { once: true } as const;
     window.addEventListener("click", activate, opts);
@@ -108,7 +60,7 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
       window.removeEventListener("keydown", activate);
       window.removeEventListener("touchstart", activate);
     };
-  }, [isBillboard]);
+  }, []);
 
   return (
     <section
@@ -214,18 +166,16 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
         </div>
       </div>
 
-      {/* Bouton son (legacy only) + badge âge — coin droit bas, alignés Netflix */}
+      {/* Bouton son + badge âge — coin droit bas, alignés Netflix */}
       <div className="absolute right-0 bottom-[22%] md:bottom-[16%] z-20 flex items-center gap-3 md:gap-4 pr-2 md:pr-0">
-        {!isBillboard && (
-          <button
-            tabIndex={-1}
-            onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-            className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-white/40 bg-black/40 hover:border-white hover:bg-black/60 flex items-center justify-center transition"
-            aria-label={muted ? "Activer son" : "Couper son"}
-          >
-            {muted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
-          </button>
-        )}
+        <button
+          tabIndex={-1}
+          onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+          className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-white/40 bg-black/40 hover:border-white hover:bg-black/60 flex items-center justify-center transition"
+          aria-label={muted ? "Activer son" : "Couper son"}
+        >
+          {muted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+        </button>
         <div className="bg-zinc-500/40 border-l-4 border-zinc-300 text-white text-xs md:text-base font-medium px-2 md:px-3 py-0.5 md:py-1 backdrop-blur-sm">
           13+
         </div>
