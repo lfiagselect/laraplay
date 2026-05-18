@@ -101,16 +101,27 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
       {/* Contenu texte + CTA — Netflix bottom-left */}
       <div className="absolute inset-0 flex items-end pb-[18%] md:pb-[10%] z-10">
         <div className="px-4 md:px-12 lg:px-14 max-w-[640px] md:max-w-[42%] w-full">
-          {hero.tag && (
-            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-red-500 font-bold mb-3">
-              {hero.tag}
-            </p>
+          {hero.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={hero.logo}
+              alt={hero.title}
+              className="block mb-3 md:mb-4 w-auto h-20 sm:h-24 md:h-32 lg:h-40 max-w-[80%] md:max-w-[420px] drop-shadow-[0_4px_18px_rgba(0,0,0,0.85)]"
+            />
+          ) : (
+            <>
+              {hero.tag && (
+                <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-red-500 font-bold mb-3">
+                  {hero.tag}
+                </p>
+              )}
+              <h1 className="hero-title font-black text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] leading-[0.95] mb-3 md:mb-4"
+                style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
+              >
+                {hero.title}
+              </h1>
+            </>
           )}
-          <h1 className="hero-title font-black text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] leading-[0.95] mb-3 md:mb-4"
-            style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
-          >
-            {hero.title}
-          </h1>
           {hero.subtitle && (
             <p className="text-white/90 text-sm md:text-lg drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] mb-4 md:mb-6 max-w-xl">
               {hero.subtitle}

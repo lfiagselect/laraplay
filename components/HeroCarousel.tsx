@@ -69,7 +69,7 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
 
   return (
     <section
-      className="relative group w-full bg-[var(--bg-main)] overflow-hidden aspect-video md:aspect-auto md:h-[68vh] md:min-h-[420px] md:max-h-[640px]"
+      className="hero-section relative group w-full bg-[var(--bg-main)] overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >

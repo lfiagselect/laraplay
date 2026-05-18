@@ -8,8 +8,10 @@ export interface HeroVideo {
   bunnyId: string;
   /** Image fallback pendant chargement (ratio 16:9 recommandé) */
   poster?: string;
-  /** Mini-tag au-dessus du titre (ex: "L'EFFET LARA") */
+  /** Mini-tag au-dessus du titre (ex: "L'EFFET LARA"). Ignoré si `logo` défini. */
   tag?: string;
+  /** Logo image (path public/...) affiché au-dessus du titre (override tag) */
+  logo?: string;
   /** Titre principal */
   title: string;
   /** Sous-titre / descriptif court */
@@ -24,7 +26,7 @@ export const HERO_VIDEOS: HeroVideo[] = [
   {
     id: "leffetlara",
     bunnyId: "cdd25794-931f-4500-a166-3615c82ee51e",
-    tag: "L'EFFET LARA",
+    logo: "/hero-videos/effet_lara_logo.png",
     title: "L'Effet Lara",
     subtitle: "L'événement 2026",
     ctaLecture: "/category/l-effet-lara-2026",
