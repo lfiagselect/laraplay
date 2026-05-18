@@ -97,11 +97,8 @@ export function HeroBillboard({ heroes, carouselSlides }: HeroBillboardProps) {
               billboardIndex={i}
               active={i === index && !allEnded}
               onEnded={() => {
-                // Avance cycle UNIQUEMENT si vidéo active et termine naturellement.
-                // Évite cascade onError sur slots inactifs (preload metadata fail
-                // sur certains bunnyId Bunny pas encoded → cycle bloqué).
-                if (i !== index || allEnded) return;
-                setIndex((cur) => (cur + 1) % total);
+                // Vidéo finie avant 25s → passe à la suivante immédiatement
+                if (i === index) setIndex((cur) => (cur + 1) % total);
               }}
             />
           </div>
