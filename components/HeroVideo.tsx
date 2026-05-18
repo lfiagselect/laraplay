@@ -13,13 +13,9 @@ const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
 interface HeroVideoProps {
   hero: HeroVideo;
   onEnded?: () => void;
-  /** Index dans billboard pour stop audio cross-talk. Optionnel. */
-  billboardIndex?: number;
-  /** Si false, video pause + mute (cycle billboard inactive). Défaut true. */
-  active?: boolean;
 }
 
-export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }: HeroVideoProps) {
+export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoSrc = BUNNY_PULL_ZONE && hero.bunnyId
     ? `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_720p.mp4`
@@ -31,20 +27,15 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
     if (!v || !videoSrc) return;
     if (v.src !== videoSrc) v.src = videoSrc;
     v.load();
-    if (active) v.play().catch(() => {});
-  }, [videoSrc, active]);
+    v.play().catch(() => {});
+  }, [videoSrc]);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (!active) {
-      try { v.pause(); v.muted = true; } catch {}
-      return;
-    }
     v.muted = muted;
     if (!muted) v.play().catch(() => setMuted(true));
-    if (muted && v.paused) v.play().catch(() => {});
-  }, [muted, active]);
+  }, [muted]);
 
   useEffect(() => {
     const activate = () => setMuted(false);
@@ -75,16 +66,14 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
           />
         )}
         <video
-          id={billboardIndex === undefined ? "hero-video-el" : `hero-video-el-${billboardIndex}`}
+          id="hero-video-el"
           ref={videoRef}
           src={videoSrc}
           poster={hero.poster}
-          autoPlay={active}
+          autoPlay
           muted
           playsInline
-          preload={active ? "auto" : "metadata"}
-          data-hero-billboard={billboardIndex !== undefined ? "1" : undefined}
-          data-hero-idx={billboardIndex}
+          preload="auto"
           onEnded={() => onEnded?.()}
           onError={() => onEnded?.()}
           className="absolute inset-0 w-full h-full object-cover"

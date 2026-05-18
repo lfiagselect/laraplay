@@ -1,7 +1,7 @@
 // LARAPLAY – Page accueil.
 
 import { Header } from "@/components/Header";
-import { HeroBillboard } from "@/components/HeroBillboard";
+import { HeroResponsive } from "@/components/HeroResponsive";
 import { Row } from "@/components/Row";
 import { EraRow } from "@/components/EraRow";
 import { Top10Row } from "@/components/Top10Row";
@@ -11,12 +11,9 @@ import { SplashIntro } from "@/components/SplashIntro";
 import { getCatalog, ERAS, THEMATIC_ROWS, categoryMatches, slugify } from "@/lib/catalog";
 import { landscapeImage, posterImage } from "@/lib/category-images";
 import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
-import { pickHeroBillboard } from "@/lib/hero-picker";
 import { auth } from "@/auth";
 
-// Hero billboard pioche random à chaque load → force dynamic, pas ISR.
-// Catalogue lui-même reste cache mémoire process 1h (lib/catalog.ts).
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 function Divider() {
   return <hr className="row-divider" aria-hidden="true" />;
@@ -40,13 +37,12 @@ export default async function Home() {
     image: posterImage(name, "png"),
   })).filter((e) => e.count > 0);
 
-  // Hero billboard: hero fixé (L'Effet Lara) + 2 vidéos random catalogue
-  const heroes = pickHeroBillboard(catalog.all);
+  const hero = HERO_VIDEOS[0];
   const heroCategory = "L'Effet Lara - 2026";
   const heroVideoForInfo = catalog.byCategory.get(heroCategory)?.[0]?.id;
-  if (heroes[0] && heroVideoForInfo) {
-    heroes[0] = { ...heroes[0], ctaInfoVideoId: heroVideoForInfo };
-  }
+  const heroFinal = heroVideoForInfo
+    ? { ...hero, ctaInfoVideoId: heroVideoForInfo }
+    : hero;
 
   const sections: React.ReactNode[] = [];
 
@@ -88,7 +84,7 @@ export default async function Home() {
     <div className="min-h-screen bg-black">
       <SplashIntro />
       <Header />
-      <HeroBillboard heroes={heroes} carouselSlides={HERO_CAROUSEL_SLIDES} />
+      <HeroResponsive hero={heroFinal} carouselSlides={HERO_CAROUSEL_SLIDES} />
       {/* Netflix: rows commencent SOUS hero avec overlap négatif (gradient hero couvre top rows) */}
       <main className="relative -mt-[6vh] md:-mt-[10vh] pb-24 z-10">
         {sections.map((section, i) => (
