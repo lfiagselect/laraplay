@@ -1,6 +1,8 @@
-# LARAPLAY - Convert PNG RGB → RGBA, strip damier blanc.
-# Pixels R≈G≈B ≥220 (gris clairs/damier) → alpha 0.
-# Pixels transition lum 200-220 → alpha fade (anti-aliasing).
+# LARAPLAY - Convert PNG RGB -> RGBA, strip damier blanc PRESERVE COULEURS.
+# Pass 1: pixels gris clairs (R~=G~=B >=220) -> alpha 0 (damier transparent).
+# Pass 2: pixels colorés (R/G/B diffèrent >=8) -> alpha 255 (logo couleur).
+# Pass 3: pixels gris foncés (lum <=200, non colorés) -> alpha 255 (texte sombre).
+# Pas de feather: évite affaiblir couleurs logo (problème prev).
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/strip-logo-damier.ps1
 
 param(
@@ -15,7 +17,6 @@ $w = $src.Width
 $h = $src.Height
 $dst = New-Object System.Drawing.Bitmap $w, $h, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 
-# Lock bits pour accès rapide
 $rectSrc = New-Object System.Drawing.Rectangle 0, 0, $w, $h
 $bmpSrc = New-Object System.Drawing.Bitmap $src
 $dataSrc = $bmpSrc.LockBits($rectSrc, [System.Drawing.Imaging.ImageLockMode]::ReadOnly, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
@@ -29,7 +30,6 @@ $bytes = New-Object byte[] $len
 # Format32bppArgb byte order: B G R A
 $transparent = 0
 $opaque = 0
-$partial = 0
 for ($i = 0; $i -lt $len; $i += 4) {
   $b = $bytes[$i]
   $g = $bytes[$i+1]
@@ -37,21 +37,21 @@ for ($i = 0; $i -lt $len; $i += 4) {
 
   $diffRG = [Math]::Abs([int]$r - [int]$g)
   $diffGB = [Math]::Abs([int]$g - [int]$b)
-  $grayIsh = ($diffRG -lt 10) -and ($diffGB -lt 10) -and ($r -gt 220)
+  $diffRB = [Math]::Abs([int]$r - [int]$b)
+  $colored = ($diffRG -ge 8) -or ($diffGB -ge 8) -or ($diffRB -ge 8)
 
-  if ($grayIsh) {
+  if ($colored) {
+    # Pixel coloré → opaque (logo)
+    $bytes[$i+3] = 255
+    $opaque++
+  } elseif ($r -gt 220) {
+    # Gris clair = damier → transparent
     $bytes[$i+3] = 0
     $transparent++
   } else {
-    $lum = [int](0.299 * $r + 0.587 * $g + 0.114 * $b)
-    if ($lum -gt 200 -and $lum -le 220) {
-      $a = [Math]::Max(0, [Math]::Min(255, (220 - $lum) * 12))
-      $bytes[$i+3] = [byte]$a
-      $partial++
-    } else {
-      $bytes[$i+3] = 255
-      $opaque++
-    }
+    # Gris foncé = texte sombre éventuel → opaque
+    $bytes[$i+3] = 255
+    $opaque++
   }
 }
 
@@ -61,12 +61,10 @@ $dst.UnlockBits($dataDst)
 $src.Dispose()
 $bmpSrc.Dispose()
 
-$outPath = (Resolve-Path $Output -ErrorAction SilentlyContinue) ?? $Output
 $dst.Save($Output, [System.Drawing.Imaging.ImageFormat]::Png)
 $dst.Dispose()
 
-$total = $transparent + $opaque + $partial
+$total = $transparent + $opaque
 Write-Host "Done."
 Write-Host "Transparent: $transparent ($([Math]::Round(100*$transparent/$total, 1))%)"
 Write-Host "Opaque:      $opaque ($([Math]::Round(100*$opaque/$total, 1))%)"
-Write-Host "Partial:     $partial ($([Math]::Round(100*$partial/$total, 1))%)"

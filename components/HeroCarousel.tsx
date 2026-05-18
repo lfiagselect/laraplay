@@ -85,11 +85,20 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
             i === index ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
           }`}
         >
+          {/* Mobile portrait: blur-fill background (évite crop massif 16:9 source) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={slide.image}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60 md:hidden"
+            loading={i === 0 ? "eager" : "lazy"}
+          />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={slide.image}
             alt={slide.alt}
-            className={`absolute inset-0 w-full h-full object-cover ${
+            className={`absolute inset-0 w-full h-full object-contain md:object-cover ${
               i === index ? "animate-ken-burns" : ""
             }`}
             loading={i === 0 ? "eager" : "lazy"}

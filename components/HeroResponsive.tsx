@@ -58,7 +58,7 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
                 e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
               }
             }}
-            className="absolute right-3 top-[max(env(safe-area-inset-top,0px),12px)] md:top-auto md:right-12 md:bottom-14 z-30 flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-black/50 border border-white/30 hover:bg-black/70 hover:border-white/60 focus:bg-black/80 focus:border-white focus:outline focus:outline-2 focus:outline-white backdrop-blur-sm text-white text-xs md:text-sm font-medium transition"
+            className="absolute right-3 md:right-12 top-[calc(env(safe-area-inset-top,0px)+64px)] md:top-auto md:bottom-14 z-30 flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-black/60 border border-white/30 hover:bg-black/80 hover:border-white/60 focus:bg-black/80 focus:border-white focus:outline focus:outline-2 focus:outline-white backdrop-blur-sm text-white text-xs md:text-sm font-medium transition"
             aria-label="Passer l'intro"
           >
             <span>Passer</span>
