@@ -7,7 +7,7 @@ export interface HeroVideo {
   /** ID Bunny Stream de la vidéo hero */
   bunnyId: string;
   /** Image fallback pendant chargement (ratio 16:9 recommandé) */
-  poster: string;
+  poster?: string;
   /** Mini-tag au-dessus du titre (ex: "L'EFFET LARA") */
   tag?: string;
   /** Titre principal */
@@ -24,7 +24,6 @@ export const HERO_VIDEOS: HeroVideo[] = [
   {
     id: "leffetlara",
     bunnyId: "cdd25794-931f-4500-a166-3615c82ee51e",
-    poster: "/hero-videos/leffetlara-poster.jpg",
     tag: "L'EFFET LARA",
     title: "L'Effet Lara",
     subtitle: "L'événement 2026",
