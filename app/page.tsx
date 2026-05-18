@@ -86,7 +86,7 @@ export default async function Home() {
       <Header />
       <HeroResponsive hero={heroFinal} carouselSlides={HERO_CAROUSEL_SLIDES} />
       {/* Netflix: rows commencent SOUS hero avec overlap négatif (gradient hero couvre top rows) */}
-      <main className="relative -mt-[10vh] md:-mt-[15vh] pb-24 z-10">
+      <main className="relative -mt-[6vh] md:-mt-[10vh] pb-24 z-10">
         {sections.map((section, i) => (
           <div key={i}>
             {section}

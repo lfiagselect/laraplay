@@ -52,15 +52,7 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
 
   return (
     <section
-      className="relative w-full overflow-hidden bg-black -mt-[var(--header-h,72px)]"
-      style={{
-        // Netflix: 56.25vw (16:9) capped à hauteur écran
-        // Mobile portrait: hauteur dynamique vh
-        // Desktop: aspect-ratio 16:9 jusqu'à 95vh max
-        aspectRatio: "16 / 9",
-        maxHeight: "100vh",
-        minHeight: "min(100vh, 56.25vw)",
-      }}
+      className="hero-section relative w-full overflow-hidden bg-black"
     >
       {/* Video / poster pleine bleed */}
       <div className="absolute inset-0 bg-black">
@@ -107,7 +99,7 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
       />
 
       {/* Contenu texte + CTA — Netflix bottom-left */}
-      <div className="absolute inset-0 flex items-end pb-[10%] md:pb-[8%] z-10">
+      <div className="absolute inset-0 flex items-end pb-[18%] md:pb-[10%] z-10">
         <div className="px-4 md:px-12 lg:px-14 max-w-[640px] md:max-w-[42%] w-full">
           {hero.tag && (
             <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-red-500 font-bold mb-3">
@@ -147,19 +139,19 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
         </div>
       </div>
 
-      {/* Bouton son — coin droit bas, style Netflix circle */}
-      <button
-        tabIndex={-1}
-        onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-        className="absolute right-4 md:right-12 bottom-[15%] md:bottom-[30%] z-20 w-10 h-10 md:w-11 md:h-11 rounded-full border-2 border-white/40 bg-black/40 hover:border-white hover:bg-black/60 flex items-center justify-center transition"
-        aria-label={muted ? "Activer son" : "Couper son"}
-      >
-        {muted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
-      </button>
-
-      {/* Badge âge — coin droit bas, style Netflix */}
-      <div className="absolute right-0 bottom-[12%] md:bottom-[20%] z-10 bg-zinc-500/40 border-l-4 border-zinc-300 text-white text-sm md:text-base font-medium px-3 py-1 backdrop-blur-sm">
-        13+
+      {/* Bouton son + badge âge — coin droit bas, alignés Netflix */}
+      <div className="absolute right-0 bottom-[22%] md:bottom-[16%] z-20 flex items-center gap-3 md:gap-4 pr-2 md:pr-0">
+        <button
+          tabIndex={-1}
+          onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+          className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-white/40 bg-black/40 hover:border-white hover:bg-black/60 flex items-center justify-center transition"
+          aria-label={muted ? "Activer son" : "Couper son"}
+        >
+          {muted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+        </button>
+        <div className="bg-zinc-500/40 border-l-4 border-zinc-300 text-white text-xs md:text-base font-medium px-2 md:px-3 py-0.5 md:py-1 backdrop-blur-sm">
+          13+
+        </div>
       </div>
     </section>
   );

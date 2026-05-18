@@ -119,11 +119,11 @@ function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps)
       data-tv-row-item
       onClick={onOpen}
       style={{ touchAction: "manipulation" }}
-      className="relative shrink-0 group/card flex items-end text-left -mr-3 md:-mr-8"
+      className="relative shrink-0 group/card flex items-end text-left gap-1 md:gap-0 md:-mr-8"
     >
       <span
         aria-hidden="true"
-        className="md:hidden top10-rank text-[110px] sm:text-[150px] font-black leading-none select-none flex-shrink-0"
+        className="md:hidden top10-rank text-[90px] sm:text-[120px] font-black leading-none select-none flex-shrink-0"
         style={{
           fontFamily: "var(--font-bebas), Impact, sans-serif",
           color: "transparent",

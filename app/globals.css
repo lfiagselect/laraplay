@@ -115,6 +115,24 @@ html, body {
     0 1px 12px rgba(0, 0, 0, 0.7);
 }
 
+/* Hero section dimensions Netflix-like.
+   Mobile portrait: 70vh (laisse room rows visibles bas screen).
+   Desktop: 16/9 aspect-ratio, max 95vh. */
+.hero-section {
+  height: 70vh;
+  min-height: 460px;
+  max-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .hero-section {
+    height: auto;
+    aspect-ratio: 16 / 9;
+    max-height: 95vh;
+    min-height: min(95vh, 56.25vw);
+  }
+}
+
 /* Hero title — typo monumentale */
 .hero-title {
   font-family: var(--font-bebas), "Bebas Neue", "Oswald", "Arial Narrow", "Impact", sans-serif;
