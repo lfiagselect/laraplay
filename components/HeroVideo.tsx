@@ -29,9 +29,12 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !videoSrc) return;
+    // Ne charge la vidéo QUE quand active (économise réseau, évite onError fantôme
+    // sur slots inactifs au mount initial du billboard).
+    if (!active) return;
     if (v.src !== videoSrc) v.src = videoSrc;
     v.load();
-    if (active) v.play().catch(() => {});
+    v.play().catch(() => {});
   }, [videoSrc, active]);
 
   useEffect(() => {
@@ -77,16 +80,18 @@ export function HeroVideoBlock({ hero, onEnded, billboardIndex, active = true }:
         <video
           id={billboardIndex === undefined ? "hero-video-el" : `hero-video-el-${billboardIndex}`}
           ref={videoRef}
-          src={videoSrc}
+          src={active ? videoSrc : undefined}
           poster={hero.poster}
           autoPlay={active}
           muted
           playsInline
-          preload={active ? "auto" : "metadata"}
+          preload={active ? "auto" : "none"}
           data-hero-billboard={billboardIndex !== undefined ? "1" : undefined}
           data-hero-idx={billboardIndex}
           onEnded={() => onEnded?.()}
-          onError={() => onEnded?.()}
+          // onError NE déclenche PAS onEnded en mode billboard (sinon cycle bloqué
+          // par cascade fail sur slots inactifs). Cycle natural 25s prend le relais.
+          onError={() => { if (billboardIndex === undefined) onEnded?.(); }}
           className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
