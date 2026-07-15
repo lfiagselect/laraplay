@@ -26,7 +26,7 @@ export default async function CategoryPage({
   const videos = [...catalog.byCategory]
     .filter(([name]) => categoryMatches(name, categoryName) || slugify(name) === categorySlug)
     .flatMap(([, list]) => list);
-  const heroImage = landscapeImage(matchingCategoryName ?? categoryName, "png");
+  const heroImage = landscapeImage(matchingCategoryName ?? categoryName);
 
   return (
     <div className="min-h-screen bg-black">

@@ -5,7 +5,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { InfoModal } from "./InfoModal";
 
 interface ModalContextValue {
@@ -131,19 +131,36 @@ export function ModalProvider({
         />
       )}
       {openId && state.loading && (
-        <div className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm flex items-center justify-center">
+        // MODAL-01: overlay trapé et fermable (Return → data-tv-close).
+        <div
+          className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm flex items-center justify-center"
+          data-tv-trap="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chargement"
+        >
           <div className="w-12 h-12 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+          <button data-tv-close onClick={close} className="sr-only" aria-label="Fermer">
+            Fermer
+          </button>
         </div>
       )}
       {openId && state.error && (
         <div
           className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm flex items-center justify-center"
           onClick={close}
+          data-tv-trap="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Erreur"
         >
-          <div className="bg-zinc-900 rounded-lg p-6 text-white">
+          <div className="bg-zinc-900 rounded-lg p-6 text-white" data-tv-section="modal-error">
             <p className="mb-3">Impossible de charger les infos.</p>
             <button
               onClick={close}
+              data-tv-close
+              data-focusable
+              autoFocus
               className="bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded"
             >
               Fermer

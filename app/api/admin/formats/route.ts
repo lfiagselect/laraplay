@@ -31,7 +31,7 @@ export async function GET() {
       name: v.name,
       size: v.size ?? null,
       category: v.category ?? null,
-      driveUrl: `https://drive.google.com/file/d/${v.id}/view`,
+      driveUrl: `https://dash.bunny.net/stream/videos/${v.id}`,
     });
   }
 

@@ -1,7 +1,7 @@
 // LARAPLAY — Refresh catalog cache (utilisateur connecté)
 // POST /api/refresh-catalog
 // Invalide :
-//   - Data Cache "catalog" (unstable_cache) → catalog re-fetché Drive
+//   - Data Cache "catalog" (unstable_cache) → catalog re-fetché Bunny
 //   - Routes statiques (home, categories, eras, my-list) → HTML regen
 // Auth : tout user logged-in (pas seulement admin).
 

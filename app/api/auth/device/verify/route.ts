@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { approveDevice, getByUserCode } from "@/lib/device-flow";
 import { isAuthorized } from "@/lib/whitelist";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,6 +22,9 @@ function jsonNoStore(body: unknown, init?: ResponseInit) {
 }
 
 export async function POST(req: Request) {
+  if (!rateLimit(`verify:${clientIp(req)}`, 15, 60_000)) {
+    return jsonNoStore({ error: "slow_down" }, { status: 429 });
+  }
   const session = await auth();
   if (!session?.user?.email) {
     return jsonNoStore({ error: "unauthenticated" }, { status: 401 });
@@ -48,7 +52,8 @@ export async function POST(req: Request) {
   if (!found) {
     return jsonNoStore({ error: "invalid_code" }, { status: 404 });
   }
-  if (found.status === "expired") {
+  if (found.status === "expired" || found.status === "consumed" || found.status === "denied") {
+    // Réponse générique: pas d'énumération d'état fine côté public.
     return jsonNoStore({ error: "expired" }, { status: 410 });
   }
   if (found.status === "approved") {
@@ -60,5 +65,6 @@ export async function POST(req: Request) {
     return jsonNoStore({ error: "approval_failed" }, { status: 500 });
   }
 
-  return jsonNoStore({ ok: true, email });
+  // Jamais d'email dans la réponse (anti-énumération).
+  return jsonNoStore({ ok: true });
 }

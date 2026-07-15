@@ -4,24 +4,15 @@
 
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { useVideoModal } from "./ModalProvider";
 import { useTV } from "@/lib/tv-client";
 import { TVRowArrows } from "./TVRowArrows";
+import { formatDuration } from "@/lib/format";
 
 interface Top10RowProps {
   title: string;
   videos: VideoFile[];
-}
-
-function formatDuration(ms?: string): string | null {
-  if (!ms) return null;
-  const total = Math.floor(Number(ms) / 1000);
-  if (!total) return null;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
-  return `${m}min`;
 }
 
 export function Top10Row({ title, videos }: Top10RowProps) {
@@ -104,7 +95,7 @@ interface Top10CardProps {
 }
 
 function Top10Card({ video, rank, duration, cleanName, onOpen }: Top10CardProps) {
-  const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
+  const thumbSrc = video.bunnyThumbnail ?? null;
   const glowDesktop = [
     "0 0 20px rgba(229,9,20,0.6)",
     "0 0 45px rgba(229,9,20,0.35)",

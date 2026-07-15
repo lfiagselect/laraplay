@@ -2,15 +2,14 @@
 // Preview vidéo :
 //   - Bunny embed : paramètre ?t={seconds} pour démarrage aléatoire (10s–120s)
 //     Format accepté par Bunny : valeur numérique en secondes
-//   - Fallback Drive : seek aléatoire via loadedmetadata
 // Fade : thumbnail visible → fade out 800ms quand vidéo prête → vidéo fade in
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Play, Plus, Check, ThumbsUp, Volume2, VolumeX, Loader2 } from "lucide-react";
-import type { VideoFile } from "@/lib/drive";
+import { X, Play, Plus, Check, ThumbsUp, Loader2 } from "lucide-react";
+import type { VideoFile } from "@/lib/video-types";
 import { VideoCard } from "./VideoCard";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
 import { useTV } from "@/lib/tv-client";
@@ -29,18 +28,17 @@ const BUNNY_LIBRARY_ID = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
 
 export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps) {
   const isTV = useTV();
-  const [muted, setMuted] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
   const [shouldMountVideo, setShouldMountVideo] = useState(false);
   const [fav, setFav] = useState(false);
   const [dragY, setDragY] = useState(0);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const playBtnRef = useRef<HTMLButtonElement>(null);
   const dragStartY = useRef<number | null>(null);
+  const invokerRef = useRef<HTMLElement | null>(null);
   const playerIframeRef = useRef<HTMLIFrameElement>(null);
   const router = useRouter();
 
@@ -65,7 +63,19 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     ? `https://iframe.mediadelivery.net/embed/${BUNNY_LIBRARY_ID}/${video.bunnyId}?autoplay=1&preload=true&responsive=true&t=0`
     : null;
 
-  const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
+  // VIDEO-01: thumbnails exclusivement Bunny.
+  const thumbSrc = video.bunnyThumbnail ?? null;
+
+  // MODAL-01: memoriser la carte invocatrice, restaurer le focus a la fermeture.
+  useEffect(() => {
+    invokerRef.current = document.activeElement as HTMLElement | null;
+    return () => {
+      const invoker = invokerRef.current;
+      if (invoker && document.contains(invoker)) {
+        try { invoker.focus({ preventScroll: true }); } catch { /* noop */ }
+      }
+    };
+  }, []);
 
   useEffect(() => {
     // TV: mount aussi preview Bunny (sans cela, thumbnail s'efface → écran noir)
@@ -79,28 +89,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     return () => clearTimeout(t);
   }, [videoReady]);
 
-  // Fallback Drive: /api/stream/[id] retourne bytes vidéo, pas JSON
-  // Assignation directe au lieu de fetch JSON (bug audit 2026-05-11)
-  useEffect(() => {
-    if (!shouldMountVideo || isTV || hasBunny) return;
-    const v = videoRef.current;
-    if (!v) return;
-    v.src = `/api/stream/${video.id}`;
-    v.load();
-    const onMeta = () => {
-      const dur = v.duration;
-      if (dur && dur > 30) {
-        v.currentTime = Math.random() * Math.min(dur * 0.6, 120) + 10;
-      }
-    };
-    v.addEventListener("loadedmetadata", onMeta, { once: true });
-    return () => {
-      v.removeEventListener("loadedmetadata", onMeta);
-      v.removeAttribute("src");
-      v.load();
-    };
-  }, [shouldMountVideo, isTV, video.id, hasBunny]);
-
   useEffect(() => {
     if (!isTV) return;
     const t = setTimeout(() => playBtnRef.current?.focus(), 200);
@@ -111,12 +99,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
     if (!userEmail) return;
     setFav(isFavorite(userEmail, video.id));
   }, [userEmail, video.id]);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = muted;
-  }, [muted]);
 
   // Quand playing est true, scroll vers le haut du modal
   useEffect(() => {
@@ -230,16 +212,9 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                     title={cleanName}
                   />
                 ) : (
-                  <video
-                    src={`/api/stream/${video.id}`}
-                    autoPlay
-                    controls
-                    playsInline
-                    poster={thumbSrc ?? undefined}
-                    controlsList="nodownload"
-                    onContextMenu={(e) => e.preventDefault()}
-                    className="absolute inset-0 w-full h-full"
-                  />
+                  <div className="absolute inset-0 flex items-center justify-center text-center p-6">
+                    <p className="text-red-400">Configuration Bunny manquante. Contactez l\u2019administrateur.</p>
+                  </div>
                 )}
               </>
             ) : (
@@ -270,22 +245,6 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   />
                 )}
 
-                {/* Fallback Drive */}
-                {shouldMountVideo && !isTV && !hasBunny && (
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted={muted}
-                    loop
-                    playsInline
-                    preload="metadata"
-                    poster={thumbSrc ?? undefined}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ opacity: previewVisible ? 1 : 0, transition: "opacity 800ms ease" }}
-                    onCanPlay={() => setVideoReady(true)}
-                  />
-                )}
-
                 {!videoReady && !isTV && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
                     <Loader2 className="w-12 h-12 text-[var(--accent)] animate-spin" />
@@ -298,27 +257,18 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
                   onClick={onClose}
                   data-tv-close
                   data-focusable
+                  data-tv-section="modal-close"
                   className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-zinc-900/90 hover:bg-zinc-800 flex items-center justify-center transition-colors"
                   aria-label="Fermer"
                 >
                   <X className="w-5 h-5 text-white" />
                 </button>
 
-                {!isTV && !hasBunny && (
-                  <button
-                    onClick={() => setMuted((m) => !m)}
-                    className="absolute bottom-6 right-6 z-20 w-10 h-10 rounded-full border-2 border-zinc-500 bg-zinc-900/60 hover:border-white flex items-center justify-center transition-colors"
-                    aria-label={muted ? "Activer le son" : "Couper le son"}
-                  >
-                    {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
-                  </button>
-                )}
-
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10">
                   <h2 id="infomodal-title" className="text-2xl md:text-4xl font-extrabold text-white drop-shadow-lg mb-4 max-w-2xl">
                     {cleanName}
                   </h2>
-                  <div className="flex flex-wrap gap-3 items-center">
+                  <div className="flex flex-wrap gap-3 items-center" data-tv-section="modal-primary">
                     <button
                       ref={playBtnRef}
                       data-focusable
@@ -383,8 +333,8 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
               {related.length > 0 && (
                 <div>
                   <h3 className="text-xl font-bold text-white mb-4">Autres vidéos similaires</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {related.slice(0, 6).map((v) => <VideoCard key={v.id} video={v} />)}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" data-tv-section="modal-related">
+                    {related.slice(0, 6).map((v) => <VideoCard key={v.id} video={v} layout="grid" />)}
                   </div>
                 </div>
               )}

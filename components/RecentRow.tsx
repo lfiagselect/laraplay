@@ -6,20 +6,11 @@ import { Play } from "lucide-react";
 import type { VideoFile } from "@/lib/bunny";
 import { useVideoModal } from "./ModalProvider";
 import { TVRowArrows } from "./TVRowArrows";
+import { formatDuration } from "@/lib/format";
 
 interface RecentRowProps {
   title: string;
   videos: VideoFile[];
-}
-
-function formatDuration(ms?: string): string | null {
-  if (!ms) return null;
-  const total = Math.floor(Number(ms) / 1000);
-  if (!total) return null;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
-  return `${m}min`;
 }
 
 export function RecentRow({ title, videos }: RecentRowProps) {
@@ -43,7 +34,7 @@ export function RecentRow({ title, videos }: RecentRowProps) {
           className="no-scrollbar flex gap-3 overflow-x-auto scroll-smooth px-4 md:px-12 py-4"
         >
         {videos.map((video) => {
-          const thumbSrc = video.bunnyThumbnail ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
+          const thumbSrc = video.bunnyThumbnail ?? null;
           const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
           const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
 

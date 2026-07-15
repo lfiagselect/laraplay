@@ -5,26 +5,8 @@ const LIBRARY_ID = process.env.BUNNY_LIBRARY_ID!;
 const API_KEY = process.env.BUNNY_API_KEY!;
 const PULL_ZONE = (process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "");
 
-export interface VideoFile {
-  id: string;
-  bunnyId: string;
-  name: string;
-  mimeType: string;
-  size?: string;
-  thumbnailLink?: string;
-  bunnyThumbnail?: string;
-  videoMediaMetadata?: {
-    width?: number;
-    height?: number;
-    durationMillis?: string;
-  };
-  modifiedTime?: string;
-  createdTime?: string;
-  description?: string;
-  category?: string;
-  collectionId?: string;
-  views?: number;
-}
+export type { VideoFile } from "./video-types";
+import type { VideoFile } from "./video-types";
 
 interface BunnyVideo {
   guid: string;

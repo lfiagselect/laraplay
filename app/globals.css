@@ -10,14 +10,39 @@
 }
 
 :root {
+  /* Fallbacks sRGB : Tailwind 4 expose ces tokens en OKLCH, non compris par
+     Chromium 68 (LG webOS 5). Les navigateurs récents gardent le même rendu. */
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+  --color-red-950: #450a0a;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
+
   /* Design tokens V2 - centralisés pour cohérence cross-components */
   --bg-main: #0b0b0b;
   --bg-netflix: #141414;
   --bg-elevated: #181818;
   --text-primary: #ffffff;
   --text-secondary: #b3b3b3;
-  --text-muted: #777777;
+  --text-muted: #8a8a8a;
   --accent: #e50914;
+  --accent-text: #ff4d55;
   --accent-hover: #f6121d;
   --hover-soft: rgba(255, 255, 255, 0.08);
   --overlay-dark: rgba(0, 0, 0, 0.72);
@@ -52,20 +77,33 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Focus clavier visible hors mode TV. */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
 /* Hide scrollbar for horizontal rows */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Logo wordmark style Netflix */
+/* Logo wordmark style Netflix.
+   BRAND-01: couleur de repli robuste; découpe gradient seulement si supportée. */
 .logo-wordmark {
   font-family: var(--font-bebas), "Bebas Neue", "Arial Narrow", "Impact", sans-serif;
   font-weight: 400;
   letter-spacing: 0.06em;
-  background: linear-gradient(180deg, #ff1a1f 0%, #b1060f 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #e50914;
   text-shadow: 0 2px 12px rgba(229, 9, 20, 0.35);
+}
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .logo-wordmark {
+    background: linear-gradient(180deg, #ff1a1f 0%, #b1060f 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 /* Hero gradient overlay */
@@ -107,6 +145,7 @@ html, body {
   font-family: var(--font-bebas), "Bebas Neue", "Oswald", "Arial Narrow", "Impact", sans-serif;
   font-weight: 400;
   letter-spacing: 0.04em;
+  font-size: 1.35rem;
   font-size: clamp(1.1rem, 1.6vw, 1.6rem);
   line-height: 1.05;
   text-transform: uppercase;
@@ -126,10 +165,16 @@ html, body {
 
 @media (min-width: 768px) {
   .hero-section {
-    height: auto;
-    aspect-ratio: 16 / 9;
+    height: 56.25vw;
     max-height: 95vh;
-    min-height: min(95vh, 56.25vw);
+    min-height: 460px;
+  }
+  @supports (aspect-ratio: 16 / 9) {
+    .hero-section {
+      height: auto;
+      aspect-ratio: 16 / 9;
+      min-height: min(95vh, 56.25vw);
+    }
   }
 }
 
@@ -138,6 +183,7 @@ html, body {
   font-family: var(--font-bebas), "Bebas Neue", "Oswald", "Arial Narrow", "Impact", sans-serif;
   font-weight: 400;
   letter-spacing: 0.02em;
+  font-size: 3.5rem;
   font-size: clamp(2.5rem, 6vw, 5.5rem);
   line-height: 0.95;
   text-transform: uppercase;
@@ -279,10 +325,12 @@ html, body {
    ============================================================ */
 
 html.tv {
-  font-size: 18px;
-  --tv-safe-x: 3vw;
-  --tv-safe-y: 3vh;
-  --tv-target: 64px;
+  /* Base 10-foot UI. À re-valider sur la matrice physique LG/Samsung. */
+  --tv-root-size: 18px;
+  font-size: var(--tv-root-size);
+  --tv-safe-x: 4vw;
+  --tv-safe-y: 4vh;
+  --tv-target: 72px;
 }
 
 html.tv body {
@@ -308,13 +356,12 @@ html.tv [data-tv-no-hover-scale]:hover {
   transform: none !important;
 }
 
-/* Focus visible ring rouge épais — feedback D-pad universel */
-html.tv *:focus,
-html.tv *:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 4px;
+/* CSS-01: focus unique — 4px + halo, feedback D-pad universel, jamais rogné */
+html.tv *:focus {
+  outline: 4px solid var(--accent) !important;
+  outline-offset: 3px;
   box-shadow:
-    0 0 0 6px rgba(229, 9, 20, 0.35),
+    0 0 0 7px rgba(229, 9, 20, 0.35),
     0 0 24px rgba(229, 9, 20, 0.55);
   border-radius: 6px;
 }
@@ -322,10 +369,10 @@ html.tv *:focus-visible {
 /* Sur TV, le focus vient souvent d'un script D-pad: ne pas masquer :focus
    sous prétexte que :focus-visible ne matche pas sur certains WebKit TV. */
 
-html.tv button,
+html.tv button:not([data-tv-compact]),
 html.tv a[role="button"],
 html.tv [role="button"],
-html.tv [tabindex="0"] {
+html.tv [tabindex="0"]:not([role="slider"]):not([data-tv-compact]) {
   min-height: var(--tv-target);
   min-width: var(--tv-target);
 }
@@ -348,7 +395,7 @@ html.tv [data-tv-row-item] {
 
 html.tv [data-tv-row-item]:focus {
   transform: scale(1.08);
-  outline: 3px solid var(--accent) !important;
+  outline: 4px solid var(--accent) !important;
   outline-offset: 3px !important;
   box-shadow:
     0 0 0 6px rgba(229, 9, 20, 0.30),
@@ -396,12 +443,6 @@ html.tv .skeleton-shimmer {
   }
 }
 
-/* ============ TV — Scale down global ============ */
-/* Réduit la taille visuelle sur TV (UA Tizen/WebOS/etc.) pour densifier */
-html.tv {
-  font-size: 14px; /* base rem: 14 au lieu de 16 → -12.5% partout */
-}
-
 /* Cards plus compactes TV */
 html.tv .video-card,
 html.tv [data-row-scroller] > article {
@@ -421,16 +462,18 @@ html.tv .logo-wordmark {
 
 /* Titres rangées plus petits TV */
 html.tv section > div > h2 {
-  font-size: 1.125rem !important; /* 18px */
+  font-size: 1.5rem !important;
 }
 
 /* Hero title scale down TV */
 html.tv .hero-title {
+  font-size: 3rem !important;
   font-size: clamp(2rem, 4.5vw, 4rem) !important;
 }
 
 /* Era title réduit TV */
 html.tv .era-title {
+  font-size: 1.15rem !important;
   font-size: clamp(0.95rem, 1.4vw, 1.35rem) !important;
 }
 
@@ -438,17 +481,6 @@ html.tv .era-title {
 html.tv [aria-label^="Aller à la diapositive"] {
   height: 2px !important;
 }
-
-/* Focus ring TV — net + accent rouge */
-html.tv [data-focusable]:focus,
-html.tv a:focus,
-html.tv button:focus,
-html.tv [tabindex="0"]:focus {
-  outline: 2px solid var(--accent) !important;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 
 /* Login TV: évite CSS Grid/filtres fragiles sur anciens WebOS/Tizen et garde le code visible. */
 html.tv .login-tv-page {
@@ -458,6 +490,7 @@ html.tv .login-tv-page {
 }
 
 html.tv .tv-login-panel {
+  max-width: 92vw !important;
   max-width: min(1100px, 92vw) !important;
 }
 
@@ -471,6 +504,8 @@ html.tv .tv-login-grid {
 }
 
 html.tv .tv-login-qr-img {
+  width: 200px !important;
+  height: 200px !important;
   width: clamp(150px, 18vw, 230px) !important;
   height: clamp(150px, 18vw, 230px) !important;
 }
@@ -484,6 +519,7 @@ html.tv .tv-login-url {
 }
 
 html.tv .tv-login-code {
+  font-size: 4rem !important;
   font-size: clamp(2.75rem, 6vw, 5.5rem) !important;
   letter-spacing: 0.08em !important;
 }
@@ -492,32 +528,13 @@ html.tv .tv-login-status {
   flex-basis: 100%;
 }
 
-/* ============ TV — Hide pointer-only UI ============ */
-/* Cache flèches scroll Row (D-pad navigue cards directement) */
-html.tv [aria-label="Précédent"],
-html.tv [aria-label="Suivant"] {
-  display: none !important;
-}
+/* ============ TV — Hide pointer-only UI: règle unique en fin de fichier ============ */
 
-/* Cache flèches navigation carousel hero (auto-rotate + indicateurs suffisent) */
-html.tv section button[aria-label="Précédent"],
-html.tv section button[aria-label="Suivant"] {
-  display: none !important;
-}
-
-/* Indicateurs carousel: barres TV plus fines + plus discretes */
-html.tv [aria-label^="Aller à la diapositive"] {
-  height: 2px !important;
-}
-
-/* ============ TV — Scale down v2 (plus agressif) ============ */
-html.tv {
-  font-size: 13px; /* -18.75% partout */
-}
+/* ============ TV — Scale down: géré par --tv-root-size (bloc racine) ============ */
 
 /* Cards width plus petites TV — override Tailwind */
 html.tv [data-row-scroller] > article {
-  width: 200px !important;
+  width: 280px !important;
 }
 
 /* Hero hauteur réduite TV */
@@ -531,26 +548,38 @@ html.tv .top10-rank {
   font-size: 140px !important;
 }
 html.tv [class*="aspect-[2/3]"] {
-  width: 140px !important; /* etait 200px (Top10) / 260px (Era) */
+  width: 200px !important;
 }
 
 /* Titre rangée plus discret aussi */
 html.tv section > div.flex h2,
 html.tv section > div.px-4 h2 {
-  font-size: 1rem !important; /* 16px (etait 18px apres mon ajustement, etait 1.5rem avant) */
+  font-size: 1.5rem !important;
 }
 
-/* Carousel hero: flèches visibles TV (au lieu de hover-only) */
-html.tv section button[aria-label="Précédent"],
-html.tv section button[aria-label="Suivant"] {
-  display: flex !important;
-  opacity: 0.6 !important;
+/* Fallbacks positionnels pour vieux Chromium TV. */
+html.tv .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+html.tv .inset-x-0 { right: 0; left: 0; }
+html.tv .inset-y-0 { top: 0; bottom: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ken-burns,
+  .animate-hero-zoom,
+  .animate-hero-fade-up,
+  .animate-splash-zoom,
+  .animate-splash-glow,
+  .animate-splash-fade,
+  .skeleton-shimmer {
+    animation: none !important;
+  }
+  .animate-hero-fade-up {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
-/* Les flèches TV custom .tv-row-arrow restent visibles; seuls les anciens boutons pointer-only restent exclus. */
-
-/* ============ TV — DEFINITIF: cache TOUS scroll arrows + son ============ */
-/* Plus haute spécificité possible — domine n'importe quel override Tailwind */
+/* CSS-01: règle flèches UNIQUE — pointer-only cachés sur TV (D-pad navigue les cartes).
+   Les flèches TV custom .tv-row-arrow restent visibles. */
 html.tv button[aria-hidden="true"],
 html.tv button[data-no-focus],
 html.tv [aria-label="Précédent"],
@@ -573,3 +602,57 @@ html.tv [aria-label="Précédent"]:focus,
 html.tv [aria-label="Suivant"]:focus {
   outline: none !important;
 }
+
+/* LOGIN-01: lien "Connexion TV" — cible >=64px et lisible a 3 m en mode TV */
+html.tv .tv-login-link {
+  min-height: var(--tv-target);
+  font-size: 1.6rem !important;
+  color: #fff !important;
+}
+
+/* TV legacy shell (Chromium 68–85) : fallbacks ciblés sur les primitives
+   critiques. Tailwind 4 complet reste un socle moderne, donc la certification
+   finale doit toujours se faire sur les modèles physiques LG/Samsung visés. */
+@supports not (padding-inline: 1px) {
+  html.tv body {
+    padding-left: var(--tv-safe-x);
+    padding-right: var(--tv-safe-x);
+  }
+  html.tv [data-row-scroller] {
+    padding-left: var(--tv-safe-x) !important;
+    padding-right: var(--tv-safe-x) !important;
+  }
+  html.tv .mx-auto {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+html.tv [data-row-scroller] { gap: 0 !important; }
+html.tv [data-row-scroller] > * + * { margin-left: 0.75rem; }
+
+@supports not (aspect-ratio: 1 / 1) {
+  html.tv [data-row-scroller] .aspect-video { height: 157.5px !important; }
+  html.tv [class*="aspect-[2/3]"] { height: 300px !important; }
+}
+
+@supports not (color: oklch(0 0 0)) {
+  html.tv .bg-gradient-to-t {
+    background-image: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.55), transparent) !important;
+  }
+  html.tv .bg-gradient-to-b {
+    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent) !important;
+  }
+}
+
+@supports not (translate: 1px) {
+  html.tv .-translate-x-1\/2 { transform: translateX(-50%) !important; }
+  html.tv .-translate-y-1\/2 { transform: translateY(-50%) !important; }
+}
+
+html.tv [data-tv-section="player-progress"] + [data-tv-section="player-transport"] { margin-top: 1rem; }
+html.tv [data-tv-section="player-transport"] { gap: 0 !important; }
+html.tv [data-tv-section="player-transport"] > button + button { margin-left: 1.5rem; }
+html.tv [data-tv-section="player-transport"] > button:last-child { margin-left: auto; }
+html.tv .tv-login-grid { gap: 0 !important; }
+html.tv .tv-login-grid > * { margin: 1rem; }

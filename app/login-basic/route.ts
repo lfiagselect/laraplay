@@ -3,6 +3,8 @@
 
 import { NextResponse } from "next/server";
 import { createDeviceSession, DEVICE_FLOW_CONFIG, getByDeviceCode } from "@/lib/device-flow";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { publicOrigin, publicUrl } from "@/lib/public-origin";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,17 +18,16 @@ function noStoreHeaders(contentType = "text/html; charset=utf-8") {
   };
 }
 
-function publicOrigin(req: Request): string {
-  if (process.env.NEXTAUTH_URL) {
-    try {
-      return new URL(process.env.NEXTAUTH_URL).origin;
-    } catch {
-      // ignore, fallback request headers
-    }
-  }
-  const proto = req.headers.get("x-forwarded-proto") ?? "https";
-  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).host;
-  return `${proto}://${host}`;
+const DEVICE_COOKIE = "laraplay_device";
+
+function setDeviceCookie(res: NextResponse, deviceCode: string) {
+  res.cookies.set(DEVICE_COOKIE, deviceCode, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 600,
+  });
 }
 
 function htmlEscape(value: string): string {
@@ -48,34 +49,34 @@ function redirectNoStore(url: string | URL) {
 
 function renderPage({
   req,
-  deviceCode,
   userCode,
   status,
 }: {
   req: Request;
-  deviceCode: string;
   userCode: string;
-  status: "pending" | "expired" | "denied" | "error";
+  status: "pending" | "consumed" | "expired" | "denied" | "error";
 }) {
   const origin = publicOrigin(req);
   const verifyUrl = `${origin}/d`;
-  const currentUrl = new URL(req.url);
-  currentUrl.searchParams.set("device_code", deviceCode);
+  // AUTH-02: le device_code ne transite plus par l'URL (cookie HttpOnly).
+  const currentUrl = publicUrl(req, "/login-basic");
   currentUrl.searchParams.set("user_code", userCode);
   currentUrl.searchParams.set("_", String(Date.now()));
 
-  const restartUrl = new URL("/login-basic", req.url).toString();
+  const restartUrl = publicUrl(req, "/login-basic?new=1").toString();
   const refreshSeconds = Math.max(4, DEVICE_FLOW_CONFIG.pollIntervalSec);
   const shouldRefresh = status === "pending";
   const title = status === "pending" ? "Connexion TV" : "Connexion TV interrompue";
   const message =
     status === "pending"
       ? "En attente de validation sur votre téléphone. Cette page se vérifie automatiquement."
-      : status === "expired"
-        ? "Ce code a expiré. Générez un nouveau code."
-        : status === "denied"
-          ? "Connexion refusée. Générez un nouveau code pour réessayer."
-          : "Impossible de préparer la connexion TV. Réessayez.";
+      : status === "consumed"
+        ? "Ce code a déjà été utilisé. Générez un nouveau code."
+        : status === "expired"
+          ? "Ce code a expiré. Générez un nouveau code."
+          : status === "denied"
+            ? "Connexion refusée. Générez un nouveau code pour réessayer."
+            : "Impossible de préparer la connexion TV. Réessayez.";
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&data=${encodeURIComponent(verifyUrl)}`;
 
@@ -129,36 +130,50 @@ body{display:block;text-align:center;}
 </html>`;
 }
 
+function cookieValue(req: Request, name: string): string {
+  const raw = req.headers.get("cookie") ?? "";
+  for (const part of raw.split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return decodeURIComponent(v.join("="));
+  }
+  return "";
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  let deviceCode = url.searchParams.get("device_code") ?? "";
-  let userCode = url.searchParams.get("user_code") ?? "";
+  const forceNew = url.searchParams.get("new") === "1";
+  const deviceCode = forceNew ? "" : cookieValue(req, DEVICE_COOKIE);
 
-  if (!deviceCode || !userCode) {
+  // Rate limit création de codes (AUTH-01 durcissement).
+  if (!deviceCode) {
+    if (!rateLimit(`start:${clientIp(req)}`, 10, 60_000)) {
+      return new Response(renderPage({ req, userCode: "----", status: "error" }), {
+        status: 429,
+        headers: noStoreHeaders(),
+      });
+    }
     const session = await createDeviceSession();
-    const next = new URL("/login-basic", req.url);
-    next.searchParams.set("device_code", session.deviceCode);
+    const next = publicUrl(req, "/login-basic");
     next.searchParams.set("user_code", session.userCode);
-    return redirectNoStore(next);
+    const res = redirectNoStore(next);
+    setDeviceCookie(res, session.deviceCode);
+    return res;
   }
 
   const session = await getByDeviceCode(deviceCode);
   if (!session) {
-    return new Response(renderPage({ req, deviceCode, userCode, status: "expired" }), {
+    return new Response(renderPage({ req, userCode: "----", status: "expired" }), {
       headers: noStoreHeaders(),
     });
   }
 
-  deviceCode = session.deviceCode;
-  userCode = session.userCode;
-
   if (session.status === "approved") {
-    const finalizeUrl = new URL("/api/auth/device/finalize", req.url);
-    finalizeUrl.searchParams.set("device_code", deviceCode);
-    return redirectNoStore(finalizeUrl);
+    // Le finalize lit le device_code dans le cookie HttpOnly, plus en query.
+    return redirectNoStore(publicUrl(req, "/api/auth/device/finalize"));
   }
 
-  return new Response(renderPage({ req, deviceCode, userCode, status: session.status }), {
+  const status = session.status === "consumed" ? "consumed" : session.status;
+  return new Response(renderPage({ req, userCode: session.userCode, status }), {
     headers: noStoreHeaders(),
   });
 }

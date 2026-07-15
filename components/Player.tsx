@@ -1,17 +1,14 @@
-// LARAPLAY — Player vidéo.
-// Si bunnyId disponible → iframe embed Bunny (player natif CDN, qualité adaptative).
-// Sinon → fallback proxy Drive via <video>.
+// LARAPLAY — Player vidéo (VIDEO-01: Bunny uniquement).
+// iframe embed Bunny (player natif CDN, qualité adaptative).
 // Track watch progress (localStorage par user) via postMessage Bunny.
-// V9: hook useBunnyProgress mutualisé avec InfoModal.
+// Variable Bunny manquante → erreur de configuration explicite (jamais Drive).
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { getEntry, saveProgress } from "@/lib/watch-progress";
+import { useRef } from "react";
 import { useBunnyProgress } from "@/lib/use-bunny-progress";
 
 const BUNNY_LIBRARY_ID = process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID;
-const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
 
 interface PlayerProps {
   poster?: string;
@@ -23,14 +20,12 @@ interface PlayerProps {
 }
 
 export function Player({
-  poster,
   videoId,
   bunnyId,
   userEmail,
   className = "",
   autoPlay = true,
 }: PlayerProps) {
-  // ── Bunny embed iframe (avec watch-progress) ───────────────────────────────
   if (bunnyId && BUNNY_LIBRARY_ID) {
     return (
       <BunnyPlayer
@@ -43,15 +38,12 @@ export function Player({
     );
   }
 
-  // ── Fallback Drive proxy ───────────────────────────────────────────────────
   return (
-    <DrivePlayer
-      poster={poster}
-      videoId={videoId}
-      userEmail={userEmail}
-      className={className}
-      autoPlay={autoPlay}
-    />
+    <div className={`relative bg-black flex items-center justify-center text-center p-6 ${className}`}>
+      <p className="text-red-400">
+        Configuration vidéo manquante (Bunny). Contactez l’administrateur.
+      </p>
+    </div>
   );
 }
 
@@ -90,104 +82,6 @@ function BunnyPlayer({
         allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
         allowFullScreen
       />
-    </div>
-  );
-}
-
-// ── Sous-composant Drive (logique watch-progress inchangée) ──────────────────
-function DrivePlayer({
-  poster,
-  videoId,
-  userEmail,
-  className = "",
-  autoPlay = true,
-}: Omit<PlayerProps, "bunnyId">) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !videoId) return;
-    v.src = `/api/stream/${videoId}`;
-    v.load();
-  }, [videoId]);
-
-  // Resume position
-  useEffect(() => {
-    if (!videoId || !userEmail) return;
-    const entry = getEntry(userEmail, videoId);
-    if (!entry) return;
-    const v = videoRef.current;
-    if (!v) return;
-    let restored = false;
-    const tryRestore = () => {
-      if (restored || !isFinite(v.duration) || v.duration <= 0) return;
-      v.currentTime = Math.max(0, Math.min(entry.position - 5, v.duration - 1));
-      restored = true;
-    };
-    v.addEventListener("loadedmetadata", tryRestore);
-    v.addEventListener("canplay", tryRestore);
-    return () => {
-      v.removeEventListener("loadedmetadata", tryRestore);
-      v.removeEventListener("canplay", tryRestore);
-    };
-  }, [videoId, userEmail]);
-
-  // Save progress
-  useEffect(() => {
-    if (!videoId || !userEmail) return;
-    const v = videoRef.current;
-    if (!v) return;
-    let lastSave = 0;
-    const persist = (force = false) => {
-      if (!v.duration || !isFinite(v.duration)) return;
-      const now = Date.now();
-      if (!force && now - lastSave < 10_000) return;
-      lastSave = now;
-      saveProgress(userEmail, {
-        videoId,
-        position: v.currentTime,
-        duration: v.duration,
-        updatedAt: now,
-        completed: v.currentTime >= v.duration * 0.9,
-      });
-    };
-    const onTime = () => persist();
-    const onPause = () => persist(true);
-    const onEnded = () => persist(true);
-    const onBefore = () => persist(true);
-    v.addEventListener("timeupdate", onTime);
-    v.addEventListener("pause", onPause);
-    v.addEventListener("ended", onEnded);
-    window.addEventListener("beforeunload", onBefore);
-    return () => {
-      v.removeEventListener("timeupdate", onTime);
-      v.removeEventListener("pause", onPause);
-      v.removeEventListener("ended", onEnded);
-      window.removeEventListener("beforeunload", onBefore);
-      persist(true);
-    };
-  }, [videoId, userEmail]);
-
-  return (
-    <div className={`relative bg-black ${className}`}>
-      <video
-        ref={videoRef}
-        controls
-        autoPlay={autoPlay}
-        playsInline
-        preload="auto"
-        poster={poster}
-        controlsList="nodownload"
-        onContextMenu={(e) => e.preventDefault()}
-        onError={() => setError(true)}
-        className="w-full h-full"
-      />
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-center p-6">
-          <p className="text-red-400">Erreur de lecture. Réessaie.</p>
-        </div>
-      )}
     </div>
   );
 }

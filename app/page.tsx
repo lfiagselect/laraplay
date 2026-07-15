@@ -34,7 +34,7 @@ export default async function Home() {
   const eras = ERAS.map((name) => ({
     name,
     count: videosForCategory(catalog.byCategory, name).length,
-    image: posterImage(name, "png"),
+    image: posterImage(name),
   })).filter((e) => e.count > 0);
 
   const hero = HERO_VIDEOS[0];

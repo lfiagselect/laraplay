@@ -69,7 +69,7 @@ export function SettingsClient({ userName, userEmail }: SettingsClientProps) {
               Catalogue vidéos
             </h2>
             <p className="text-sm text-[var(--text-secondary)] mt-1">
-              Actualise la liste des vidéos depuis Google Drive.
+              Actualise la liste des vidéos depuis Bunny Stream.
               Utilise ce bouton si une nouvelle vidéo n&apos;apparaît pas encore.
             </p>
             {msg && (

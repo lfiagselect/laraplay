@@ -47,3 +47,5 @@ drive-key.json
 next-env.d.ts
 
 .vercel
+# Clés de déploiement locales — ne jamais versionner.
+_deploy/

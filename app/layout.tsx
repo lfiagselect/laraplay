@@ -67,7 +67,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[var(--bg-main)] text-white">
         <ModalProvider userEmail={userEmail}>
-          <div className="flex-1 pb-16 md:pb-0">{children}</div>
+          <div className="flex-1">{children}</div>
           <BottomTabBar isAdmin={isAdmin} />
           <TVNavProvider />
         </ModalProvider>

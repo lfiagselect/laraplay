@@ -2,7 +2,7 @@
 // Optim perf: image poster preview, pas vidéo background lourde.
 
 import Link from "next/link";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { Play, Info } from "lucide-react";
 
 interface HeroProps {
@@ -13,7 +13,7 @@ interface HeroProps {
 
 export function Hero({ video, backgroundImage }: HeroProps) {
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
-  const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+  const thumb = video.bunnyThumbnail ?? null;
   const bg = backgroundImage ?? thumb;
 
   return (

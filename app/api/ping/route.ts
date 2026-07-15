@@ -20,16 +20,17 @@ export async function GET() {
   } catch {
     // ignore: catalog peut échouer en cold start avec creds manquantes en preview
   }
+  const ok = videosCount > 0;
   return new Response(
     JSON.stringify({
-      ok: true,
+      ok,
       ts: Date.now(),
       videos: videosCount,
       cacheHit,
       ms: Date.now() - start,
     }),
     {
-      status: 200,
+      status: ok ? 200 : 503,
       headers: {
         "content-type": "application/json",
         "cache-control": "no-store",

@@ -28,7 +28,7 @@ export function HeaderShell({ children }: { children: React.ReactNode }) {
       className="fixed top-0 left-0 right-0 z-40 w-full transition-colors duration-150"
       style={{
         paddingTop: "env(safe-area-inset-top)",
-        backgroundColor: `rgba(20, 20, 20, ${opacity * 0.95})`,
+        backgroundColor: `rgba(11, 11, 11, ${0.35 + opacity * 0.6})`,
         backgroundImage:
           opacity < 0.95
             ? `linear-gradient(180deg, rgba(0,0,0,${0.7 * (1 - opacity)}) 0%, rgba(0,0,0,${0.35 * (1 - opacity)}) 50%, transparent 100%)`

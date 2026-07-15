@@ -1,7 +1,7 @@
 // LARAPLAY — Player TV custom (10-foot UI).
 // Reprend la state machine du Player desktop + perf marks + watch-progress.
 // Diffs:
-//   - controls={false} → overlay custom focusable D-pad
+//   - contrôles natifs désactivés → overlay custom focusable D-pad (sections TV)
 //   - preload="auto" (TV slow start tolère mal preload=metadata)
 //   - Space/Enter toggle play, ←/→ skip ±10s, MediaPlay/Pause natif
 //   - Auto-hide controls 3s sans input, ↓ ré-affiche + focus play
@@ -27,11 +27,14 @@ import {
 import { getEntry, saveProgress } from "@/lib/watch-progress";
 import { track, startTimer } from "@/lib/perf";
 import { matchTVKeyEvent } from "@/lib/tv";
+import { pad2 } from "@/lib/format";
+import { safePlay } from "@/lib/media";
 
 type PlayerState = "idle" | "loading" | "ready" | "playing" | "paused" | "buffering" | "error";
 
 interface PlayerTVProps {
-  src: string;
+  /** Sources ordonnées : MP4 720/480/360 puis HLS de secours. */
+  sources: string[];
   poster?: string;
   videoId?: string;
   userEmail?: string;
@@ -48,12 +51,12 @@ function fmtTime(s: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = Math.floor(s % 60);
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${m}:${String(sec).padStart(2, "0")}`;
+  if (h > 0) return `${h}:${pad2(m)}:${pad2(sec)}`;
+  return `${m}:${pad2(sec)}`;
 }
 
 export function PlayerTV({
-  src,
+  sources,
   poster,
   videoId,
   userEmail,
@@ -73,14 +76,26 @@ export function PlayerTV({
   const [buffered, setBuffered] = useState(0);
   const [muted, setMuted] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [sourceIndex, setSourceIndex] = useState(0);
   const router = useRouter();
+  const sourcesKey = sources.join("\n");
+  const currentSrc = sources[sourceIndex] ?? "";
+  const stateRef = useRef<PlayerState>("idle");
+  useEffect(() => { stateRef.current = state; }, [state]);
 
-  // Auto-hide controls
+  // PLAYER-02: ne jamais masquer pendant focus contrôle, pause, erreur ou buffering.
+  const canHideControls = () => {
+    const st = stateRef.current;
+    if (st !== "playing") return false;
+    const active = document.activeElement;
+    return !(active && containerRef.current?.contains(active) && active !== document.body);
+  };
   const showControls = () => {
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
-      setControlsVisible(false);
+      if (canHideControls()) setControlsVisible(false);
+      else showControls(); // re-armer tant que masquage interdit
     }, CONTROLS_HIDE_MS);
   };
 
@@ -90,18 +105,19 @@ export function PlayerTV({
   // Autres (Android natif, Tizen ancien, Chrome desktop): besoin hls.js.
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !src) return;
+    if (!v || !currentSrc) return;
 
-    const isHls = /\.m3u8($|\?)/i.test(src);
+    const isHls = /\.m3u8($|\?)/i.test(currentSrc);
     const canPlayHlsNatively = v.canPlayType("application/vnd.apple.mpegurl") !== "";
 
     if (!isHls || canPlayHlsNatively) {
-      v.src = src;
+      v.src = currentSrc;
       return;
     }
 
     // Charge hls.js dynamiquement (évite poids initial pour TVs natives)
     let cancelled = false;
+    const sourceStartedAt = Date.now();
     (async () => {
       try {
         const HlsModule = await import("hls.js");
@@ -109,16 +125,29 @@ export function PlayerTV({
         const Hls = HlsModule.default;
         if (!Hls.isSupported()) {
           // Browser ne support pas MSE → fallback URL directe (échouera mais clean error)
-          v.src = src;
+          v.src = currentSrc;
           return;
         }
         const hls = new Hls({ enableWorker: true });
-        hls.loadSource(src);
+        hls.loadSource(currentSrc);
         hls.attachMedia(v);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (!data.fatal) return;
+          try { hls.destroy(); } catch {}
+          if (hlsRef.current === hls) hlsRef.current = null;
+          setState("error");
+          setErrorMsg("Erreur de lecture. Réessaie.");
+          track({
+            type: "player.error",
+            videoId,
+            ms: Date.now() - sourceStartedAt,
+            meta: { code: -1, message: `hls:${data.type}:${data.details}` },
+          });
+        });
         hlsRef.current = hls;
       } catch (err) {
         console.error("[PlayerTV] HLS load failed:", err);
-        v.src = src; // ultime fallback
+        v.src = currentSrc; // ultime fallback
       }
     })();
 
@@ -129,7 +158,11 @@ export function PlayerTV({
         hlsRef.current = null;
       }
     };
-  }, [src]);
+  }, [currentSrc, videoId]);
+
+  useEffect(() => {
+    setSourceIndex(0);
+  }, [sourcesKey]);
 
   // ============ State machine + perf marks (clone Player.tsx) ============
   useEffect(() => {
@@ -149,12 +182,24 @@ export function PlayerTV({
       setState("playing");
       track({ type: "player.playing", videoId, ms: elapsed() });
     };
-    const onPause = () => setState((s) => (s === "buffering" ? s : "paused"));
+    const onPause = () => setState("paused"); // PLAYER-02: pause pendant buffering = paused, loader retiré
     const onWaiting = () => {
       setState("buffering");
       track({ type: "player.waiting", videoId, ms: elapsed() });
     };
     const onError = () => {
+      if (sourceIndex + 1 < sources.length) {
+        track({
+          type: "player.source_fallback",
+          videoId,
+          ms: elapsed(),
+          meta: { from: sourceIndex, to: sourceIndex + 1 },
+        });
+        setErrorMsg(null);
+        setState("loading");
+        setSourceIndex((index) => Math.min(index + 1, sources.length - 1));
+        return;
+      }
       setState("error");
       setErrorMsg("Erreur de lecture. Réessaie.");
       const err = v.error;
@@ -198,7 +243,7 @@ export function PlayerTV({
       v.removeEventListener("durationchange", onDuration);
       v.removeEventListener("progress", onProgress);
     };
-  }, [videoId]);
+  }, [videoId, sourceIndex, sources.length]);
 
   // ============ Resume position (clone Player.tsx) ============
   useEffect(() => {
@@ -282,7 +327,7 @@ export function PlayerTV({
       // MediaPlayPause natif TV remote
       if (matchTVKeyEvent(e, "PLAY") || matchTVKeyEvent(e, "PAUSE")) {
         e.preventDefault();
-        if (v.paused) v.play().catch(() => {});
+        if (v.paused) safePlay(v);
         else v.pause();
         return;
       }
@@ -326,7 +371,7 @@ export function PlayerTV({
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) v.play().catch(() => {});
+    if (v.paused) safePlay(v);
     else v.pause();
   };
   const skipBack = () => {
@@ -345,7 +390,7 @@ export function PlayerTV({
     v.muted = !v.muted;
     setMuted(v.muted);
   };
-  const onBack = () => router.push(backHref);
+  const onBack = () => router.replace(backHref);
 
   const showLoader = state === "loading" || state === "buffering" || state === "idle";
   const isPlaying = state === "playing";
@@ -360,14 +405,12 @@ export function PlayerTV({
     >
       <video
         ref={videoRef}
-        src={src}
-        controls
         autoPlay
         playsInline
         preload="auto"
         poster={poster}
         muted={muted}
-        className="w-full h-full"
+        className="w-full h-full object-contain"
       />
 
       {/* Poster initial */}
@@ -377,7 +420,7 @@ export function PlayerTV({
           src={poster}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
         />
       )}
 
@@ -391,19 +434,30 @@ export function PlayerTV({
       {/* Erreur */}
       {state === "error" && errorMsg && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/85 text-center p-8">
-          <div>
+          <div data-tv-section="player-error">
             <p className="text-red-400 mb-4 text-lg">{errorMsg}</p>
-            <button
-              data-focusable
-              onClick={() => {
-                setErrorMsg(null);
-                setState("loading");
-                videoRef.current?.load();
-              }}
-              className="text-base text-white bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded"
-            >
-              Réessayer
-            </button>
+            <div className="flex items-center justify-center gap-4">
+              <button
+                data-focusable
+                autoFocus
+                onClick={() => {
+                  setErrorMsg(null);
+                  setState("loading");
+                  if (sourceIndex === 0) videoRef.current?.load();
+                  else setSourceIndex(0);
+                }}
+                className="text-base text-white bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded"
+              >
+                Réessayer
+              </button>
+              <button
+                data-focusable
+                onClick={onBack}
+                className="text-base text-white bg-zinc-900 hover:bg-zinc-800 px-6 py-3 rounded"
+              >
+                Retour
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -416,10 +470,10 @@ export function PlayerTV({
         ].join(" ")}
       >
         {/* Top bar: Back button */}
-        <div className="pointer-events-auto bg-gradient-to-b from-black/80 to-transparent p-6">
+        <div className="pointer-events-auto bg-gradient-to-b from-black/80 to-transparent p-6" data-tv-section="player-top">
           <button
             data-focusable
-            data-tv-close
+            data-tv-back
             onClick={onBack}
             aria-label="Retour"
             className="w-14 h-14 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center transition"
@@ -431,7 +485,7 @@ export function PlayerTV({
         {/* Bottom controls */}
         <div className="pointer-events-auto bg-gradient-to-t from-black/95 via-black/60 to-transparent p-6 md:p-10 space-y-4">
           {/* Progress bar */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-tv-section="player-progress">
             <div
               data-focusable
               data-tv-keep-horizontal
@@ -475,7 +529,7 @@ export function PlayerTV({
           </div>
 
           {/* Buttons row */}
-          <div className="flex items-center gap-4 md:gap-6">
+          <div className="flex items-center gap-4 md:gap-6" data-tv-section="player-transport">
             <button
               data-focusable
               onClick={skipBack}

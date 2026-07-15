@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { getContinueWatching, removeEntry } from "@/lib/watch-progress";
 import { useVideoModal } from "./ModalProvider";
 import { useTV } from "@/lib/tv-client";
@@ -102,7 +102,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
         >
           {entries.map(({ video, position, duration }) => {
             const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
-            const thumb = video.thumbnailLink ? `/api/thumb/${video.id}` : null;
+            const thumb = video.bunnyThumbnail ?? null;
             const pct = Math.min(100, Math.max(0, (position / duration) * 100));
             const remaining = Math.max(0, Math.floor((duration - position) / 60));
 

@@ -3,23 +3,13 @@
 "use client";
 
 import { useState, useRef } from "react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { Play, Plus, Info } from "lucide-react";
 import { useVideoModal } from "./ModalProvider";
 import { useTV } from "@/lib/tv-client";
+import { formatDuration } from "@/lib/format";
 
 const HOVER_DELAY_MS = 200;
-
-function formatDuration(ms?: string): string | null {
-  if (!ms) return null;
-  const total = Math.floor(Number(ms) / 1000);
-  if (!total) return null;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 function formatYear(modifiedTime?: string): string | null {
   if (!modifiedTime) return null;
@@ -30,14 +20,13 @@ function formatYear(modifiedTime?: string): string | null {
 interface VideoCardProps {
   video: VideoFile;
   fallbackImage?: string | null;
+  layout?: "rail" | "grid";
 }
 
-export function VideoCard({ video, fallbackImage }: VideoCardProps) {
+export function VideoCard({ video, fallbackImage, layout = "rail" }: VideoCardProps) {
   const duration = formatDuration(video.videoMediaMetadata?.durationMillis);
   const year = formatYear(video.modifiedTime);
-  const thumb = video.bunnyThumbnail
-    ?? (fallbackImage || null)
-    ?? (video.thumbnailLink ? `/api/thumb/${video.id}` : null);
+  const thumb = video.bunnyThumbnail ?? (fallbackImage || null);
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const { open, preload } = useVideoModal();
   const isTV = useTV();
@@ -63,10 +52,13 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
     <article
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
-      className="group relative shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] overflow-visible"
+      className={layout === "grid"
+        ? "group relative w-full min-w-0 overflow-visible"
+        : "group relative shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] overflow-visible"}
     >
       <a
         href={`/watch/${video.id}`}
+        aria-label={cleanName}
         data-focusable
         data-tv-row-item
         onClick={(e) => {
@@ -122,7 +114,7 @@ export function VideoCard({ video, fallbackImage }: VideoCardProps) {
         </div>
 
         <div className={["hidden md:block absolute left-3 right-3 bottom-12 transition-opacity duration-200", isHover ? "opacity-100" : "opacity-0"].join(" ")}>
-          <h3 className="text-white text-sm font-semibold line-clamp-1 drop-shadow-lg">{cleanName}</h3>
+          <p className="text-white text-sm font-semibold line-clamp-1 drop-shadow-lg">{cleanName}</p>
           <p className="text-[var(--text-secondary)] text-xs mt-0.5 line-clamp-1">
             {[year, video.category].filter(Boolean).join(" · ")}
           </p>
