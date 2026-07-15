@@ -6,7 +6,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { isAuthorized } from "@/lib/whitelist";
-import { getByDeviceCode } from "@/lib/device-flow";
+import { getByDeviceCode, consumeDevice, hashCode } from "@/lib/device-flow";
 
 declare module "next-auth" {
   interface Session {
@@ -32,16 +32,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         const deviceCode = credentials?.device_code;
         if (!deviceCode || typeof deviceCode !== "string") return null;
+        // TTL vérifié dans getByDeviceCode; seuls approved non expirés passent.
         const session = await getByDeviceCode(deviceCode);
         if (!session) return null;
-        if (session.status !== "approved") return null;
+        if (session.status !== "approved") return null; // expired/consumed/denied refusés
         if (!session.email) return null;
         const wl = await isAuthorized(session.email);
         if (!wl) return null;
+        // Usage unique: compare-and-set approved -> consumed.
+        // Deux finalisations concurrentes: une seule crée une session.
+        const consumed = await consumeDevice(deviceCode);
+        if (!consumed) {
+          console.warn("[auth/device] invalid_grant", hashCode(deviceCode));
+          return null;
+        }
         return {
-          id: session.email,
-          email: session.email,
-          name: wl.name || session.email,
+          id: consumed.email!,
+          email: consumed.email!,
+          name: wl.name || consumed.email!,
         };
       },
     }),

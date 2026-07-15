@@ -21,6 +21,11 @@ export function SplashIntro() {
       setVisible(false);
       return;
     }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      localStorage.setItem(KEY, today());
+      setVisible(false);
+      return;
+    }
     const last = localStorage.getItem(KEY);
     if (last === today()) {
       setVisible(false);
@@ -138,7 +143,8 @@ export function SplashIntro() {
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black animate-splash-fade pointer-events-auto"
       onClick={() => setVisible(false)}
-      aria-hidden
+      role="dialog"
+      aria-label="Introduction LARAPLAY"
     >
       <div className="relative">
         <div className="absolute inset-0 blur-3xl opacity-60 bg-red-600 animate-splash-glow rounded-full" />
@@ -148,6 +154,7 @@ export function SplashIntro() {
       </div>
       <button
         onClick={() => setVisible(false)}
+        aria-label="Passer l'introduction"
         className="absolute bottom-8 right-8 text-zinc-500 text-xs hover:text-white transition"
       >
         Passer

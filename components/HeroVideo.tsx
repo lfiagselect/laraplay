@@ -7,48 +7,35 @@
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX, Play, Info } from "lucide-react";
 import type { HeroVideo } from "@/lib/hero-videos";
+import { safePlay } from "@/lib/media";
 
 const BUNNY_PULL_ZONE = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE;
 
 interface HeroVideoProps {
   hero: HeroVideo;
   onEnded?: () => void;
+  enableVideo?: boolean;
 }
 
-export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
+export function HeroVideoBlock({ hero, onEnded, enableVideo = true }: HeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const videoSrc = BUNNY_PULL_ZONE && hero.bunnyId
-    ? `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_720p.mp4`
+  const videoSrc = enableVideo && BUNNY_PULL_ZONE && hero.bunnyId
+    ? `https://${BUNNY_PULL_ZONE}/${hero.bunnyId}/play_360p.mp4`
     : undefined;
   const [muted, setMuted] = useState(true);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !videoSrc) return;
-    if (v.src !== videoSrc) v.src = videoSrc;
-    v.load();
-    v.play().catch(() => {});
+    safePlay(v);
   }, [videoSrc]);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     v.muted = muted;
-    if (!muted) v.play().catch(() => setMuted(true));
+    if (!muted) safePlay(v, () => setMuted(true));
   }, [muted]);
-
-  useEffect(() => {
-    const activate = () => setMuted(false);
-    const opts = { once: true } as const;
-    window.addEventListener("click", activate, opts);
-    window.addEventListener("keydown", activate, opts);
-    window.addEventListener("touchstart", activate, opts);
-    return () => {
-      window.removeEventListener("click", activate);
-      window.removeEventListener("keydown", activate);
-      window.removeEventListener("touchstart", activate);
-    };
-  }, []);
 
   return (
     <section
@@ -65,19 +52,21 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
             className="absolute inset-0 w-full h-full object-cover"
           />
         )}
-        <video
-          id="hero-video-el"
-          ref={videoRef}
-          src={videoSrc}
-          poster={hero.poster}
-          autoPlay
-          muted
-          playsInline
-          preload="auto"
-          onEnded={() => onEnded?.()}
-          onError={() => onEnded?.()}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
+        {videoSrc && (
+          <video
+            id="hero-video-el"
+            ref={videoRef}
+            src={videoSrc}
+            poster={hero.poster}
+            autoPlay
+            muted={muted}
+            playsInline
+            preload="metadata"
+            onEnded={() => onEnded?.()}
+            onError={() => onEnded?.()}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
       </div>
 
       {/* Gradient gauche (lisibilité texte) */}
@@ -131,6 +120,7 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
             <a
               href={hero.ctaLecture}
               data-focusable
+              data-tv-initial
               className="inline-flex items-center gap-2 bg-white text-black font-bold rounded-md px-5 md:px-8 py-2 md:py-2.5 text-sm md:text-base hover:bg-white/85 transition"
             >
               <Play className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" />
@@ -152,14 +142,16 @@ export function HeroVideoBlock({ hero, onEnded }: HeroVideoProps) {
 
       {/* Bouton son + badge âge — coin droit bas, alignés Netflix */}
       <div className="absolute right-0 bottom-[22%] md:bottom-[16%] z-20 flex items-center gap-3 md:gap-4 pr-2 md:pr-0">
-        <button
-          tabIndex={-1}
-          onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
-          className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-white/40 bg-black/40 hover:border-white hover:bg-black/60 flex items-center justify-center transition"
-          aria-label={muted ? "Activer son" : "Couper son"}
-        >
-          {muted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
-        </button>
+        {videoSrc && (
+          <button
+            data-focusable
+            onClick={(e) => { e.stopPropagation(); setMuted((m) => !m); }}
+            className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-white/40 bg-black/40 hover:border-white hover:bg-black/60 flex items-center justify-center transition"
+            aria-label={muted ? "Activer son" : "Couper son"}
+          >
+            {muted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />}
+          </button>
+        )}
         <div className="bg-zinc-500/40 border-l-4 border-zinc-300 text-white text-xs md:text-base font-medium px-2 md:px-3 py-0.5 md:py-1 backdrop-blur-sm">
           13+
         </div>

@@ -29,7 +29,7 @@ export default async function ErasPage() {
           La discographie chronologique de Lara Fabian
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" data-tv-section="eras-grid">
           {eras.map((era) => (
             <Link
               key={era.name}

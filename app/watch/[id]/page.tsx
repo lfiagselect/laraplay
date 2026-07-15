@@ -6,7 +6,6 @@ import { Header } from "@/components/Header";
 import { Row } from "@/components/Row";
 import { Player } from "@/components/Player";
 import { PlayerTV } from "@/components/PlayerTV";
-import { getVideo } from "@/lib/drive";
 import { getCatalog } from "@/lib/catalog";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
@@ -15,7 +14,7 @@ import { detectTVServer } from "@/lib/tv";
 import { bunnyStreamUrl } from "@/lib/bunny-sign";
 import Link from "next/link";
 import { X } from "lucide-react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { formatDuration, formatSize } from "@/lib/format";
 
 export const revalidate = 3600;
@@ -28,10 +27,8 @@ export default async function WatchPage({
   const { id } = await params;
   const [catalog, session, hdrs, cookieStore] = await Promise.all([getCatalog(), auth(), headers(), cookies()]);
 
-  let video: VideoFile | null = catalog.byId.get(id) ?? null;
-  if (!video) {
-    video = await getVideo(id);
-  }
+  // VIDEO-01: Bunny est la seule source; ID inconnu au catalogue = 404.
+  const video: VideoFile | null = catalog.byId.get(id) ?? null;
   if (!video) notFound();
 
   const userEmail = session?.user?.email;
@@ -40,15 +37,28 @@ export default async function WatchPage({
   if (isTV) {
     // MP4 direct pour TV/anciens navigateurs: plus largement supporté que HLS/MSE
     // sur Tizen/WebOS/VIDAA/Vewd. URL signée si BUNNY_SECURITY_KEY défini.
-    const streamSrc = video.bunnyId
-      ? bunnyStreamUrl(video.bunnyId, "play_720p.mp4") ?? `/api/stream/${video.id}`
-      : `/api/stream/${video.id}`;
+    const streamSources = [
+      bunnyStreamUrl(video.bunnyId, "play_720p.mp4"),
+      bunnyStreamUrl(video.bunnyId, "play_480p.mp4"),
+      bunnyStreamUrl(video.bunnyId, "play_360p.mp4"),
+      bunnyStreamUrl(video.bunnyId, "playlist.m3u8"),
+    ].filter((source): source is string => Boolean(source));
+    if (streamSources.length === 0) {
+      // Erreur de configuration explicite, jamais d'appel silencieux vers Drive.
+      return (
+        <div className="fixed inset-0 bg-black flex items-center justify-center text-center p-8">
+          <p className="text-red-400 text-2xl">
+            Configuration vidéo manquante (pull zone Bunny). Contactez l’administrateur.
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div className="fixed inset-0 bg-black">
         <PlayerTV
-          src={streamSrc}
-          poster={video.thumbnailLink ?? undefined}
+          sources={streamSources}
+          poster={video.bunnyThumbnail ?? video.thumbnailLink ?? undefined}
           videoId={video.id}
           userEmail={userEmail}
           className="w-full h-full"

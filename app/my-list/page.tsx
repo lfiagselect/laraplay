@@ -19,7 +19,9 @@ export default async function MyListPage() {
           Ma liste
         </h1>
         <p className="text-zinc-400 mb-8">Tes vidéos favorites</p>
-        <MyListClient userEmail={userEmail} />
+        <div data-tv-section="my-list-grid">
+          <MyListClient userEmail={userEmail} />
+        </div>
       </main>
     </div>
   );

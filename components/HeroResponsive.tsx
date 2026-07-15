@@ -17,9 +17,23 @@ interface HeroResponsiveProps {
 export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
   const [videoEnded, setVideoEnded] = useState(false);
   const [skipped, setSkipped] = useState(false);
+  const [previewEnabled, setPreviewEnabled] = useState(false);
+  const [carouselPreferred, setCarouselPreferred] = useState(false);
   const videoElRef = useRef<HTMLVideoElement | null>(null);
 
-  const showCarousel = videoEnded || skipped;
+  const showCarousel = carouselPreferred || videoEnded || skipped;
+
+  useEffect(() => {
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean };
+    }).connection;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const narrow = window.matchMedia("(max-width: 767px)").matches;
+    const isTV = document.documentElement.classList.contains("tv");
+    const shouldUseCarousel = narrow || isTV || prefersReducedMotion || connection?.saveData === true;
+    setCarouselPreferred(shouldUseCarousel);
+    setPreviewEnabled(!shouldUseCarousel);
+  }, []);
 
   // Expose une ref vers l'élément video natif pour pouvoir le stopper au skip
   useEffect(() => {
@@ -39,36 +53,31 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
 
   return (
     <div data-tv-section="hero" className="relative">
-      {/* Vidéo hero — visible tant que non terminée/passée */}
-      <div
-        className={`transition-opacity duration-700 ${
-          showCarousel ? "opacity-0 pointer-events-none absolute inset-0" : "opacity-100"
-        }`}
-      >
-        <HeroVideoBlock hero={hero} onEnded={() => setVideoEnded(true)} />
+      {/* Démonter le hero inactif évite deux jeux de CTA focusables/annoncés. */}
+      {!showCarousel && (
+        <div>
+          <HeroVideoBlock
+            hero={hero}
+            enableVideo={previewEnabled}
+            onEnded={() => setVideoEnded(true)}
+          />
 
-        {/* Bouton Passer */}
-        {!showCarousel && (
-          <button
-            data-focusable
-            onClick={handleSkip}
-            onFocus={(e) => {
-              // Sur TV: empêche tout scroll vertical accidentel lors focus initial sur ce bouton
-              if (typeof document !== "undefined" && document.documentElement.classList.contains("tv")) {
-                e.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
-              }
-            }}
-            className="absolute right-3 md:right-12 top-[calc(env(safe-area-inset-top,0px)+64px)] md:top-auto md:bottom-14 z-30 flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-black/60 border border-white/30 hover:bg-black/80 hover:border-white/60 focus:bg-black/80 focus:border-white focus:outline focus:outline-2 focus:outline-white backdrop-blur-sm text-white text-xs md:text-sm font-medium transition"
-            aria-label="Passer l'intro"
-          >
-            <span>Passer</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <polygon points="5 4 15 12 5 20 5 4" />
-              <line x1="19" y1="5" x2="19" y2="19" />
-            </svg>
-          </button>
-        )}
-      </div>
+          {previewEnabled && (
+            <button
+              data-focusable
+              onClick={handleSkip}
+              className="absolute right-3 md:right-12 top-[calc(env(safe-area-inset-top,0px)+64px)] md:top-auto md:bottom-14 z-30 flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-black/60 border border-white/30 hover:bg-black/80 hover:border-white/60 focus:bg-black/80 focus:border-white focus:outline focus:outline-2 focus:outline-white backdrop-blur-sm text-white text-xs md:text-sm font-medium transition"
+              aria-label="Passer l'intro"
+            >
+              <span>Passer</span>
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <polygon points="5 4 15 12 5 20 5 4" />
+                <line x1="19" y1="5" x2="19" y2="19" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Carousel — apparaît après fin ou skip */}
       {showCarousel && (

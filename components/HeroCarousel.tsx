@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { useTV } from "@/lib/tv-client";
 
 export interface HeroCarouselSlide {
@@ -23,29 +23,28 @@ interface HeroCarouselProps {
 
 export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
   const [index, setIndex] = useState(0);
+  const [focusWithin, setFocusWithin] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const router = useRouter();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartX = useRef<number | null>(null);
   const isTV = useTV();
 
   useEffect(() => {
-    if (slides.length <= 1) return;
-    timerRef.current = setInterval(() => {
+    setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, []);
+
+  // Rotation suspendue au focus, sur TV, en mouvement réduit ou sur demande.
+  useEffect(() => {
+    if (slides.length <= 1 || focusWithin || paused || reducedMotion || isTV) return;
+    const timer = window.setTimeout(() => {
       setIndex((i) => (i + 1) % slides.length);
     }, intervalMs);
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [slides.length, intervalMs]);
+    return () => window.clearTimeout(timer);
+  }, [slides.length, intervalMs, focusWithin, paused, reducedMotion, isTV, index]);
 
   const goto = (i: number) => {
     setIndex(i);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setIndex((cur) => (cur + 1) % slides.length);
-      }, intervalMs);
-    }
   };
 
   const next = () => goto((index + 1) % slides.length);
@@ -72,6 +71,11 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
       className="hero-section relative group w-full bg-[var(--bg-main)] overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onFocusCapture={() => setFocusWithin(true)}
+      onBlurCapture={(e) => {
+        const next = e.relatedTarget as Node | null;
+        if (!next || !e.currentTarget.contains(next)) setFocusWithin(false);
+      }}
     >
       {/* Stack d'images cross-fade */}
       {slides.map((slide, i) => (
@@ -80,6 +84,8 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
           type="button"
           onClick={() => router.push(slide.href)}
           aria-label={slide.alt}
+          aria-hidden={i !== index}
+          inert={i !== index}
           tabIndex={i === index ? 0 : -1}
           className={`absolute inset-0 transition-opacity duration-1000 ${
             i === index ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
@@ -139,12 +145,25 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
         </>
       )}
 
+      {slides.length > 1 && !isTV && !reducedMotion && (
+        <button
+          type="button"
+          data-tv-compact
+          onClick={() => setPaused((value) => !value)}
+          aria-label={paused ? "Reprendre le carrousel" : "Mettre le carrousel en pause"}
+          className="absolute bottom-8 right-3 md:right-5 z-30 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          {paused ? <Play aria-hidden="true" className="h-4 w-4" /> : <Pause aria-hidden="true" className="h-4 w-4" />}
+        </button>
+      )}
+
       {/* Indicateurs barres fines — centrés, largeur fixe */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-30 pointer-events-auto">
         {slides.map((_, i) => (
           <button
             key={i}
             type="button"
+            data-tv-compact
             tabIndex={-1}
             onClick={() => goto(i)}
             aria-label={`Aller à la diapositive ${i + 1}`}

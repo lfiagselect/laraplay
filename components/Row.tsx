@@ -3,7 +3,7 @@
 "use client";
 
 import { useRef } from "react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { VideoCard } from "./VideoCard";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";

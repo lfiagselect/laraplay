@@ -31,7 +31,7 @@ export const TV_KEYCODES: Record<TVKeyAction, number[]> = {
   RIGHT: [39],
   ENTER: [13, 32],
   BACK: [8, 27, 10009, 461],
-  PLAY: [415],
+  PLAY: [415, 10252],
   PAUSE: [19],
   STOP: [413],
   REWIND: [412],
@@ -39,13 +39,13 @@ export const TV_KEYCODES: Record<TVKeyAction, number[]> = {
 };
 
 export function matchTVKey(key: string, action: TVKeyAction): boolean {
-  return (TV_KEYS[action] as readonly string[]).includes(key);
+  return (TV_KEYS[action] as readonly string[]).indexOf(key) !== -1;
 }
 
 export function matchTVKeyEvent(e: KeyboardEvent, action: TVKeyAction): boolean {
   if (matchTVKey(e.key, action)) return true;
   if (matchTVKey(e.code, action)) return true;
-  if (TV_KEYCODES[action].includes(e.keyCode)) return true;
+  if (TV_KEYCODES[action].indexOf(e.keyCode) !== -1) return true;
   return false;
 }
 

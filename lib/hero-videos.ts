@@ -27,6 +27,7 @@ export const HERO_VIDEOS: HeroVideo[] = [
     id: "leffetlara",
     bunnyId: "cdd25794-931f-4500-a166-3615c82ee51e",
     logo: "/hero-videos/effet_lara_logo.png",
+    poster: "/hero-fallback/leffet-lara.webp",
     title: "L'Effet Lara",
     subtitle: "L'événement 2026",
     ctaLecture: "/category/l-effet-lara-2026",

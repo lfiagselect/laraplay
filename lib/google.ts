@@ -1,8 +1,8 @@
-// LARAPLAY — Google API client (Drive + Sheets)
+// LARAPLAY — Google API client (Sheets uniquement — VIDEO-01: Drive retiré du runtime)
 // Service account auth. Lazy-init pour pas planter au build.
 
 import { google } from "googleapis";
-import type { drive_v3, sheets_v4 } from "googleapis";
+import type { sheets_v4 } from "googleapis";
 
 /**
  * Auth Google. Deux modes:
@@ -15,10 +15,7 @@ function getAuth() {
 
   // Scope spreadsheets read+write requis pour panneau admin (ajout/suppression users).
   // Le service account doit être partagé en éditeur sur le Sheet whitelist.
-  const scopes = [
-    "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/spreadsheets",
-  ];
+  const scopes = ["https://www.googleapis.com/auth/spreadsheets"];
 
   if (inlineJson) {
     const credentials = JSON.parse(inlineJson);
@@ -32,10 +29,6 @@ function getAuth() {
   throw new Error(
     "Google credentials missing. Set GOOGLE_APPLICATION_CREDENTIALS (local) or GOOGLE_SERVICE_ACCOUNT_JSON (prod)."
   );
-}
-
-export function getDrive(): drive_v3.Drive {
-  return google.drive({ version: "v3", auth: getAuth() });
 }
 
 export function getSheets(): sheets_v4.Sheets {

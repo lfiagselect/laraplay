@@ -3,7 +3,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { VideoFile } from "@/lib/drive";
+import type { VideoFile } from "@/lib/video-types";
 import { VideoCard } from "./VideoCard";
 import { ArrowDownAZ, Calendar, Clock, HardDrive } from "lucide-react";
 
@@ -72,7 +72,7 @@ export function CategoryFilters({ videos }: CategoryFiltersProps) {
 
   return (
     <>
-      <div className="flex flex-col gap-3 mb-6">
+      <div className="flex flex-col gap-3 mb-6" data-tv-section="filters">
         {/* Tri */}
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-xs uppercase tracking-wide text-zinc-500 mr-1 w-12">
@@ -129,9 +129,9 @@ export function CategoryFilters({ videos }: CategoryFiltersProps) {
       {filtered.length === 0 ? (
         <p className="text-zinc-500">Aucune vidéo ne correspond aux filtres.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" data-tv-section="category-grid">
           {filtered.map((v) => (
-            <VideoCard key={v.id} video={v} />
+            <VideoCard key={v.id} video={v} layout="grid" />
           ))}
         </div>
       )}

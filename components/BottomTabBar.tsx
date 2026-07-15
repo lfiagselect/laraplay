@@ -15,13 +15,14 @@ interface TabItem {
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   match: (path: string) => boolean;
   accent?: boolean;
+  compactLabel?: string;
 }
 
 const BASE_TABS: TabItem[] = [
   { href: "/", label: "Accueil", Icon: Home, match: (p) => p === "/" },
   { href: "/search", label: "Recherche", Icon: Search, match: (p) => p.startsWith("/search") },
   { href: "/my-list", label: "Ma liste", Icon: List, match: (p) => p.startsWith("/my-list") },
-  { href: "/categories", label: "Catégories", Icon: Folder, match: (p) => p.startsWith("/categories") || p.startsWith("/category") },
+  { href: "/categories", label: "Catégories", compactLabel: "Catég.", Icon: Folder, match: (p) => p.startsWith("/categories") || p.startsWith("/category") },
   { href: "/eras", label: "Ères", Icon: Disc3, match: (p) => p.startsWith("/eras") },
 ];
 
@@ -36,6 +37,7 @@ const ADMIN_TAB: TabItem = {
 const SETTINGS_TAB: TabItem = {
   href: "/settings",
   label: "Paramètres",
+  compactLabel: "Réglages",
   Icon: Settings,
   match: (p) => p.startsWith("/settings"),
 };
@@ -52,20 +54,28 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const cols = "grid-cols-6";
 
   return (
-    <nav
+    <>
+      <div
+        aria-hidden="true"
+        className="h-16 md:hidden"
+        style={{ height: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}
+      />
+      <nav
       data-mobile-tabbar
       className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#0b0b0b]/95 backdrop-blur-lg md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navigation principale"
     >
       <ul className={`grid ${cols} h-16`}>
-        {tabs.map(({ href, label, Icon, match, accent }) => {
+        {tabs.map(({ href, label, compactLabel, Icon, match, accent }) => {
           const active = match(pathname);
           return (
             <li key={href} className="flex">
               <Link
                 href={href}
                 prefetch={false}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
                 className={[
                   "flex-1 flex flex-col items-center justify-center gap-0.5 transition px-1",
                   active
@@ -73,7 +83,7 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                       ? "text-[var(--accent)]"
                       : "text-white"
                     : accent
-                      ? "text-[var(--accent)]/70 hover:text-[var(--accent)]"
+                      ? "text-[var(--accent-text)] hover:text-white"
                       : "text-[var(--text-muted)] hover:text-white",
                 ].join(" ")}
               >
@@ -82,14 +92,15 @@ export function BottomTabBar({ isAdmin = false }: { isAdmin?: boolean }) {
                   fill={active && !accent ? "currentColor" : "none"}
                   strokeWidth={active ? 2.2 : 1.8}
                 />
-                <span className={`text-[10px] leading-tight ${active ? "font-semibold" : ""}`}>
-                  {label}
+                <span className={`text-[10px] min-[390px]:text-[11px] leading-tight ${active ? "font-semibold" : ""}`}>
+                  {compactLabel ?? label}
                 </span>
               </Link>
             </li>
           );
         })}
       </ul>
-    </nav>
+      </nav>
+    </>
   );
 }

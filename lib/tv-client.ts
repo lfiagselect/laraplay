@@ -1,12 +1,10 @@
 ﻿// LARAPLAY — TV client-only (hook useTV + détection runtime).
-// Override possible via ?tv=1 URL param ou localStorage "force_tv" = "1".
-// Désactivable via ?tv=0.
+// Override possible via ?tv=1|0. Le proxy persiste désormais ce choix dans
+// le cookie serveur laraplay_legacy_tv pour garder layout et lecteur cohérents.
 "use client";
 
 import { useEffect, useState } from "react";
 import { TV_UA_REGEX } from "./tv";
-
-const STORAGE_KEY = "laraplay_force_tv";
 
 export function detectTVClient(): boolean {
   if (typeof window === "undefined") return false;
@@ -15,18 +13,10 @@ export function detectTVClient(): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
     const tvParam = params.get("tv");
-    if (tvParam === "1") {
-      localStorage.setItem(STORAGE_KEY, "1");
-      return true;
-    }
-    if (tvParam === "0") {
-      localStorage.removeItem(STORAGE_KEY);
-      return false;
-    }
-    // Persistance override entre navigations
-    if (localStorage.getItem(STORAGE_KEY) === "1") return true;
+    if (tvParam === "1") return true;
+    if (tvParam === "0") return false;
   } catch {
-    // localStorage indisponible (private mode) — continue détection auto
+    // Query string indisponible : continuer avec la détection auto.
   }
 
   // Classe TV déjà appliquée par layout server (UA match)

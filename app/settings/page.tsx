@@ -30,12 +30,14 @@ export default async function SettingsPage() {
           </p>
         </div>
 
-        <SettingsClient
-          userName={session.user.name ?? null}
-          userEmail={session.user.email}
-        />
+        <div data-tv-section="settings-actions">
+          <SettingsClient
+            userName={session.user.name ?? null}
+            userEmail={session.user.email}
+          />
+        </div>
 
-        <div className="mt-8 bg-[var(--bg-elevated)] rounded-xl p-5 md:p-6 border border-white/5">
+        <div className="mt-8 bg-[var(--bg-elevated)] rounded-xl p-5 md:p-6 border border-white/5" data-tv-section="settings-session">
           <h2 className="text-lg font-semibold text-white mb-2">Session</h2>
           <p className="text-sm text-[var(--text-secondary)] mb-4">
             Connecté en tant que <span className="text-white font-medium">{session.user.email}</span>
