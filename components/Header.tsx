@@ -16,7 +16,7 @@ export async function Header() {
   const logoutRedirect = isTV ? "/login-basic" : "/login";
 
   return (
-    <HeaderShell>
+    <HeaderShell tvMode={isTV}>
       <header data-tv-section="header" className="max-w-[1600px] mx-auto px-4 md:px-12 py-4 flex items-center gap-4 md:gap-8">
         <a href="/" data-focusable className="shrink-0">
           <Logo size="md" />

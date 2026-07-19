@@ -8,26 +8,25 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { focusInitial, useSpatialNav } from "@/lib/spatial-nav";
+import { focusInitial, installSpatialNav, uninstallSpatialNav } from "@/lib/spatial-nav";
 import { detectTVClient } from "@/lib/tv-client";
 
 export function TVNavProvider() {
-  useSpatialNav();
   const pathname = usePathname();
 
-  // Appose classe html.tv si client-side détection OU override ?tv=1 actif
-  // (cas où server-side UA n'a pas matché: Amazon Silk, browsers customisés, etc.)
+  // Détecte avant d'installer le listener global : desktop/mobile n'en ont pas
+  // besoin. La même passe couvre les UA TV détectées seulement côté client.
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    if (detectTVClient()) {
-      document.documentElement.classList.add("tv");
-    }
+    if (!detectTVClient()) return;
+    document.documentElement.classList.add("tv");
+    installSpatialNav();
+    return () => uninstallSpatialNav();
   }, []);
 
   // Après une navigation Next, l'ancien élément focalisé peut avoir disparu.
   useEffect(() => {
+    if (!document.documentElement.classList.contains("tv")) return;
     const timer = window.setTimeout(() => {
-      if (!document.documentElement.classList.contains("tv")) return;
       const active = document.activeElement as HTMLElement | null;
       if (!active || active === document.body || !document.contains(active)) focusInitial();
     }, 150);

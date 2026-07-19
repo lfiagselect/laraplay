@@ -12,13 +12,16 @@ import type { HeroVideo, HeroCarouselSlideConfig } from "@/lib/hero-videos";
 interface HeroResponsiveProps {
   hero: HeroVideo;
   carouselSlides: HeroCarouselSlideConfig[];
+  /** Détection serveur : évite de monter brièvement la vidéo et son logo sur TV. */
+  tvMode?: boolean;
 }
 
-export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
+export function HeroResponsive({ hero, carouselSlides, tvMode = false }: HeroResponsiveProps) {
   const [videoEnded, setVideoEnded] = useState(false);
   const [skipped, setSkipped] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(false);
-  const [carouselPreferred, setCarouselPreferred] = useState(false);
+  const [carouselPreferred, setCarouselPreferred] = useState(tvMode);
+  const [runtimeTV, setRuntimeTV] = useState(tvMode);
   const videoElRef = useRef<HTMLVideoElement | null>(null);
 
   const showCarousel = carouselPreferred || videoEnded || skipped;
@@ -30,10 +33,11 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const narrow = window.matchMedia("(max-width: 767px)").matches;
     const isTV = document.documentElement.classList.contains("tv");
-    const shouldUseCarousel = narrow || isTV || prefersReducedMotion || connection?.saveData === true;
+    const shouldUseCarousel = narrow || tvMode || isTV || prefersReducedMotion || connection?.saveData === true;
+    setRuntimeTV(tvMode || isTV);
     setCarouselPreferred(shouldUseCarousel);
     setPreviewEnabled(!shouldUseCarousel);
-  }, []);
+  }, [tvMode]);
 
   // Expose une ref vers l'élément video natif pour pouvoir le stopper au skip
   useEffect(() => {
@@ -82,7 +86,7 @@ export function HeroResponsive({ hero, carouselSlides }: HeroResponsiveProps) {
       {/* Carousel — apparaît après fin ou skip */}
       {showCarousel && (
         <div className="animate-hero-fade-up">
-          <HeroCarousel slides={carouselSlides} />
+          <HeroCarousel slides={carouselSlides} tvMode={runtimeTV} />
         </div>
       )}
     </div>

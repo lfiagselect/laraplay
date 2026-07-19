@@ -16,23 +16,45 @@ export function TVRowArrows({ scrollRef }: TVRowArrowsProps) {
   useEffect(() => {
     const scroller = scrollRef.current;
     if (!scroller) return;
+    let frame = 0;
+    let lastLeft = false;
+    let lastRight = false;
 
     const update = () => {
       const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
       const currentLeft = scroller.scrollLeft;
-      setCanScrollLeft(currentLeft > 4);
-      setCanScrollRight(currentLeft < maxLeft - 4);
+      const nextLeft = currentLeft > 4;
+      const nextRight = currentLeft < maxLeft - 4;
+      if (nextLeft !== lastLeft) {
+        lastLeft = nextLeft;
+        setCanScrollLeft(nextLeft);
+      }
+      if (nextRight !== lastRight) {
+        lastRight = nextRight;
+        setCanScrollRight(nextRight);
+      }
+    };
+
+    // Un seul calcul de layout par frame même si le moteur émet une rafale de
+    // scroll events pendant le recentrage D-pad.
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        update();
+      });
     };
 
     update();
-    const timers = [40, 250, 800].map((delay) => window.setTimeout(update, delay));
-    scroller.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
+    const timers = [40, 250, 800].map((delay) => window.setTimeout(scheduleUpdate, delay));
+    scroller.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
 
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer));
-      scroller.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+      if (frame) window.cancelAnimationFrame(frame);
+      scroller.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
     };
   }, [scrollRef]);
 
@@ -42,7 +64,7 @@ export function TVRowArrows({ scrollRef }: TVRowArrowsProps) {
     const delta = scroller.clientWidth * 0.82 * (dir === "left" ? -1 : 1);
     try {
       if (typeof scroller.scrollBy === "function") {
-        scroller.scrollBy({ left: delta, behavior: "smooth" });
+        scroller.scrollBy({ left: delta, behavior: "auto" });
       } else {
         scroller.scrollLeft += delta;
       }

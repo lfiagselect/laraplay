@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/prepend-legacy-client-bootstrap.mjs",
     "start": "next start",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
@@ -28,6 +28,6 @@
     "@csstools/postcss-cascade-layers": "^5.0.1"
   },
   "browserslist": [
-    "chrome >= 68"
+    "chrome >= 53"
   ]
 }

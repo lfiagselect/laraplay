@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { matchTVKeyEvent } from "./tv";
+import { matchTVKeyEvent, TV_CONTROLS_WAKE_EVENT } from "./tv";
 
 const SECTION_ATTR = "data-tv-section";
 const FOCUSABLE_SELECTOR = [
@@ -95,7 +95,7 @@ function centerInRow(el: HTMLElement, rowScroller: HTMLElement) {
   const targetLeft = rowScroller.scrollLeft + delta;
   try {
     if (typeof rowScroller.scrollTo === "function") {
-      rowScroller.scrollTo({ left: targetLeft, behavior: "smooth" });
+      rowScroller.scrollTo({ left: targetLeft, behavior: "auto" });
     } else {
       rowScroller.scrollLeft = targetLeft;
     }
@@ -121,7 +121,7 @@ function focusEl(el: HTMLElement) {
     const vh = window.innerHeight;
     if (sr.top < 0 || sr.bottom > vh) {
       try {
-        sec.scrollIntoView({ block: "center", behavior: "smooth" });
+        sec.scrollIntoView({ block: "center", behavior: "auto" });
       } catch {
         sec.scrollIntoView();
       }
@@ -187,18 +187,17 @@ function adjacentSection(
   dir: "UP" | "DOWN",
   root: HTMLElement | Document,
 ): HTMLElement | null {
-  const currentRect = current.getBoundingClientRect();
-  const currentY = currentRect.top + currentRect.height / 2;
-  const sections = allSections(root)
-    .filter((section) => section !== current && focusableInSection(section).length > 0)
-    .map((section) => {
-      const rect = section.getBoundingClientRect();
-      return { section, y: rect.top + rect.height / 2 };
-    })
-    .filter(({ y }) => dir === "DOWN" ? y > currentY + 4 : y < currentY - 4)
-    .sort((a, b) => Math.abs(a.y - currentY) - Math.abs(b.y - currentY));
-
-  return sections.length > 0 ? sections[0].section : null;
+  // Les sections sont rendues dans leur ordre visuel vertical. Parcourir cet
+  // ordre évite de mesurer toutes les cartes de toutes les rangées à chaque
+  // pression Haut/Bas (coût très visible sur les moteurs TV mono-cœur).
+  const sections = allSections(root);
+  const currentIndex = sections.indexOf(current);
+  if (currentIndex < 0) return null;
+  const step = dir === "DOWN" ? 1 : -1;
+  for (let index = currentIndex + step; index >= 0 && index < sections.length; index += step) {
+    if (focusableInSection(sections[index]).length > 0) return sections[index];
+  }
+  return null;
 }
 
 function moveHorizontal(dir: "LEFT" | "RIGHT"): boolean {
@@ -298,7 +297,15 @@ function activateActive(): boolean {
 
 function goBack(): boolean {
   const active = document.activeElement as HTMLElement | null;
-  // 1. Modale / overlay ouverte : Return ferme d'abord (checklist Samsung S2).
+  // 1. Plein écran : Return quitte d'abord ce mode, sans fermer le lecteur.
+  const fullscreenToggle = document.querySelector<HTMLElement>(
+    '[data-tv-fullscreen][aria-pressed="true"]'
+  );
+  if (fullscreenToggle) {
+    fullscreenToggle.click();
+    return true;
+  }
+  // 2. Modale / overlay ouverte : Return ferme d'abord (checklist Samsung S2).
   const anyTrap = document.querySelector<HTMLElement>("[data-tv-trap]");
   const trap = active?.closest<HTMLElement>("[data-tv-trap]") ?? anyTrap;
   if (trap) {
@@ -310,15 +317,19 @@ function goBack(): boolean {
       return true;
     }
   }
-  // 2. Lecteur : bouton retour explicite (backHref respecté).
+  // 3. Lecteur : bouton retour explicite (backHref respecté).
   const playerBack = document.querySelector<HTMLElement>("[data-tv-back]");
-  if (playerBack && isActuallyVisible(playerBack)) {
+  // Même overlay auto-masqué, Retour doit respecter backHref et non dépendre
+  // de l'historique aléatoire du navigateur TV.
+  if (playerBack && (
+    isActuallyVisible(playerBack) || Boolean(playerBack.closest("[data-tv-player-shell]"))
+  )) {
     playerBack.click();
     return true;
   }
   // À l'accueil, laisser le système du téléviseur gérer Retour/Exit.
   if (window.location.pathname === "/") return false;
-  // 3. Hiérarchie navigateur.
+  // 4. Hiérarchie navigateur.
   if (window.history.length > 1) {
     window.history.back();
     return true;
@@ -332,9 +343,41 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable;
 }
 
+/**
+ * Player TV masqué : la première flèche/Enter ne doit ni déplacer le focus ni
+ * activer le dernier bouton mémorisé. Elle ne fait que réveiller l'overlay.
+ */
+function wakeHiddenPlayerControls(e: KeyboardEvent): boolean {
+  const player = document.querySelector<HTMLElement>(
+    '[data-tv-player-shell][data-tv-controls-hidden="true"]'
+  );
+  if (!player) return false;
+
+  const isNavigationInput =
+    matchTVKeyEvent(e, "UP") || matchTVKeyEvent(e, "DOWN") ||
+    matchTVKeyEvent(e, "LEFT") || matchTVKeyEvent(e, "RIGHT") ||
+    matchTVKeyEvent(e, "ENTER");
+  if (!isNavigationInput) return false;
+
+  let wakeEvent: Event;
+  try {
+    wakeEvent = new Event(TV_CONTROLS_WAKE_EVENT);
+  } catch {
+    // Event() n'est pas constructible sur certains anciens WebKit TV.
+    wakeEvent = document.createEvent("Event");
+    wakeEvent.initEvent(TV_CONTROLS_WAKE_EVENT, false, false);
+  }
+  player.dispatchEvent(wakeEvent);
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  return true;
+}
+
 function onKeyDown(e: KeyboardEvent) {
   if (!isTV()) return;
   if (e.defaultPrevented) return;
+
+  if (wakeHiddenPlayerControls(e)) return;
 
   // Dans un champ simple, gauche/droite, saisie, Enter et Backspace restent à
   // l'IME. Haut/Bas permettent toutefois de rejoindre les autres sections TV;

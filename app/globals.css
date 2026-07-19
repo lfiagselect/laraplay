@@ -10,8 +10,8 @@
 }
 
 :root {
-  /* Fallbacks sRGB : Tailwind 4 expose ces tokens en OKLCH, non compris par
-     Chromium 68 (LG webOS 5). Les navigateurs récents gardent le même rendu. */
+  /* Fallbacks sRGB pour la cible TV Chromium 53/56 (webOS 4.x / Samsung 2018).
+     Les navigateurs récents gardent le même rendu. */
   --color-red-200: #fecaca;
   --color-red-300: #fca5a5;
   --color-red-400: #f87171;
@@ -308,8 +308,8 @@ html, body {
 }
 
 /* ============================================================
-   I2 — Backdrop-filter fallback (Tizen 2017-2018, vieux WebKit)
-   Active fallback solid si support absent.
+   I2 — Backdrop-filter fallback pour les moteurs sans filtre natif.
+   Active un fond solide si le support est absent.
    ============================================================ */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .backdrop-blur-sm,
@@ -360,10 +360,15 @@ html.tv [data-tv-no-hover-scale]:hover {
 html.tv *:focus {
   outline: 4px solid var(--accent) !important;
   outline-offset: 3px;
-  box-shadow:
-    0 0 0 7px rgba(229, 9, 20, 0.35),
-    0 0 24px rgba(229, 9, 20, 0.55);
+  box-shadow: 0 0 0 7px rgba(229, 9, 20, 0.42);
   border-radius: 6px;
+}
+
+/* L'auto-hide place volontairement le focus sur le shell du lecteur. Il doit
+   rester pilotable sans afficher un cadre rouge autour de tout l'écran. */
+html.tv [data-tv-player-shell]:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Sur TV, le focus vient souvent d'un script D-pad: ne pas masquer :focus
@@ -383,23 +388,23 @@ html.tv .text-base { font-size: 1.15rem !important; }
 html.tv .text-lg { font-size: 1.3rem !important; }
 
 html.tv [data-row-scroller] {
-  scroll-behavior: smooth;
+  /* Les animations de scroll déclenchent des frames longues sur WebOS/Tizen. */
+  scroll-behavior: auto !important;
   scroll-padding-inline: 10vw;
 }
 
 /* Rails Netflix-like: carte focalisée agrandie et toujours visible au D-pad. */
 html.tv [data-tv-row-item] {
   transform-origin: center center;
-  transition: transform 140ms ease-out, outline-color 140ms ease-out, box-shadow 140ms ease-out !important;
+  transition: none !important;
+  will-change: auto !important;
 }
 
 html.tv [data-tv-row-item]:focus {
-  transform: scale(1.08);
+  transform: none !important;
   outline: 4px solid var(--accent) !important;
   outline-offset: 3px !important;
-  box-shadow:
-    0 0 0 6px rgba(229, 9, 20, 0.30),
-    0 12px 34px rgba(0, 0, 0, 0.70) !important;
+  box-shadow: 0 0 0 6px rgba(229, 9, 20, 0.36) !important;
 }
 
 html.tv [data-row-scroller] {
@@ -425,13 +430,34 @@ html.tv [data-header-shell] {
   top: 0;
 }
 
+/* Animations décoratives et transitions de modale : coût GPU sans bénéfice
+   fonctionnel à distance. Le feedback D-pad reste assuré par l'outline. */
 html.tv .animate-ken-burns,
-html.tv .animate-hero-zoom {
-  animation-duration: 30s !important;
+html.tv .animate-hero-zoom,
+html.tv .animate-hero-fade-up,
+html.tv .animate-modal-enter,
+html.tv .animate-sheet-slide-up,
+html.tv .skeleton-shimmer {
+  animation: none !important;
 }
 
-html.tv .skeleton-shimmer {
-  animation-duration: 2.5s !important;
+html.tv .animate-hero-fade-up {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* Les transitions Tailwind entretiennent des calques composites sur les vieux
+   moteurs TV. Les changements d'état restent immédiats et le focus reste net. */
+html.tv .transition,
+html.tv .transition-all,
+html.tv .transition-colors,
+html.tv .transition-opacity,
+html.tv .transition-transform {
+  transition: none !important;
+}
+
+html.tv [data-tv-row-more] {
+  opacity: 1 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -546,6 +572,7 @@ html.tv section[class*="aspect-video"] {
 /* Cards Top10 portrait + chiffre rang réduits TV */
 html.tv .top10-rank {
   font-size: 140px !important;
+  text-shadow: none !important;
 }
 html.tv [class*="aspect-[2/3]"] {
   width: 200px !important;
@@ -610,9 +637,9 @@ html.tv .tv-login-link {
   color: #fff !important;
 }
 
-/* TV legacy shell (Chromium 68–85) : fallbacks ciblés sur les primitives
-   critiques. Tailwind 4 complet reste un socle moderne, donc la certification
-   finale doit toujours se faire sur les modèles physiques LG/Samsung visés. */
+/* TV legacy shell (cible Chromium 53+) : fallbacks ciblés sur les primitives
+   critiques. Ceci ne constitue pas une promesse pour les moteurs antérieurs à
+   webOS 4.x / Samsung 2018 ; validation physique toujours requise. */
 @supports not (padding-inline: 1px) {
   html.tv body {
     padding-left: var(--tv-safe-x);
@@ -631,12 +658,53 @@ html.tv .tv-login-link {
 html.tv [data-row-scroller] { gap: 0 !important; }
 html.tv [data-row-scroller] > * + * { margin-left: 0.75rem; }
 
+/* Chromium 53 ne prend pas encore CSS Grid. Les principales grilles de
+   catalogue restent alors navigables sous forme de rangées flexibles. */
+@supports not (display: grid) {
+  html.tv [data-tv-section="categories-grid"],
+  html.tv [data-tv-section="category-grid"],
+  html.tv [data-tv-section="eras-grid"],
+  html.tv [data-tv-section="search-results"],
+  html.tv [data-tv-section="my-list-grid"],
+  html.tv [data-tv-section="modal-related"] {
+    display: flex !important;
+    flex-wrap: wrap;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+
+  html.tv [data-tv-section="categories-grid"] > *,
+  html.tv [data-tv-section="category-grid"] > *,
+  html.tv [data-tv-section="eras-grid"] > *,
+  html.tv [data-tv-section="search-results"] > *,
+  html.tv [data-tv-section="my-list-grid"] > *,
+  html.tv [data-tv-section="modal-related"] > * {
+    flex: 0 0 260px;
+    margin: 0.5rem;
+  }
+}
+
 @supports not (aspect-ratio: 1 / 1) {
   html.tv [data-row-scroller] .aspect-video { height: 157.5px !important; }
   html.tv [class*="aspect-[2/3]"] { height: 300px !important; }
 }
 
 @supports not (color: oklch(0 0 0)) {
+  /* Tailwind 4 génère les couleurs avec alpha via color-mix(), absent de
+     Chromium 53/56. Ces utilitaires sont critiques pour la lisibilité du
+     lecteur et des overlays TV. */
+  html.tv [class~="bg-black/30"] { background-color: rgba(0, 0, 0, 0.30) !important; }
+  html.tv [class~="bg-black/40"] { background-color: rgba(0, 0, 0, 0.40) !important; }
+  html.tv [class~="bg-black/50"] { background-color: rgba(0, 0, 0, 0.50) !important; }
+  html.tv [class~="bg-black/60"] { background-color: rgba(0, 0, 0, 0.60) !important; }
+  html.tv [class~="bg-black/70"] { background-color: rgba(0, 0, 0, 0.70) !important; }
+  html.tv [class~="bg-black/80"] { background-color: rgba(0, 0, 0, 0.80) !important; }
+  html.tv [class~="bg-black/85"] { background-color: rgba(0, 0, 0, 0.85) !important; }
+  html.tv [class~="bg-black/90"] { background-color: rgba(0, 0, 0, 0.90) !important; }
+  html.tv [class~="bg-white/20"] { background-color: rgba(255, 255, 255, 0.20) !important; }
+  html.tv [class~="bg-white/40"] { background-color: rgba(255, 255, 255, 0.40) !important; }
+  html.tv [class~="text-white/90"] { color: rgba(255, 255, 255, 0.90) !important; }
+
   html.tv .bg-gradient-to-t {
     background-image: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.55), transparent) !important;
   }

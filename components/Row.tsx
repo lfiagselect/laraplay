@@ -39,6 +39,8 @@ export function Row({ title, videos, href, categoryImage }: RowProps) {
         {href && (
           <Link
             href={href}
+            data-focusable
+            data-tv-row-more
             className="text-sm text-zinc-400 hover:text-white transition opacity-0 group-hover/row:opacity-100"
           >
             Voir tout →

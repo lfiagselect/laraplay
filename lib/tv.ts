@@ -22,6 +22,9 @@ export const TV_KEYS = {
   FORWARD: ["MediaFastForward"],
 } as const;
 
+/** Événement interne : le premier input D-pad réveille les contrôles masqués. */
+export const TV_CONTROLS_WAKE_EVENT = "laraplay:tv-controls-wake";
+
 export type TVKeyAction = keyof typeof TV_KEYS;
 
 export const TV_KEYCODES: Record<TVKeyAction, number[]> = {

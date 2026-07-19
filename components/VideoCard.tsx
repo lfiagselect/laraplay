@@ -6,7 +6,7 @@ import { useState, useRef } from "react";
 import type { VideoFile } from "@/lib/video-types";
 import { Play, Plus, Info } from "lucide-react";
 import { useVideoModal } from "./ModalProvider";
-import { useTV } from "@/lib/tv-client";
+import { detectTVClient } from "@/lib/tv-client";
 import { formatDuration } from "@/lib/format";
 
 const HOVER_DELAY_MS = 200;
@@ -29,17 +29,18 @@ export function VideoCard({ video, fallbackImage, layout = "rail" }: VideoCardPr
   const thumb = video.bunnyThumbnail ?? (fallbackImage || null);
   const cleanName = video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "");
   const { open, preload } = useVideoModal();
-  const isTV = useTV();
-
+  // Évaluation au moment de l'interaction : évite un useEffect + rerender par
+  // carte (jusqu'à plusieurs centaines sur l'accueil TV).
   const runtimeIsTV = () =>
-    isTV ||
-    (typeof document !== "undefined" && document.documentElement.classList.contains("tv"));
+    typeof document !== "undefined" &&
+    (document.documentElement.classList.contains("tv") || detectTVClient());
 
   const [isHover, setIsHover] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onEnter = () => {
-    if (!runtimeIsTV()) preload(video.id);
+    if (runtimeIsTV()) return;
+    preload(video.id);
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = setTimeout(() => setIsHover(true), HOVER_DELAY_MS);
   };

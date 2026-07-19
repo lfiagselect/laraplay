@@ -8,10 +8,21 @@ import { useEffect, useState } from "react";
 
 const SCROLL_MAX = 80;
 
-export function HeaderShell({ children }: { children: React.ReactNode }) {
-  const [opacity, setOpacity] = useState(0);
+export function HeaderShell({
+  children,
+  tvMode = false,
+}: {
+  children: React.ReactNode;
+  tvMode?: boolean;
+}) {
+  const [opacity, setOpacity] = useState(tvMode ? 1 : 0);
 
   useEffect(() => {
+    // Le header TV est sticky et opaque : aucun calcul/rerender par scroll.
+    if (tvMode || document.documentElement.classList.contains("tv")) {
+      setOpacity(1);
+      return;
+    }
     const onScroll = () => {
       const y = window.scrollY;
       const ratio = Math.min(1, y / SCROLL_MAX);
@@ -20,7 +31,7 @@ export function HeaderShell({ children }: { children: React.ReactNode }) {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [tvMode]);
 
   return (
     <div

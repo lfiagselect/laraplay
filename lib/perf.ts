@@ -67,11 +67,11 @@ if (typeof window !== "undefined") {
 
 /** Helper timer: retourne fn qui mark delta au moment appel */
 export function startTimer() {
-  const t0 =
-    typeof performance !== "undefined" ? performance.now() : Date.now();
+  const hasPerformanceNow =
+    typeof performance !== "undefined" && typeof performance.now === "function";
+  const t0 = hasPerformanceNow ? performance.now() : Date.now();
   return () => {
-    const t1 =
-      typeof performance !== "undefined" ? performance.now() : Date.now();
+    const t1 = hasPerformanceNow ? performance.now() : Date.now();
     return Math.round(t1 - t0);
   };
 }

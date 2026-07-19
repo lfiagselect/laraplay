@@ -12,8 +12,15 @@ import { getCatalog, ERAS, THEMATIC_ROWS, categoryMatches, slugify } from "@/lib
 import { landscapeImage, posterImage } from "@/lib/category-images";
 import { HERO_VIDEOS, HERO_CAROUSEL_SLIDES } from "@/lib/hero-videos";
 import { auth } from "@/auth";
+import { cookies, headers } from "next/headers";
+import { detectTVServer } from "@/lib/tv";
 
 export const revalidate = 3600;
+
+// Deux écrans de cartes environ sur un téléviseur 1080p. Le lien de catégorie
+// reste disponible pour parcourir le catalogue complet sans gonfler le DOM de
+// l'accueil sur les moteurs WebOS/Tizen les moins puissants.
+const TV_ROW_LIMIT = 12;
 
 function Divider() {
   return <hr className="row-divider" aria-hidden="true" />;
@@ -28,8 +35,16 @@ function videosForCategory<T>(byCategory: Map<string, T[]>, category: string): T
 }
 
 export default async function Home() {
-  const [catalog, session] = await Promise.all([getCatalog(), auth()]);
+  const [catalog, session, hdrs, cookieStore] = await Promise.all([
+    getCatalog(),
+    auth(),
+    headers(),
+    cookies(),
+  ]);
   const userEmail = session?.user?.email ?? null;
+  const isTV =
+    detectTVServer(hdrs.get("user-agent")) ||
+    cookieStore.get("laraplay_legacy_tv")?.value === "1";
 
   const eras = ERAS.map((name) => ({
     name,
@@ -73,7 +88,7 @@ export default async function Home() {
       <Row
         key={cat}
         title={cat}
-        videos={vids.slice(0, 20)}
+        videos={vids.slice(0, isTV ? TV_ROW_LIMIT : 20)}
         href={`/category/${slugify(cat)}`}
         categoryImage={landscapeImage(cat)}
       />
@@ -84,7 +99,11 @@ export default async function Home() {
     <div className="min-h-screen bg-black">
       <SplashIntro />
       <Header />
-      <HeroResponsive hero={heroFinal} carouselSlides={HERO_CAROUSEL_SLIDES} />
+      <HeroResponsive
+        hero={heroFinal}
+        carouselSlides={HERO_CAROUSEL_SLIDES}
+        tvMode={isTV}
+      />
       {/* Netflix: rows commencent SOUS hero avec overlap négatif (gradient hero couvre top rows) */}
       <main className="relative -mt-[6vh] md:-mt-[10vh] pb-24 z-10">
         {sections.map((section, i) => (

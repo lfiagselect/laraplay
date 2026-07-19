@@ -19,16 +19,19 @@ export interface HeroCarouselSlide {
 interface HeroCarouselProps {
   slides: HeroCarouselSlide[];
   intervalMs?: number;
+  /** Détection SSR pour livrer un hero statique minimal aux téléviseurs. */
+  tvMode?: boolean;
 }
 
-export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
+export function HeroCarousel({ slides, intervalMs = 5500, tvMode = false }: HeroCarouselProps) {
   const [index, setIndex] = useState(0);
   const [focusWithin, setFocusWithin] = useState(false);
   const [paused, setPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const router = useRouter();
   const touchStartX = useRef<number | null>(null);
-  const isTV = useTV();
+  const detectedTV = useTV();
+  const isTV = tvMode || detectedTV;
 
   useEffect(() => {
     setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -50,6 +53,37 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
   const next = () => goto((index + 1) % slides.length);
   const prev = () => goto((index - 1 + slides.length) % slides.length);
 
+  if (slides.length === 0) return null;
+  const current = slides[index] ?? slides[0];
+
+  // Sur TV la rotation est déjà désactivée. Ne garder qu'une image évite le
+  // décodage des autres slides, les deux calques mobiles et les indicateurs.
+  if (isTV) {
+    return (
+      <section className="hero-section relative w-full bg-[var(--bg-main)] overflow-hidden">
+        <button
+          type="button"
+          data-focusable
+          data-tv-initial
+          onClick={() => router.push(current.href)}
+          aria-label={current.alt}
+          className="absolute inset-0 block w-full text-left"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={current.image}
+            alt={current.alt}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+          />
+        </button>
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#0b0b0b] via-black/30 to-transparent pointer-events-none" />
+      </section>
+    );
+  }
+
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -62,9 +96,6 @@ export function HeroCarousel({ slides, intervalMs = 5500 }: HeroCarouselProps) {
     }
     touchStartX.current = null;
   };
-
-  if (slides.length === 0) return null;
-  const current = slides[index];
 
   return (
     <section

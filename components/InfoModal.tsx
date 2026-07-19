@@ -12,7 +12,7 @@ import { X, Play, Plus, Check, ThumbsUp, Loader2 } from "lucide-react";
 import type { VideoFile } from "@/lib/video-types";
 import { VideoCard } from "./VideoCard";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
-import { useTV } from "@/lib/tv-client";
+import { detectTVClient, useTV } from "@/lib/tv-client";
 import { formatDuration, formatSize } from "@/lib/format";
 import { useBunnyProgress } from "@/lib/use-bunny-progress";
 
@@ -78,7 +78,14 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   }, []);
 
   useEffect(() => {
-    // TV: mount aussi preview Bunny (sans cela, thumbnail s'efface → écran noir)
+    // Sur TV, conserver l'affiche statique : l'iframe de preview peut rester
+    // vivante au changement de route et concurrence le lecteur /watch.
+    if (isTV || detectTVClient()) {
+      setShouldMountVideo(false);
+      setVideoReady(false);
+      setPreviewVisible(false);
+      return;
+    }
     const t = setTimeout(() => setShouldMountVideo(true), 400);
     return () => clearTimeout(t);
   }, [isTV]);
@@ -106,7 +113,13 @@ export function InfoModal({ video, related, userEmail, onClose }: InfoModalProps
   }, [playing]);
 
   const onPlay = () => {
-    if (isTV) {
+    // useTV() est hydraté dans un effet : sur une TV rapide, le premier clic peut
+    // arriver alors que sa valeur est encore false. Revalider au moment du geste
+    // évite de monter le lecteur iframe dans la modale par erreur.
+    if (isTV || detectTVClient()) {
+      // ModalProvider vit dans le layout racine et survit au changement de route.
+      // Fermer avant la navigation démonte aussi la preview et coupe son audio.
+      onClose();
       router.push(`/watch/${video.id}`);
       return;
     }

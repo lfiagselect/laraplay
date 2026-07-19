@@ -23,10 +23,12 @@ import {
   Loader2,
   Volume2,
   VolumeX,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { getEntry, saveProgress } from "@/lib/watch-progress";
 import { track, startTimer } from "@/lib/perf";
-import { matchTVKeyEvent } from "@/lib/tv";
+import { matchTVKeyEvent, TV_CONTROLS_WAKE_EVENT } from "@/lib/tv";
 import { pad2 } from "@/lib/format";
 import { safePlay } from "@/lib/media";
 
@@ -45,6 +47,94 @@ interface PlayerTVProps {
 
 const SKIP_SEC = 10;
 const CONTROLS_HIDE_MS = 3500;
+
+type FullscreenResult = Promise<void> | void;
+
+type LegacyFullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => FullscreenResult;
+  webkitRequestFullScreen?: () => FullscreenResult;
+  mozRequestFullScreen?: () => FullscreenResult;
+  msRequestFullscreen?: () => FullscreenResult;
+};
+
+type LegacyFullscreenVideo = HTMLVideoElement & {
+  webkitExitFullscreen?: () => void;
+  webkitDisplayingFullscreen?: boolean;
+};
+
+type LegacyFullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  webkitCurrentFullScreenElement?: Element | null;
+  mozFullScreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => FullscreenResult;
+  webkitCancelFullScreen?: () => FullscreenResult;
+  mozCancelFullScreen?: () => FullscreenResult;
+  msExitFullscreen?: () => FullscreenResult;
+};
+
+function fullscreenElement(doc: LegacyFullscreenDocument): Element | null {
+  return doc.fullscreenElement
+    || doc.webkitFullscreenElement
+    || doc.webkitCurrentFullScreenElement
+    || doc.mozFullScreenElement
+    || doc.msFullscreenElement
+    || null;
+}
+
+function handleFullscreenPromise(result: FullscreenResult, onRejected: () => void): void {
+  if (!result || typeof (result as Promise<void>).catch !== "function") return;
+  void (result as Promise<void>).catch(onRejected);
+}
+
+function requestElementFullscreen(
+  element: LegacyFullscreenElement,
+  onRejected: () => void,
+): boolean {
+  const requests = [
+    element.requestFullscreen,
+    element.webkitRequestFullscreen,
+    element.webkitRequestFullScreen,
+    element.mozRequestFullScreen,
+    element.msRequestFullscreen,
+  ];
+
+  for (const request of requests) {
+    if (typeof request !== "function") continue;
+    try {
+      // L'appel doit rester dans la pile synchrone du clic/Enter : plusieurs
+      // firmwares invalident l'activation utilisateur au premier await.
+      const result = request.call(element);
+      handleFullscreenPromise(result, onRejected);
+      return true;
+    } catch {
+      // Essayer la variante préfixée suivante pendant la même activation.
+    }
+  }
+  return false;
+}
+
+function exitDocumentFullscreen(doc: LegacyFullscreenDocument): boolean {
+  const exits = [
+    doc.exitFullscreen,
+    doc.webkitExitFullscreen,
+    doc.webkitCancelFullScreen,
+    doc.mozCancelFullScreen,
+    doc.msExitFullscreen,
+  ];
+
+  for (const exit of exits) {
+    if (typeof exit !== "function") continue;
+    try {
+      const result = exit.call(doc);
+      handleFullscreenPromise(result, () => {});
+      return true;
+    } catch {
+      // Essayer l'ancienne variante suivante.
+    }
+  }
+  return false;
+}
 
 function fmtTime(s: number): string {
   if (!isFinite(s) || s < 0) return "0:00";
@@ -66,7 +156,12 @@ export function PlayerTV({
   const videoRef = useRef<HTMLVideoElement>(null);
   const playBtnRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusRestoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fullscreenVerifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFocusedControlRef = useRef<HTMLElement | null>(null);
+  const controlsVisibleRef = useRef(true);
   const hlsRef = useRef<{ destroy: () => void } | null>(null);
 
   const [state, setState] = useState<PlayerState>("idle");
@@ -75,29 +170,84 @@ export function PlayerTV({
   const [duration, setDuration] = useState(0);
   const [buffered, setBuffered] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [cssFullscreen, setCssFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [sourceIndex, setSourceIndex] = useState(0);
   const router = useRouter();
   const sourcesKey = sources.join("\n");
   const currentSrc = sources[sourceIndex] ?? "";
   const stateRef = useRef<PlayerState>("idle");
-  useEffect(() => { stateRef.current = state; }, [state]);
 
-  // PLAYER-02: ne jamais masquer pendant focus contrôle, pause, erreur ou buffering.
-  const canHideControls = () => {
-    const st = stateRef.current;
-    if (st !== "playing") return false;
-    const active = document.activeElement;
-    return !(active && containerRef.current?.contains(active) && active !== document.body);
-  };
-  const showControls = () => {
+  function clearHideTimer() {
+    if (!hideTimerRef.current) return;
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = null;
+  }
+
+  function hideControls() {
+    if (stateRef.current !== "playing" || !controlsVisibleRef.current) return;
+    const controls = controlsRef.current;
+    const container = containerRef.current;
+    const active = document.activeElement as HTMLElement | null;
+
+    if (active && controls?.contains(active)) lastFocusedControlRef.current = active;
+    controlsVisibleRef.current = false;
+    container?.setAttribute("data-tv-controls-hidden", "true");
+    setControlsVisible(false);
+
+    // Ne jamais laisser le focus sur un bouton devenu invisible. Le shell est
+    // un point d'attente accessible, puis le focus précédent sera restauré.
+    if (container) {
+      try { container.focus({ preventScroll: true }); } catch { container.focus(); }
+    }
+  }
+
+  function armControlsHide() {
+    clearHideTimer();
+    if (stateRef.current !== "playing") return;
+    hideTimerRef.current = setTimeout(hideControls, CONTROLS_HIDE_MS);
+  }
+
+  function revealControls(restoreFocus: boolean) {
+    const wasHidden = !controlsVisibleRef.current;
+    controlsVisibleRef.current = true;
+    containerRef.current?.removeAttribute("data-tv-controls-hidden");
     setControlsVisible(true);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => {
-      if (canHideControls()) setControlsVisible(false);
-      else showControls(); // re-armer tant que masquage interdit
-    }, CONTROLS_HIDE_MS);
-  };
+    armControlsHide();
+
+    if (!wasHidden || !restoreFocus) return;
+    if (focusRestoreTimerRef.current) clearTimeout(focusRestoreTimerRef.current);
+    focusRestoreTimerRef.current = setTimeout(() => {
+      const remembered = lastFocusedControlRef.current;
+      const target = remembered && document.contains(remembered) ? remembered : playBtnRef.current;
+      try { target?.focus({ preventScroll: true }); } catch { target?.focus(); }
+      focusRestoreTimerRef.current = null;
+    }, 0);
+  }
+
+  useEffect(() => {
+    stateRef.current = state;
+    if (state === "playing") armControlsHide();
+    else revealControls(true);
+    // Les helpers travaillent uniquement avec des refs pour rester stables.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onWake = () => revealControls(true);
+    container.addEventListener(TV_CONTROLS_WAKE_EVENT, onWake);
+    return () => container.removeEventListener(TV_CONTROLS_WAKE_EVENT, onWake);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => () => {
+    clearHideTimer();
+    if (focusRestoreTimerRef.current) clearTimeout(focusRestoreTimerRef.current);
+    if (fullscreenVerifyTimerRef.current) clearTimeout(fullscreenVerifyTimerRef.current);
+  }, []);
 
   // ============ HLS loader (hls.js fallback si pas support natif) ============
   // Bunny stream URL = playlist.m3u8 (HLS).
@@ -112,6 +262,9 @@ export function PlayerTV({
 
     if (!isHls || canPlayHlsNatively) {
       v.src = currentSrc;
+      // LG recommande load() après chaque changement de source pour réinitialiser
+      // readyState de façon cohérente entre WebKit historique et Chromium.
+      try { v.load(); } catch {}
       return;
     }
 
@@ -126,6 +279,7 @@ export function PlayerTV({
         if (!Hls.isSupported()) {
           // Browser ne support pas MSE → fallback URL directe (échouera mais clean error)
           v.src = currentSrc;
+          try { v.load(); } catch {}
           return;
         }
         const hls = new Hls({ enableWorker: true });
@@ -148,6 +302,7 @@ export function PlayerTV({
       } catch (err) {
         console.error("[PlayerTV] HLS load failed:", err);
         v.src = currentSrc; // ultime fallback
+        try { v.load(); } catch {}
       }
     })();
 
@@ -163,6 +318,34 @@ export function PlayerTV({
   useEffect(() => {
     setSourceIndex(0);
   }, [sourcesKey]);
+
+  // Synchroniser l'icône avec les API standard, WebKit historiques et le mode
+  // fullscreen propre à <video> présent sur plusieurs firmwares LG/Samsung.
+  useEffect(() => {
+    const doc = document as LegacyFullscreenDocument;
+    const video = videoRef.current as LegacyFullscreenVideo | null;
+    const syncFullscreenState = () => {
+      const active = Boolean(fullscreenElement(doc) || video?.webkitDisplayingFullscreen);
+      if (fullscreenVerifyTimerRef.current) {
+        clearTimeout(fullscreenVerifyTimerRef.current);
+        fullscreenVerifyTimerRef.current = null;
+      }
+      setIsFullscreen(active);
+      if (active) setCssFullscreen(false);
+    };
+
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    document.addEventListener("webkitfullscreenchange", syncFullscreenState);
+    video?.addEventListener("webkitbeginfullscreen", syncFullscreenState);
+    video?.addEventListener("webkitendfullscreen", syncFullscreenState);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreenState);
+      video?.removeEventListener("webkitbeginfullscreen", syncFullscreenState);
+      video?.removeEventListener("webkitendfullscreen", syncFullscreenState);
+    };
+  }, []);
 
   // ============ State machine + perf marks (clone Player.tsx) ============
   useEffect(() => {
@@ -321,8 +504,9 @@ export function PlayerTV({
       const v = videoRef.current;
       if (!v) return;
 
-      // Reveal controls sur n'importe quelle key
-      showControls();
+      // Les touches média restent intentionnelles ; elles agissent et révèlent.
+      // D-pad/Enter cachés sont consommés plus tôt par spatial-nav (capture).
+      revealControls(true);
 
       // MediaPlayPause natif TV remote
       if (matchTVKeyEvent(e, "PLAY") || matchTVKeyEvent(e, "PAUSE")) {
@@ -358,14 +542,14 @@ export function PlayerTV({
   useEffect(() => {
     const t = setTimeout(() => {
       playBtnRef.current?.focus();
-      showControls();
+      revealControls(false);
     }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mouse move desktop reveal
-  const onPointerMove = () => showControls();
+  const onPointerMove = () => revealControls(true);
 
   // Actions
   const togglePlay = () => {
@@ -390,10 +574,88 @@ export function PlayerTV({
     v.muted = !v.muted;
     setMuted(v.muted);
   };
-  const onBack = () => router.replace(backHref);
+  const toggleFullscreen = () => {
+    const container = containerRef.current as LegacyFullscreenElement | null;
+    const video = videoRef.current as LegacyFullscreenVideo | null;
+    if (!container || !video) return;
+
+    revealControls(true);
+    const doc = document as LegacyFullscreenDocument;
+    const activeElement = fullscreenElement(doc);
+
+    if (activeElement || video.webkitDisplayingFullscreen) {
+      setCssFullscreen(false);
+      if (activeElement && exitDocumentFullscreen(doc)) {
+        setIsFullscreen(false);
+        return;
+      }
+      if (typeof video.webkitExitFullscreen === "function") {
+        try {
+          video.webkitExitFullscreen();
+          setIsFullscreen(false);
+        } catch {
+          // Le bouton reste utilisable ; Back natif de la TV peut toujours sortir.
+        }
+      }
+      return;
+    }
+
+    if (cssFullscreen) {
+      setCssFullscreen(false);
+      return;
+    }
+
+    const useCssFullscreen = () => {
+      if (fullscreenVerifyTimerRef.current) {
+        clearTimeout(fullscreenVerifyTimerRef.current);
+        fullscreenVerifyTimerRef.current = null;
+      }
+      setIsFullscreen(false);
+      setCssFullscreen(true);
+    };
+
+    // Le conteneur, plutôt que <video>, conserve l'overlay de contrôles custom.
+    if (requestElementFullscreen(container, useCssFullscreen)) {
+      // Plusieurs firmwares renvoient void et ne rejettent rien lorsque la
+      // demande est ignorée. L'événement natif annule ce contrôle ; sans état
+      // fullscreen observable après le délai, on passe au repli CSS.
+      fullscreenVerifyTimerRef.current = setTimeout(() => {
+        fullscreenVerifyTimerRef.current = null;
+        const nativeActive = Boolean(
+          fullscreenElement(doc) || video.webkitDisplayingFullscreen
+        );
+        if (nativeActive) {
+          setIsFullscreen(true);
+          setCssFullscreen(false);
+        } else {
+          useCssFullscreen();
+        }
+      }, 800);
+      return;
+    }
+
+    // Le lecteur TV vit déjà dans un wrapper fixed/inset-0. Ce repli CSS rend
+    // ce mode explicite et le garde réversible si aucune API n'est disponible.
+    setCssFullscreen(true);
+  };
+  const onBack = () => {
+    // Le bouton X ferme le lecteur en un geste, mais libère d'abord tout mode
+    // fullscreen pour ne pas laisser le navigateur/firmware dans un état natif.
+    const doc = document as LegacyFullscreenDocument;
+    const video = videoRef.current as LegacyFullscreenVideo | null;
+    setCssFullscreen(false);
+    setIsFullscreen(false);
+    if (fullscreenElement(doc)) {
+      exitDocumentFullscreen(doc);
+    } else if (video?.webkitDisplayingFullscreen && typeof video.webkitExitFullscreen === "function") {
+      try { video.webkitExitFullscreen(); } catch {}
+    }
+    router.replace(backHref);
+  };
 
   const showLoader = state === "loading" || state === "buffering" || state === "idle";
   const isPlaying = state === "playing";
+  const fullscreenActive = isFullscreen || cssFullscreen;
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const bufferedPct = duration > 0 ? (buffered / duration) * 100 : 0;
 
@@ -401,7 +663,12 @@ export function PlayerTV({
     <div
       ref={containerRef}
       onMouseMove={onPointerMove}
-      className={`relative bg-black ${className}`}
+      tabIndex={-1}
+      role="region"
+      aria-label={controlsVisible ? "Lecteur vidéo" : "Lecteur vidéo, commandes masquées"}
+      data-tv-player-shell
+      data-tv-controls-hidden={controlsVisible ? undefined : "true"}
+      className={`${cssFullscreen ? "fixed inset-0 z-[100] w-screen h-screen" : "relative"} bg-black ${className}`}
     >
       <video
         ref={videoRef}
@@ -464,13 +731,17 @@ export function PlayerTV({
 
       {/* === Overlay Controls === */}
       <div
+        ref={controlsRef}
+        aria-hidden={!controlsVisible}
+        inert={controlsVisible ? undefined : true}
+        onFocusCapture={() => revealControls(false)}
         className={[
           "absolute inset-0 flex flex-col justify-between pointer-events-none transition-opacity duration-300",
           controlsVisible ? "opacity-100" : "opacity-0",
         ].join(" ")}
       >
         {/* Top bar: Back button */}
-        <div className="pointer-events-auto bg-gradient-to-b from-black/80 to-transparent p-6" data-tv-section="player-top">
+        <div className={`${controlsVisible ? "pointer-events-auto" : "pointer-events-none"} bg-gradient-to-b from-black/80 to-transparent p-6`} data-tv-section="player-top">
           <button
             data-focusable
             data-tv-back
@@ -483,7 +754,7 @@ export function PlayerTV({
         </div>
 
         {/* Bottom controls */}
-        <div className="pointer-events-auto bg-gradient-to-t from-black/95 via-black/60 to-transparent p-6 md:p-10 space-y-4">
+        <div className={`${controlsVisible ? "pointer-events-auto" : "pointer-events-none"} bg-gradient-to-t from-black/95 via-black/60 to-transparent p-6 md:p-10 space-y-4`}>
           {/* Progress bar */}
           <div className="space-y-2" data-tv-section="player-progress">
             <div
@@ -499,11 +770,11 @@ export function PlayerTV({
                 if (e.key === "ArrowLeft") {
                   e.preventDefault();
                   skipBack();
-                  showControls();
+                  revealControls(false);
                 } else if (e.key === "ArrowRight") {
                   e.preventDefault();
                   skipFwd();
-                  showControls();
+                  revealControls(false);
                 }
               }}
               className="relative h-2 bg-white/20 rounded-full cursor-pointer focus:h-3 transition-all"
@@ -562,18 +833,36 @@ export function PlayerTV({
               <RotateCw className="w-7 h-7 text-white" />
             </button>
 
-            <button
-              data-focusable
-              onClick={toggleMute}
-              aria-label={muted ? "Activer son" : "Couper son"}
-              className="ml-auto w-14 h-14 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition"
-            >
-              {muted ? (
-                <VolumeX className="w-6 h-6 text-white" />
-              ) : (
-                <Volume2 className="w-6 h-6 text-white" />
-              )}
-            </button>
+            <div className="flex items-center" style={{ marginLeft: "auto" }}>
+              <button
+                data-focusable
+                onClick={toggleMute}
+                aria-label={muted ? "Activer son" : "Couper son"}
+                className="w-14 h-14 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition"
+              >
+                {muted ? (
+                  <VolumeX className="w-6 h-6 text-white" />
+                ) : (
+                  <Volume2 className="w-6 h-6 text-white" />
+                )}
+              </button>
+
+              <button
+                data-focusable
+                data-tv-fullscreen
+                onClick={toggleFullscreen}
+                aria-label={fullscreenActive ? "Quitter le plein écran" : "Plein écran"}
+                aria-pressed={fullscreenActive}
+                className="w-14 h-14 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center transition"
+                style={{ marginLeft: "1.5rem" }}
+              >
+                {fullscreenActive ? (
+                  <Minimize className="w-6 h-6 text-white" />
+                ) : (
+                  <Maximize className="w-6 h-6 text-white" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

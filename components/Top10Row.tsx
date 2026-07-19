@@ -6,9 +6,10 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import type { VideoFile } from "@/lib/video-types";
 import { useVideoModal } from "./ModalProvider";
-import { useTV } from "@/lib/tv-client";
+import { detectTVClient, useTV } from "@/lib/tv-client";
 import { TVRowArrows } from "./TVRowArrows";
 import { formatDuration } from "@/lib/format";
+import { useRouter } from "next/navigation";
 
 interface Top10RowProps {
   title: string;
@@ -20,6 +21,7 @@ export function Top10Row({ title, videos }: Top10RowProps) {
   const top10 = videos.slice(0, 10);
   const { open } = useVideoModal();
   const isTV = useTV();
+  const router = useRouter();
 
   if (top10.length === 0) return null;
 
@@ -62,7 +64,11 @@ export function Top10Row({ title, videos }: Top10RowProps) {
               rank={idx + 1}
               duration={formatDuration(video.videoMediaMetadata?.durationMillis)}
               cleanName={video.name.replace(/\.(mp4|mov|mkv|webm|avi)$/i, "")}
-              onOpen={() => open(video.id)}
+              onOpen={() => {
+                if (document.documentElement.classList.contains("tv") || detectTVClient()) {
+                  router.push(`/watch/${video.id}`);
+                } else open(video.id);
+              }}
             />
           ))}
         </div>

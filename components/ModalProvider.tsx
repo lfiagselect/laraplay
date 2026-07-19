@@ -5,6 +5,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { VideoFile } from "@/lib/video-types";
 import { InfoModal } from "./InfoModal";
 
@@ -42,6 +43,8 @@ export function ModalProvider({
   const [openId, setOpenId] = useState<string | null>(null);
   const [state, setState] = useState<State>(EMPTY_STATE);
   const cache = useRef<Map<string, State>>(new Map());
+  const pathname = usePathname();
+  const previousPathname = useRef(pathname);
 
   // Prefetch au hover — fire & forget, résultat mis en cache
   const preload = useCallback((videoId: string) => {
@@ -77,6 +80,14 @@ export function ModalProvider({
     setOpenId(null);
     setState(EMPTY_STATE);
   }, []);
+
+  // Le provider est dans le layout racine : sans ce garde-fou, une modale ouverte
+  // peut rester au-dessus de la page /watch après une navigation client.
+  useEffect(() => {
+    if (previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    close();
+  }, [pathname, close]);
 
   // Fetch normal au clic — fallback si prefetch pas encore arrivé
   useEffect(() => {

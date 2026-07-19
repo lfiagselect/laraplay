@@ -42,10 +42,12 @@ drive-key.json
 *.key.json
 *.service-account.json
 
+# clé de déploiement SSH VPS (jamais versionnée)
+_deploy/
+
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
 .vercel
-# Clés de déploiement locales — ne jamais versionner.
-_deploy/

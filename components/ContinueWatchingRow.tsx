@@ -8,8 +8,9 @@ import { ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import type { VideoFile } from "@/lib/video-types";
 import { getContinueWatching, removeEntry } from "@/lib/watch-progress";
 import { useVideoModal } from "./ModalProvider";
-import { useTV } from "@/lib/tv-client";
+import { detectTVClient, useTV } from "@/lib/tv-client";
 import { TVRowArrows } from "./TVRowArrows";
+import { useRouter } from "next/navigation";
 
 interface Entry {
   video: VideoFile;
@@ -23,6 +24,7 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
   const [hydrated, setHydrated] = useState(false);
   const { open } = useVideoModal();
   const isTV = useTV();
+  const router = useRouter();
 
   const refresh = async () => {
     const wls = getContinueWatching(userEmail);
@@ -115,7 +117,11 @@ export function ContinueWatchingRow({ userEmail }: { userEmail: string }) {
                   type="button"
                   data-focusable
                   data-tv-row-item
-                  onClick={() => open(video.id)}
+                  onClick={() => {
+                    if (document.documentElement.classList.contains("tv") || detectTVClient()) {
+                      router.push(`/watch/${video.id}`);
+                    } else open(video.id);
+                  }}
                   className="block w-full text-left"
                 >
                   <div className="aspect-video bg-zinc-800 relative overflow-hidden">

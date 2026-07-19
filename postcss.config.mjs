@@ -1,5 +1,5 @@
-// COMP-01: aplatit les @layer générés par Tailwind 4 pour les moteurs
-// Chromium < 99 (Samsung 2023 = M94). Réécriture par spécificité.
+// COMP-01: aplatit les @layer générés par Tailwind 4 pour la cible TV
+// Chromium 53+ (LG webOS 4.x / Samsung 2018 M56+). Réécriture par spécificité.
 const config = {
   plugins: {
     "@tailwindcss/postcss": {},

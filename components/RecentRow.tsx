@@ -7,6 +7,8 @@ import type { VideoFile } from "@/lib/bunny";
 import { useVideoModal } from "./ModalProvider";
 import { TVRowArrows } from "./TVRowArrows";
 import { formatDuration } from "@/lib/format";
+import { detectTVClient } from "@/lib/tv-client";
+import { useRouter } from "next/navigation";
 
 interface RecentRowProps {
   title: string;
@@ -16,6 +18,7 @@ interface RecentRowProps {
 export function RecentRow({ title, videos }: RecentRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { open } = useVideoModal();
+  const router = useRouter();
   if (videos.length === 0) return null;
 
   return (
@@ -44,7 +47,11 @@ export function RecentRow({ title, videos }: RecentRowProps) {
               type="button"
               data-focusable
               data-tv-row-item
-              onClick={() => open(video.id)}
+              onClick={() => {
+                if (document.documentElement.classList.contains("tv") || detectTVClient()) {
+                  router.push(`/watch/${video.id}`);
+                } else open(video.id);
+              }}
               className="relative group shrink-0 w-[180px] sm:w-[220px] md:w-[280px] lg:w-[300px] aspect-video rounded-md overflow-hidden bg-zinc-900 shadow-lg hover:scale-105 transition-transform duration-200 text-left"
             >
               {thumbSrc ? (
